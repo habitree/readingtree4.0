@@ -43,11 +43,15 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 보호된 경로 확인
-  const protectedPaths = ["/books", "/notes", "/timeline", "/groups", "/profile"];
-  const isProtectedPath = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  // 보호된 경로 확인 (루트 경로 포함)
+  const protectedPaths = ["/", "/books", "/notes", "/timeline", "/groups", "/profile"];
+  const isProtectedPath = protectedPaths.some((path) => {
+    // 루트 경로는 정확히 일치해야 함
+    if (path === "/") {
+      return request.nextUrl.pathname === "/";
+    }
+    return request.nextUrl.pathname.startsWith(path);
+  });
 
   // 인증 페이지 경로 (로그인, 온보딩)
   const authPaths = ["/login", "/onboarding"];
