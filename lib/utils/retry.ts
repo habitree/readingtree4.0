@@ -46,8 +46,10 @@ export async function withRetry<T>(
     initialDelay = DEFAULT_OPTIONS.initialDelay,
     maxDelay = DEFAULT_OPTIONS.maxDelay,
     backoffMultiplier = DEFAULT_OPTIONS.backoffMultiplier,
-    retryableErrors = DEFAULT_OPTIONS.retryableErrors,
   } = options;
+
+  // retryableErrors는 옵셔널이므로 기본값 사용
+  const retryableErrors = options.retryableErrors ?? DEFAULT_OPTIONS.retryableErrors!;
 
   let lastError: Error | null = null;
   let delay = initialDelay;
