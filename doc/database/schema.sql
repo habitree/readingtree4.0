@@ -75,6 +75,7 @@ CREATE TABLE books (
     publisher VARCHAR(200),
     published_date DATE,
     cover_image_url TEXT,
+    is_sample BOOLEAN DEFAULT FALSE, -- 샘플 데이터 플래그
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -83,6 +84,7 @@ CREATE TABLE books (
 CREATE INDEX idx_books_isbn ON books(isbn) WHERE isbn IS NOT NULL; -- NULL이 아닌 ISBN만 인덱싱
 CREATE INDEX idx_books_title ON books(title);
 CREATE INDEX idx_books_author ON books(author);
+CREATE INDEX idx_books_is_sample ON books(is_sample) WHERE is_sample = TRUE; -- 샘플 데이터 조회용 인덱스
 
 -- 전체 텍스트 검색 인덱스
 CREATE INDEX idx_books_title_fts ON books USING gin(to_tsvector('simple', title));
@@ -135,6 +137,7 @@ CREATE TABLE notes (
     image_url TEXT,
     page_number INTEGER,
     is_public BOOLEAN DEFAULT FALSE,
+    is_sample BOOLEAN DEFAULT FALSE, -- 샘플 데이터 플래그
     tags TEXT[],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -146,6 +149,7 @@ CREATE INDEX idx_notes_book_id ON notes(book_id);
 CREATE INDEX idx_notes_type ON notes(type);
 CREATE INDEX idx_notes_created_at ON notes(created_at DESC);
 CREATE INDEX idx_notes_page_number ON notes(page_number);
+CREATE INDEX idx_notes_is_sample ON notes(is_sample) WHERE is_sample = TRUE; -- 샘플 데이터 조회용 인덱스
 
 -- 전체 텍스트 검색 인덱스
 CREATE INDEX idx_notes_content_fts ON notes USING gin(to_tsvector('simple', content));
@@ -158,7 +162,7 @@ ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own notes"
     ON notes FOR SELECT
-    USING (auth.uid() = user_id OR is_public = TRUE);
+    USING (auth.uid() = user_id OR is_public = TRUE OR is_sample = TRUE);
 
 CREATE POLICY "Users can insert own notes"
     ON notes FOR INSERT
@@ -411,6 +415,16 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================
+-- 6. 샘플 데이터 지원 (게스트 사용자용)
+-- ============================================
+
+-- Books 테이블: 샘플 데이터는 누구나 조회 가능
+-- (RLS가 없으므로 자동으로 모든 사용자가 조회 가능)
+
+-- Notes 테이블: 샘플 데이터 조회 정책은 이미 위에서 추가됨
+-- (is_sample = TRUE인 경우 누구나 조회 가능)
+
+-- ============================================
 -- 스키마 적용 완료
 -- ============================================
 -- 
@@ -418,5 +432,6 @@ CREATE TRIGGER on_auth_user_created
 -- 1. Storage 버킷 생성 (doc/database/README.md 참고)
 -- 2. Storage RLS 정책 설정 (doc/database/README.md 참고)
 -- 3. 검증 체크리스트 확인 (00-bkend-database-schema-plan.md 참고)
+-- 4. 샘플 데이터 초기화 (doc/database/sample-data.sql 실행)
 -- ============================================
 

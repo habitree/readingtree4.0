@@ -196,6 +196,7 @@ export async function updateBookStatus(
 
 /**
  * 사용자 책 목록 조회
+ * 게스트 사용자의 경우 샘플 데이터 반환
  * @param status 필터링할 상태 (선택)
  */
 export async function getUserBooks(status?: ReadingStatus) {
@@ -207,10 +208,51 @@ export async function getUserBooks(status?: ReadingStatus) {
     error: authError,
   } = await supabase.auth.getUser();
 
+  // 게스트 사용자인 경우 샘플 데이터 반환
   if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    // 샘플 책 데이터 조회
+    let query = supabase
+      .from("books")
+      .select(
+        `
+        id,
+        isbn,
+        title,
+        author,
+        publisher,
+        published_date,
+        cover_image_url,
+        is_sample,
+        created_at,
+        updated_at
+      `
+      )
+      .eq("is_sample", true)
+      .order("created_at", { ascending: false })
+      .limit(20); // 샘플 데이터는 최대 20개만
+
+    const { data: sampleBooks, error: sampleError } = await query;
+
+    if (sampleError) {
+      // 샘플 데이터가 없어도 빈 배열 반환 (에러 발생하지 않음)
+      return [];
+    }
+
+    // 샘플 데이터를 user_books 형식으로 변환
+    return (sampleBooks || []).map((book) => ({
+      id: book.id, // 임시 ID (실제 user_books ID가 아님)
+      user_id: null, // 게스트는 user_id가 없음
+      book_id: book.id,
+      status: "reading" as ReadingStatus, // 기본값
+      started_at: book.created_at || new Date().toISOString(),
+      completed_at: null,
+      created_at: book.created_at || new Date().toISOString(),
+      updated_at: book.updated_at || new Date().toISOString(),
+      books: book,
+    }));
   }
 
+  // 인증된 사용자는 기존 로직 사용
   let query = supabase
     .from("user_books")
     .select(

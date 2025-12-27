@@ -7,6 +7,7 @@ export type TimelineSortBy = "latest" | "oldest" | "book";
 
 /**
  * 타임라인 조회
+ * 게스트 사용자의 경우 샘플 데이터 반환
  * @param sortBy 정렬 방식 (latest: 최신순, oldest: 오래된순, book: 책별)
  * @param page 페이지 번호 (기본값: 1)
  */
@@ -22,14 +23,67 @@ export async function getTimeline(
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
   const ITEMS_PER_PAGE = 20;
   const from = (page - 1) * ITEMS_PER_PAGE;
   const to = from + ITEMS_PER_PAGE - 1;
 
+  // 게스트 사용자인 경우 샘플 데이터 반환
+  if (authError || !user) {
+    let query = supabase
+      .from("notes")
+      .select(
+        `
+        *,
+        books (
+          id,
+          title,
+          author,
+          cover_image_url
+        )
+      `,
+        { count: "exact" }
+      )
+      .eq("is_sample", true);
+
+    // 정렬 적용
+    if (sortBy === "latest") {
+      query = query.order("created_at", { ascending: false });
+    } else if (sortBy === "oldest") {
+      query = query.order("created_at", { ascending: true });
+    } else if (sortBy === "book") {
+      query = query
+        .order("book_id", { ascending: true })
+        .order("created_at", { ascending: false });
+    }
+
+    // 페이지네이션
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      // 샘플 데이터가 없어도 빈 결과 반환
+      return {
+        items: [],
+        total: 0,
+        page,
+        totalPages: 0,
+        itemsPerPage: ITEMS_PER_PAGE,
+      };
+    }
+
+    const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
+
+    return {
+      items: (data || []) as NoteWithBook[],
+      total: count || 0,
+      page,
+      totalPages,
+      itemsPerPage: ITEMS_PER_PAGE,
+    };
+  }
+
+  // 인증된 사용자는 기존 로직 사용
   let query = supabase
     .from("notes")
     .select(
@@ -79,6 +133,7 @@ export async function getTimeline(
 
 /**
  * 독서 통계 조회
+ * 게스트 사용자의 경우 샘플 데이터 통계 반환
  * 이번 주, 올해 통계 및 인기 책 반환
  */
 export async function getReadingStats() {
@@ -90,10 +145,79 @@ export async function getReadingStats() {
     error: authError,
   } = await supabase.auth.getUser();
 
+  // 게스트 사용자인 경우 샘플 데이터 통계 반환
   if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    // 샘플 데이터에서 이번 주 기록 수
+    const { count: thisWeekNotes } = await supabase
+      .from("notes")
+      .select("*", { count: "exact", head: true })
+      .eq("is_sample", true)
+      .gte("created_at", new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+    // 샘플 데이터에서 올해 기록 수
+    const { count: thisYearNotes } = await supabase
+      .from("notes")
+      .select("*", { count: "exact", head: true })
+      .eq("is_sample", true)
+      .gte("created_at", startOfYear.toISOString());
+
+    // 샘플 데이터에서 가장 많이 기록한 책 (상위 5개)
+    const { data: topBooksData } = await supabase
+      .from("notes")
+      .select(
+        `
+        book_id,
+        books (
+          id,
+          title,
+          author,
+          cover_image_url
+        )
+      `
+      )
+      .eq("is_sample", true);
+
+    // 책별 기록 수 집계
+    const bookCounts = new Map<string, { count: number; book: any }>();
+    if (topBooksData) {
+      topBooksData.forEach((note) => {
+        const bookId = note.book_id;
+        const book = (note.books as any);
+        if (book) {
+          const existing = bookCounts.get(bookId);
+          if (existing) {
+            existing.count++;
+          } else {
+            bookCounts.set(bookId, { count: 1, book });
+          }
+        }
+      });
+    }
+
+    const topBooks = Array.from(bookCounts.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((item) => ({
+        book: item.book,
+        noteCount: item.count,
+      }));
+
+    return {
+      thisWeek: {
+        notes: thisWeekNotes || 0,
+      },
+      thisYear: {
+        completedBooks: 0, // 샘플 데이터에는 완독 책 개념이 없음
+        notes: thisYearNotes || 0,
+      },
+      topBooks,
+    };
   }
 
+  // 인증된 사용자는 기존 로직 사용
   const now = new Date();
   const startOfYear = new Date(now.getFullYear(), 0, 1);
 
@@ -173,6 +297,7 @@ export async function getReadingStats() {
 
 /**
  * 목표 진행률 조회
+ * 게스트 사용자의 경우 샘플 목표 데이터 반환
  * 올해 독서 목표 대비 완독한 책 수
  */
 export async function getGoalProgress() {
@@ -184,10 +309,22 @@ export async function getGoalProgress() {
     error: authError,
   } = await supabase.auth.getUser();
 
+  // 게스트 사용자인 경우 샘플 목표 데이터 반환
   if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    // 샘플 목표: 12권, 완독: 8권 (예시)
+    const sampleGoal = 12;
+    const sampleCompleted = 8;
+    const sampleProgress = Math.min((sampleCompleted / sampleGoal) * 100, 100);
+
+    return {
+      goal: sampleGoal,
+      completed: sampleCompleted,
+      progress: Math.round(sampleProgress),
+      remaining: Math.max(sampleGoal - sampleCompleted, 0),
+    };
   }
 
+  // 인증된 사용자는 기존 로직 사용
   // 사용자 목표 조회
   const { data: profile, error: profileError } = await supabase
     .from("users")
@@ -220,6 +357,7 @@ export async function getGoalProgress() {
 
 /**
  * 월별 기록 통계 조회
+ * 게스트 사용자의 경우 샘플 데이터 통계 반환
  * 최근 6개월간의 기록 수
  */
 export async function getMonthlyStats() {
@@ -231,10 +369,6 @@ export async function getMonthlyStats() {
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
-  }
-
   const now = new Date();
   const months: { month: string; count: number }[] = [];
 
@@ -243,12 +377,22 @@ export async function getMonthlyStats() {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
 
-    const { count } = await supabase
+    // 게스트 사용자는 샘플 데이터, 인증된 사용자는 자신의 데이터
+    const query = supabase
       .from("notes")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
       .gte("created_at", date.toISOString())
       .lt("created_at", nextMonth.toISOString());
+
+    if (authError || !user) {
+      // 게스트: 샘플 데이터
+      query.eq("is_sample", true);
+    } else {
+      // 인증된 사용자: 자신의 데이터
+      query.eq("user_id", user.id);
+    }
+
+    const { count } = await query;
 
     months.push({
       month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,

@@ -16,17 +16,8 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
  * 내부 로딩 상태를 사용합니다.
  */
 export default async function HomePage() {
-  // 서버 컴포넌트에서 인증 확인 (미들웨어와 이중 확인)
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  // 인증되지 않은 사용자는 로그인 페이지로 리다이렉트
-  if (authError || !user) {
-    redirect("/login");
-  }
+  // 게스트 사용자도 접근 가능하므로 리다이렉트하지 않음
+  // DashboardContent 컴포넌트에서 게스트 모드를 처리함
 
   return (
     <div className="space-y-6">

@@ -203,6 +203,7 @@ export async function deleteNote(noteId: string) {
 
 /**
  * 기록 목록 조회
+ * 게스트 사용자의 경우 샘플 데이터 반환
  * @param bookId 책 ID (선택)
  * @param type 기록 유형 필터 (선택)
  */
@@ -215,10 +216,44 @@ export async function getNotes(bookId?: string, type?: NoteType) {
     error: authError,
   } = await supabase.auth.getUser();
 
+  // 게스트 사용자인 경우 샘플 데이터 반환
   if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    let query = supabase
+      .from("notes")
+      .select(
+        `
+        *,
+        books (
+          id,
+          title,
+          author,
+          cover_image_url
+        )
+      `
+      )
+      .eq("is_sample", true)
+      .order("created_at", { ascending: false })
+      .limit(50); // 샘플 데이터는 최대 50개
+
+    if (bookId) {
+      query = query.eq("book_id", bookId);
+    }
+
+    if (type) {
+      query = query.eq("type", type);
+    }
+
+    const { data: sampleNotes, error: sampleError } = await query;
+
+    if (sampleError) {
+      // 샘플 데이터가 없어도 빈 배열 반환 (에러 발생하지 않음)
+      return [];
+    }
+
+    return sampleNotes || [];
   }
 
+  // 인증된 사용자는 기존 로직 사용
   let query = supabase
     .from("notes")
     .select(

@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { getGoalProgress, getReadingStats, getMonthlyStats } from "@/app/actions/stats";
 import { getNotes } from "@/app/actions/notes";
 import { MonthlyChart } from "./monthly-chart";
 import { RecentNotes } from "./recent-notes";
-import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw, LogIn } from "lucide-react";
 import type { NoteWithBook } from "@/types/note";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import Link from "next/link";
 
 /**
  * 대시보드 컨텐츠 컴포넌트
@@ -18,6 +21,8 @@ import { useRouter } from "next/navigation";
  */
 export function DashboardContent() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+  const isGuest = !authLoading && !user;
   const [goalProgress, setGoalProgress] = useState<{
     goal: number;
     completed: number;
@@ -60,8 +65,8 @@ export function DashboardContent() {
       setError(error);
       console.error("대시보드 데이터 로드 오류:", error);
       
-      // 인증 오류인 경우 로그인 페이지로 리다이렉트
-      if (error.message.includes("로그인이 필요합니다") || error.message.includes("Unauthorized")) {
+      // 게스트 사용자는 인증 오류를 무시 (샘플 데이터 사용)
+      if (!isGuest && (error.message.includes("로그인이 필요합니다") || error.message.includes("Unauthorized"))) {
         router.push("/login");
       }
     } finally {
@@ -101,19 +106,51 @@ export function DashboardContent() {
 
   return (
     <div className="space-y-6">
+      {/* 게스트 사용자 안내 배너 */}
+      {isGuest && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="gap-1">
+                  <span>샘플 데이터</span>
+                </Badge>
+                <p className="text-sm text-muted-foreground">
+                  현재 샘플 데이터를 보고 계십니다. 로그인하여 나만의 독서 기록을 시작해보세요!
+                </p>
+              </div>
+              <Button asChild>
+                <Link href="/login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  로그인
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 목표 진행률 */}
       <Card>
         <CardHeader>
-          <CardTitle>올해 독서 목표</CardTitle>
-          <CardDescription>
-            {goalProgress ? (
-              <>
-                {goalProgress.completed} / {goalProgress.goal}권 완독
-              </>
-            ) : (
-              "목표를 설정해주세요"
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>올해 독서 목표</CardTitle>
+              <CardDescription>
+                {goalProgress ? (
+                  <>
+                    {goalProgress.completed} / {goalProgress.goal}권 완독
+                    {isGuest && <span className="ml-2 text-xs">(샘플)</span>}
+                  </>
+                ) : (
+                  "목표를 설정해주세요"
+                )}
+              </CardDescription>
+            </div>
+            {isGuest && (
+              <Badge variant="outline" className="text-xs">샘플</Badge>
             )}
-          </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           {goalProgress ? (
