@@ -233,21 +233,26 @@ CREATE INDEX IF NOT EXISTS idx_groups_is_public ON groups(is_public);
 -- RLS
 ALTER TABLE groups ENABLE ROW LEVEL SECURITY;
 
+-- 기존 정책 삭제 후 재생성 (idempotent)
 -- 주의: group_members 테이블이 아직 생성되지 않았으므로, 
 -- SELECT 정책은 group_members 테이블 생성 후에 업데이트됩니다.
 -- 먼저 공개 그룹만 볼 수 있도록 기본 정책 생성
+DROP POLICY IF EXISTS "Anyone can view public groups" ON groups;
 CREATE POLICY "Anyone can view public groups"
     ON groups FOR SELECT
     USING (is_public = TRUE);
 
+DROP POLICY IF EXISTS "Authenticated users can create groups" ON groups;
 CREATE POLICY "Authenticated users can create groups"
     ON groups FOR INSERT
     WITH CHECK (auth.uid() = leader_id);
 
+DROP POLICY IF EXISTS "Leaders can update groups" ON groups;
 CREATE POLICY "Leaders can update groups"
     ON groups FOR UPDATE
     USING (auth.uid() = leader_id);
 
+DROP POLICY IF EXISTS "Leaders can delete groups" ON groups;
 CREATE POLICY "Leaders can delete groups"
     ON groups FOR DELETE
     USING (auth.uid() = leader_id);
@@ -272,12 +277,28 @@ CREATE INDEX IF NOT EXISTS idx_group_members_status ON group_members(status);
 ALTER TABLE group_members ENABLE ROW LEVEL SECURITY;
 
 -- 기존 정책 삭제 후 재생성 (idempotent)
+-- 무한 재귀 방지: group_members 테이블 자체를 참조하지 않고 groups 테이블만 사용
 DROP POLICY IF EXISTS "Members can view group members" ON group_members;
 CREATE POLICY "Members can view group members"
     ON group_members FOR SELECT
-    USING (auth.uid() IN (
-        SELECT user_id FROM group_members WHERE group_id = group_members.group_id
-    ));
+    USING (
+        -- 사용자가 리더인 그룹의 멤버를 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_members.group_id 
+            AND leader_id = auth.uid()
+        )
+        OR
+        -- 공개 그룹의 멤버는 누구나 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_members.group_id 
+            AND is_public = TRUE
+        )
+        OR
+        -- 사용자 자신의 멤버십 정보는 볼 수 있음
+        user_id = auth.uid()
+    );
 
 DROP POLICY IF EXISTS "Users can request to join" ON group_members;
 CREATE POLICY "Users can request to join"
@@ -299,9 +320,13 @@ DROP POLICY IF EXISTS "Anyone can view public groups" ON groups;
 
 CREATE POLICY "Anyone can view public groups"
     ON groups FOR SELECT
-    USING (is_public = TRUE OR auth.uid() IN (
-        SELECT user_id FROM group_members WHERE group_id = groups.id
-    ));
+    USING (
+        -- 공개 그룹은 누구나 볼 수 있음
+        is_public = TRUE 
+        OR 
+        -- 사용자가 리더인 그룹을 볼 수 있음
+        leader_id = auth.uid()
+    );
 
 -- 3.7 GroupBooks (모임 책)
 CREATE TABLE IF NOT EXISTS group_books (
@@ -325,9 +350,21 @@ ALTER TABLE group_books ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Members can view group books" ON group_books;
 CREATE POLICY "Members can view group books"
     ON group_books FOR SELECT
-    USING (auth.uid() IN (
-        SELECT user_id FROM group_members WHERE group_id = group_books.group_id
-    ));
+    USING (
+        -- 사용자가 리더인 그룹의 책을 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_books.group_id 
+            AND leader_id = auth.uid()
+        )
+        OR
+        -- 공개 그룹의 책은 누구나 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_books.group_id 
+            AND is_public = TRUE
+        )
+    );
 
 DROP POLICY IF EXISTS "Leaders can add group books" ON group_books;
 CREATE POLICY "Leaders can add group books"
@@ -356,9 +393,31 @@ ALTER TABLE group_notes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Members can view shared notes" ON group_notes;
 CREATE POLICY "Members can view shared notes"
     ON group_notes FOR SELECT
-    USING (auth.uid() IN (
-        SELECT user_id FROM group_members WHERE group_id = group_notes.group_id
-    ));
+    USING (
+        -- 사용자가 리더인 그룹의 공유 기록을 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_notes.group_id 
+            AND leader_id = auth.uid()
+        )
+        OR
+        -- 공개 그룹의 공유 기록은 누구나 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_notes.group_id 
+            AND is_public = TRUE
+        )
+        OR
+        -- 사용자가 멤버인 그룹의 공유 기록을 볼 수 있음 (무한 재귀 방지를 위해 groups 테이블만 사용)
+        EXISTS (
+            SELECT 1 FROM groups g
+            WHERE g.id = group_notes.group_id
+            AND (
+                g.is_public = TRUE
+                OR g.leader_id = auth.uid()
+            )
+        )
+    );
 
 DROP POLICY IF EXISTS "Note owners can share to groups" ON group_notes;
 CREATE POLICY "Note owners can share to groups"
