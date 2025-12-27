@@ -29,7 +29,7 @@ jobs:
         continue-on-error: true
       
       - name: Run Prettier check
-        run: npm run format:check || npx prettier --check . || echo "Prettier not configured yet"
+        run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,md}" || echo "Prettier check skipped"
         continue-on-error: true
       
       - name: Type check
@@ -41,5 +41,10 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID || '' }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET || '' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || '' }}
+          NEXT_PUBLIC_KAKAO_APP_KEY: ${{ secrets.KAKAO_APP_KEY || '' }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' }}
 
