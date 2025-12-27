@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { NoteForm } from "@/components/notes/note-form";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isValidUUID } from "@/lib/utils/validation";
 
 export const metadata: Metadata = {
   title: "기록 작성 | Habitree Reading Hub",
@@ -21,7 +22,13 @@ interface NewNotePageProps {
 export default async function NewNotePage({ searchParams }: NewNotePageProps) {
   const bookId = searchParams.bookId;
 
-  if (!bookId) {
+  // bookId 검증
+  if (!bookId || typeof bookId !== 'string') {
+    redirect("/books");
+  }
+
+  // UUID 검증
+  if (!isValidUUID(bookId)) {
     redirect("/books");
   }
 
@@ -29,19 +36,24 @@ export default async function NewNotePage({ searchParams }: NewNotePageProps) {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (user) {
-    const { data: userBook } = await supabase
-      .from("user_books")
-      .select("id")
-      .eq("id", bookId)
-      .eq("user_id", user.id)
-      .single();
+  // 로그인 확인
+  if (authError || !user) {
+    redirect("/login");
+  }
 
-    if (!userBook) {
-      redirect("/books");
-    }
+  // 책 소유 확인
+  const { data: userBook, error: bookError } = await supabase
+    .from("user_books")
+    .select("id")
+    .eq("id", bookId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (bookError || !userBook) {
+    redirect("/books");
   }
 
   return (
