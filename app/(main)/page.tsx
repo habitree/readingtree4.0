@@ -5,6 +5,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 /**
  * 홈/대시보드 페이지
  * US-030, US-031: 독서 통계 및 목표 진행률
+ * 
+ * 보안 및 기능:
+ * - 인증 확인: Server Actions에서 자동 처리
+ * - 에러 처리: DashboardContent 컴포넌트 내부에서 처리
+ * - 로딩 상태: Suspense로 처리
+ * - 데이터 없음 처리: 각 섹션에서 적절한 UI 표시
  */
 export default function HomePage() {
   return (

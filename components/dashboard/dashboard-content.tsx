@@ -3,18 +3,21 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { getGoalProgress, getReadingStats, getMonthlyStats } from "@/app/actions/stats";
 import { getNotes } from "@/app/actions/notes";
 import { MonthlyChart } from "./monthly-chart";
 import { RecentNotes } from "./recent-notes";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import type { NoteWithBook } from "@/types/note";
+import { useRouter } from "next/navigation";
 
 /**
  * 대시보드 컨텐츠 컴포넌트
  * 목표 진행률, 통계, 차트, 최근 기록 표시
  */
 export function DashboardContent() {
+  const router = useRouter();
   const [goalProgress, setGoalProgress] = useState<{
     goal: number;
     completed: number;
@@ -31,6 +34,7 @@ export function DashboardContent() {
   >([]);
   const [recentNotes, setRecentNotes] = useState<NoteWithBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -38,6 +42,7 @@ export function DashboardContent() {
 
   const loadDashboardData = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const [progress, readingStats, monthly, notes] = await Promise.all([
         getGoalProgress(),
@@ -50,8 +55,15 @@ export function DashboardContent() {
       setStats(readingStats);
       setMonthlyStats(monthly);
       setRecentNotes((notes as NoteWithBook[]).slice(0, 5));
-    } catch (error) {
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("대시보드 데이터를 불러오는데 실패했습니다.");
+      setError(error);
       console.error("대시보드 데이터 로드 오류:", error);
+      
+      // 인증 오류인 경우 로그인 페이지로 리다이렉트
+      if (error.message.includes("로그인이 필요합니다") || error.message.includes("Unauthorized")) {
+        router.push("/login");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,90 +77,138 @@ export function DashboardContent() {
     );
   }
 
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <div className="text-center space-y-2">
+              <p className="text-lg font-semibold">데이터를 불러올 수 없습니다</p>
+              <p className="text-sm text-muted-foreground">
+                {error.message}
+              </p>
+            </div>
+            <Button onClick={loadDashboardData} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              다시 시도
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* 목표 진행률 */}
-      {goalProgress && (
-        <Card>
-          <CardHeader>
-            <CardTitle>올해 독서 목표</CardTitle>
-            <CardDescription>
-              {goalProgress.completed} / {goalProgress.goal}권 완독
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>올해 독서 목표</CardTitle>
+          <CardDescription>
+            {goalProgress ? (
+              <>
+                {goalProgress.completed} / {goalProgress.goal}권 완독
+              </>
+            ) : (
+              "목표를 설정해주세요"
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {goalProgress ? (
             <div className="space-y-2">
               <Progress value={goalProgress.progress} className="h-4" />
               <p className="text-sm text-muted-foreground">
                 {goalProgress.progress}% 완료 · {goalProgress.remaining}권 남음
               </p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">
+                프로필에서 독서 목표를 설정해주세요
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 통계 카드 */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>이번 주 기록</CardDescription>
-              <CardTitle className="text-3xl">{stats.thisWeek.notes}</CardTitle>
-            </CardHeader>
-          </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>이번 주 기록</CardDescription>
+            <CardTitle className="text-3xl">
+              {stats?.thisWeek.notes ?? 0}
+            </CardTitle>
+          </CardHeader>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>올해 완독</CardDescription>
-              <CardTitle className="text-3xl">
-                {stats.thisYear.completedBooks}
-              </CardTitle>
-            </CardHeader>
-          </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>올해 완독</CardDescription>
+            <CardTitle className="text-3xl">
+              {stats?.thisYear.completedBooks ?? 0}
+            </CardTitle>
+          </CardHeader>
+        </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>올해 기록</CardDescription>
-              <CardTitle className="text-3xl">{stats.thisYear.notes}</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-      )}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>올해 기록</CardDescription>
+            <CardTitle className="text-3xl">
+              {stats?.thisYear.notes ?? 0}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
 
       {/* 월별 통계 차트 */}
-      {monthlyStats.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>월별 기록 통계</CardTitle>
-            <CardDescription>최근 6개월간 작성한 기록 수</CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>월별 기록 통계</CardTitle>
+          <CardDescription>최근 6개월간 작성한 기록 수</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {monthlyStats.length > 0 ? (
             <MonthlyChart data={monthlyStats} />
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="flex items-center justify-center h-[300px]">
+              <p className="text-sm text-muted-foreground">
+                기록이 없습니다. 첫 번째 기록을 작성해보세요!
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 최근 기록 */}
-      {recentNotes.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>최근 기록</CardTitle>
-            <CardDescription>최근 작성한 기록 5개</CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>최근 기록</CardTitle>
+          <CardDescription>최근 작성한 기록 5개</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentNotes.length > 0 ? (
             <RecentNotes notes={recentNotes} />
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">
+                기록이 없습니다. 첫 번째 기록을 작성해보세요!
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 인기 책 */}
-      {stats && stats.topBooks.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>가장 많이 기록한 책</CardTitle>
-            <CardDescription>기록 수가 많은 책 Top 5</CardDescription>
-          </CardHeader>
-          <CardContent>
+      <Card>
+        <CardHeader>
+          <CardTitle>가장 많이 기록한 책</CardTitle>
+          <CardDescription>기록 수가 많은 책 Top 5</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {stats && stats.topBooks.length > 0 ? (
             <div className="space-y-2">
               {stats.topBooks.map((item, index) => (
                 <div
@@ -167,9 +227,15 @@ export function DashboardContent() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-sm text-muted-foreground">
+                기록한 책이 없습니다. 책을 추가하고 기록을 작성해보세요!
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
