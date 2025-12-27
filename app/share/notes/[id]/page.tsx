@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShareButtons } from "@/components/share/share-buttons";
 import { formatSmartDate } from "@/lib/utils/date";
 import { getImageUrl } from "@/lib/utils/image";
+import { getAppUrl } from "@/lib/utils/url";
 import Image from "next/image";
 import type { NoteWithBook } from "@/types/note";
 
@@ -44,7 +45,7 @@ export async function generateMetadata({
   const bookTitle = (note.books as any)?.title || "제목 없음";
   const bookAuthor = (note.books as any)?.author || "";
   const content = note.content || "";
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = getAppUrl();
   const shareUrl = `${baseUrl}/share/notes/${note.id}`;
   const cardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=minimal`;
 
@@ -109,7 +110,7 @@ export default async function ShareNotePage({
   const noteWithBook = note as NoteWithBook;
   const bookTitle = noteWithBook.book?.title || "제목 없음";
   const bookAuthor = noteWithBook.book?.author || "";
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const baseUrl = getAppUrl();
   const cardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=minimal`;
 
   const typeLabels = {
