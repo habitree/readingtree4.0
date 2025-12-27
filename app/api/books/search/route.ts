@@ -59,11 +59,37 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("책 검색 API 오류:", error);
+    
+    // 사용자 친화적인 에러 메시지로 변환
+    let userFriendlyMessage = "책 검색에 실패했습니다.";
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+      
+      if (errorMessage.includes("네이버 API 키")) {
+        userFriendlyMessage = "검색 서비스 설정에 문제가 있습니다. 관리자에게 문의해주세요.";
+        statusCode = 500;
+      } else if (errorMessage.includes("네이버 API 호출 실패")) {
+        userFriendlyMessage = "검색 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        statusCode = 503;
+      } else if (errorMessage.includes("응답 형식")) {
+        userFriendlyMessage = "검색 결과를 처리하는 중 문제가 발생했습니다. 다시 시도해주세요.";
+        statusCode = 500;
+      } else if (errorMessage.includes("네트워크") || errorMessage.includes("fetch")) {
+        userFriendlyMessage = "인터넷 연결을 확인하고 다시 시도해주세요.";
+        statusCode = 503;
+      } else {
+        // 기타 에러는 원본 메시지 사용 (이미 사용자 친화적일 수 있음)
+        userFriendlyMessage = errorMessage;
+      }
+    }
+    
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "책 검색에 실패했습니다.",
+        error: userFriendlyMessage,
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }

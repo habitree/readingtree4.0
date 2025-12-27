@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
-import { getImageUrl } from "@/lib/utils/image";
+import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 import { addBook } from "@/app/actions/books";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -49,14 +49,44 @@ export function BookSearch({ onBookAdded }: BookSearchProps) {
       );
 
       if (!response.ok) {
-        throw new Error("검색에 실패했습니다.");
+        // API에서 반환한 에러 메시지 가져오기
+        let errorMessage = "검색에 실패했습니다.";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // JSON 파싱 실패 시 기본 메시지 사용
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setResults(data.books || []);
     } catch (error) {
       console.error("책 검색 오류:", error);
-      toast.error("책 검색에 실패했습니다.");
+      const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
+      
+      // 사용자 친화적인 에러 메시지 (이미 API에서 변환된 메시지일 수 있음)
+      if (errorMessage.includes("일시적인 문제") || errorMessage.includes("잠시 후")) {
+        toast.error(errorMessage, {
+          description: "잠시 후 다시 시도해주세요.",
+          duration: 5000,
+        });
+      } else if (errorMessage.includes("인터넷 연결") || errorMessage.includes("네트워크") || errorMessage.includes("fetch")) {
+        toast.error("인터넷 연결을 확인하고 다시 시도해주세요.", {
+          description: "네트워크 연결 상태를 확인해주세요.",
+          duration: 5000,
+        });
+      } else if (errorMessage.includes("검색어")) {
+        toast.error(errorMessage, {
+          duration: 3000,
+        });
+      } else {
+        toast.error(errorMessage || "책 검색에 실패했습니다. 다시 시도해주세요.", {
+          description: "문제가 계속되면 다른 검색어로 시도해보세요.",
+          duration: 5000,
+        });
+      }
       setResults([]);
     } finally {
       setIsSearching(false);
@@ -111,18 +141,27 @@ export function BookSearch({ onBookAdded }: BookSearchProps) {
 
       {results.length > 0 && (
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {results.map((book, index) => (
-            <Card key={index} className="hover:bg-muted/50 transition-colors">
+          {results.map((book) => {
+            // 고유 키 생성: ISBN이 있으면 ISBN 사용, 없으면 title과 author 조합
+            const uniqueKey = book.isbn || `${book.title}-${book.author || 'unknown'}-${book.publisher || 'unknown'}`;
+            return (
+            <Card key={uniqueKey} className="hover:bg-muted/50 transition-colors">
               <CardContent className="p-4">
                 <div className="flex gap-4">
                   <div className="relative w-16 h-20 shrink-0 overflow-hidden rounded bg-muted">
-                    <Image
-                      src={getImageUrl(book.cover_image_url)}
-                      alt={book.title}
-                      fill
-                      className="object-cover"
-                      sizes="64px"
-                    />
+                    {isValidImageUrl(book.cover_image_url) && book.cover_image_url ? (
+                      <Image
+                        src={book.cover_image_url}
+                        alt={book.title}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                        <BookOpen className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 space-y-1">
                     <h4 className="font-semibold line-clamp-2">{book.title}</h4>
@@ -154,7 +193,8 @@ export function BookSearch({ onBookAdded }: BookSearchProps) {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
