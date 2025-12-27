@@ -15,6 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/app/actions/auth";
+import { ThemeSelector } from "@/components/theme/theme-selector";
 
 /**
  * 헤더 컴포넌트
@@ -54,6 +55,9 @@ export function Header() {
               <Search className="h-5 w-5" />
             </Link>
           </Button>
+
+          {/* 테마 선택 */}
+          <ThemeSelector />
 
           {/* 알림 */}
           <Button variant="ghost" size="icon" className="relative">

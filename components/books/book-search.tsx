@@ -135,10 +135,20 @@ export function BookSearch({ onBookAdded }: BookSearchProps) {
     }
   }, []);
 
-  // 디바운싱 (300ms)
+  // 디바운싱 (300ms) - 검색어가 2자 이상일 때만 검색
   useEffect(() => {
+    if (query.trim().length < 2 && query.trim().length > 0) {
+      // 검색어가 1자일 때는 결과를 비우고 검색하지 않음
+      setResults([]);
+      return;
+    }
+
     const timer = setTimeout(() => {
-      performSearch(query);
+      if (query.trim().length >= 2) {
+        performSearch(query);
+      } else if (query.trim().length === 0) {
+        setResults([]);
+      }
     }, 300);
 
     return () => clearTimeout(timer);
