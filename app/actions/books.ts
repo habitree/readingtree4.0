@@ -35,6 +35,28 @@ export async function addBook(
     throw new Error("로그인이 필요합니다.");
   }
 
+  // 사용자 프로필이 users 테이블에 존재하는지 확인
+  const { data: userProfile, error: profileCheckError } = await supabase
+    .from("users")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  // 프로필이 없으면 생성 (Foreign Key Constraint 방지)
+  if (!userProfile) {
+    const { error: insertProfileError } = await supabase.from("users").insert({
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || user.email?.split("@")[0] || "사용자",
+      avatar_url: user.user_metadata?.avatar_url || null,
+      reading_goal: 12, // 기본값
+    });
+
+    if (insertProfileError) {
+      throw new Error(`프로필 생성 실패: ${insertProfileError.message}`);
+    }
+  }
+
   let bookId: string;
 
   // ISBN이 있고 기존 책이 있는지 확인

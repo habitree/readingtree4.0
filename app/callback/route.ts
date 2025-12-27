@@ -118,6 +118,7 @@ export async function GET(request: NextRequest) {
     // 온보딩 완료 시 메인으로 리다이렉트 (캐시 무효화 후)
     const redirectUrl = new URL(next, request.url);
     redirectUrl.searchParams.set("refreshed", "true"); // 클라이언트에서 새로고침 유도
+    redirectUrl.searchParams.set("login", "success"); // 로그인 성공 표시
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("OAuth 콜백 처리 중 예외 발생:", error);

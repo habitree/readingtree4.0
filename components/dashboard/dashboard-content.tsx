@@ -11,9 +11,10 @@ import { MonthlyChart } from "./monthly-chart";
 import { RecentNotes } from "./recent-notes";
 import { Loader2, AlertCircle, RefreshCw, LogIn } from "lucide-react";
 import type { NoteWithBook } from "@/types/note";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import Link from "next/link";
+import { toast } from "sonner";
 
 /**
  * 대시보드 컨텐츠 컴포넌트
@@ -21,8 +22,21 @@ import Link from "next/link";
  */
 export function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const isGuest = !authLoading && !user;
+
+  // 로그인 성공 메시지 표시
+  useEffect(() => {
+    if (searchParams.get("login") === "success") {
+      toast.success("로그인에 성공했습니다!", {
+        description: "독서 여정을 시작해보세요.",
+        duration: 3000,
+      });
+      // URL에서 파라미터 제거
+      router.replace("/", { scroll: false });
+    }
+  }, [searchParams, router]);
   const [goalProgress, setGoalProgress] = useState<{
     goal: number;
     completed: number;
