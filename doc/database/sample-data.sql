@@ -21,6 +21,7 @@
 -- ============================================
 
 -- 샘플 책 1: 데미안
+-- 이미지 URL은 NULL로 두고, 애플리케이션에서 네이버 API를 통해 동적으로 가져옴
 INSERT INTO books (id, isbn, title, author, publisher, published_date, cover_image_url, is_sample, created_at, updated_at)
 VALUES (
   gen_random_uuid(),
@@ -29,7 +30,7 @@ VALUES (
   '헤르만 헤세',
   '민음사',
   '2010-01-01',
-  'https://image.aladin.co.kr/product/26/0/cover500/8937460498_1.jpg',
+  NULL, -- 네이버 API를 통해 동적으로 가져옴
   TRUE,
   NOW() - INTERVAL '30 days',
   NOW() - INTERVAL '30 days'
@@ -37,6 +38,7 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- 샘플 책 2: 노인과 바다
+-- 이미지 URL은 NULL로 두고, 애플리케이션에서 네이버 API를 통해 동적으로 가져옴
 INSERT INTO books (id, isbn, title, author, publisher, published_date, cover_image_url, is_sample, created_at, updated_at)
 VALUES (
   gen_random_uuid(),
@@ -45,7 +47,7 @@ VALUES (
   '어니스트 헤밍웨이',
   '민음사',
   '2005-03-15',
-  'https://image.aladin.co.kr/product/26/0/cover500/8937460504_1.jpg',
+  NULL, -- 네이버 API를 통해 동적으로 가져옴
   TRUE,
   NOW() - INTERVAL '25 days',
   NOW() - INTERVAL '25 days'
@@ -53,6 +55,7 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- 샘플 책 3: 1984
+-- 이미지 URL은 NULL로 두고, 애플리케이션에서 네이버 API를 통해 동적으로 가져옴
 INSERT INTO books (id, isbn, title, author, publisher, published_date, cover_image_url, is_sample, created_at, updated_at)
 VALUES (
   gen_random_uuid(),
@@ -61,7 +64,7 @@ VALUES (
   '조지 오웰',
   '민음사',
   '2004-05-20',
-  'https://image.aladin.co.kr/product/26/0/cover500/8937460511_1.jpg',
+  NULL, -- 네이버 API를 통해 동적으로 가져옴
   TRUE,
   NOW() - INTERVAL '20 days',
   NOW() - INTERVAL '20 days'
@@ -69,6 +72,7 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- 샘플 책 4: 해리포터와 마법사의 돌
+-- 이미지 URL은 NULL로 두고, 애플리케이션에서 네이버 API를 통해 동적으로 가져옴
 INSERT INTO books (id, isbn, title, author, publisher, published_date, cover_image_url, is_sample, created_at, updated_at)
 VALUES (
   gen_random_uuid(),
@@ -77,7 +81,7 @@ VALUES (
   'J.K. 롤링',
   '문학수첩',
   '1999-12-01',
-  'https://image.aladin.co.kr/product/26/0/cover500/8983927635_1.jpg',
+  NULL, -- 네이버 API를 통해 동적으로 가져옴
   TRUE,
   NOW() - INTERVAL '15 days',
   NOW() - INTERVAL '15 days'
@@ -85,6 +89,7 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 -- 샘플 책 5: 작은 아씨들
+-- 이미지 URL은 NULL로 두고, 애플리케이션에서 네이버 API를 통해 동적으로 가져옴
 INSERT INTO books (id, isbn, title, author, publisher, published_date, cover_image_url, is_sample, created_at, updated_at)
 VALUES (
   gen_random_uuid(),
@@ -93,7 +98,7 @@ VALUES (
   '루이자 메이 올컷',
   '민음사',
   '2008-07-10',
-  'https://image.aladin.co.kr/product/26/0/cover500/8937460528_1.jpg',
+  NULL, -- 네이버 API를 통해 동적으로 가져옴
   TRUE,
   NOW() - INTERVAL '10 days',
   NOW() - INTERVAL '10 days'

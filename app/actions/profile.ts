@@ -91,8 +91,10 @@ export async function updateProfile(data: {
     throw new Error(sanitizeErrorMessage(error));
   }
 
+  // 프로필 수정 후 관련 페이지 캐시 무효화
   revalidatePath("/profile");
   revalidatePath("/");
+  revalidatePath("/dashboard");
   return { success: true };
 }
 
@@ -206,8 +208,10 @@ export async function updateProfileImage(imageFile: File) {
     throw new Error(`프로필 업데이트 실패: ${updateError.message}`);
   }
 
+  // 프로필 이미지 업로드 후 관련 페이지 캐시 무효화
   revalidatePath("/profile");
   revalidatePath("/");
+  revalidatePath("/dashboard");
   return { success: true, avatarUrl: publicUrl };
 }
 

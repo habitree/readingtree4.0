@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 
 /**
  * OAuth 콜백 처리
@@ -93,7 +94,19 @@ export async function GET(request: NextRequest) {
           .eq("id", user.id)
           .single();
         profile = newProfile;
+        
+        // 프로필 생성 후 관련 페이지 캐시 무효화
+        revalidatePath("/");
+        revalidatePath("/profile");
+        revalidatePath("/dashboard");
       }
+    }
+
+    // 프로필이 생성되었거나 업데이트된 경우 캐시 무효화
+    if (profile) {
+      revalidatePath("/");
+      revalidatePath("/profile");
+      revalidatePath("/dashboard");
     }
 
     // 온보딩 완료 여부 확인
@@ -102,8 +115,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/onboarding/goal", request.url));
     }
 
-    // 온보딩 완료 시 메인으로 리다이렉트
-    return NextResponse.redirect(new URL(next, request.url));
+    // 온보딩 완료 시 메인으로 리다이렉트 (캐시 무효화 후)
+    const redirectUrl = new URL(next, request.url);
+    redirectUrl.searchParams.set("refreshed", "true"); // 클라이언트에서 새로고침 유도
+    return NextResponse.redirect(redirectUrl);
   } catch (error) {
     console.error("OAuth 콜백 처리 중 예외 발생:", error);
     return NextResponse.redirect(

@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { searchBooks, transformNaverBookItem } from "@/lib/api/naver";
 import type { ReadingStatus } from "@/types/book";
 
 export interface AddBookInput {
@@ -238,9 +239,42 @@ export async function getUserBooks(status?: ReadingStatus) {
       return [];
     }
 
+    // 샘플 데이터의 이미지가 없으면 네이버 API를 통해 가져오기
+    const booksWithImages = await Promise.all(
+      (sampleBooks || []).map(async (book) => {
+        // 이미지 URL이 없으면 네이버 API로 검색
+        if (!book.cover_image_url && book.isbn) {
+          try {
+            const searchQuery = `${book.title} ${book.author || ""}`.trim();
+            const naverResponse = await searchBooks({ query: searchQuery, display: 1 });
+            
+            if (naverResponse.items && naverResponse.items.length > 0) {
+              const naverBook = transformNaverBookItem(naverResponse.items[0]);
+              
+              // 네이버 API에서 가져온 이미지 URL로 업데이트
+              if (naverBook.cover_image_url) {
+                await supabase
+                  .from("books")
+                  .update({ cover_image_url: naverBook.cover_image_url })
+                  .eq("id", book.id);
+                
+                book.cover_image_url = naverBook.cover_image_url;
+              }
+            }
+          } catch (error) {
+            // 네이버 API 호출 실패 시 무시 (기존 이미지 없음 상태 유지)
+            console.error(`네이버 API 이미지 검색 실패 (${book.title}):`, error);
+          }
+        }
+        
+        return book;
+      })
+    );
+
     // 샘플 데이터를 user_books 형식으로 변환
-    return (sampleBooks || []).map((book) => ({
-      id: book.id, // 임시 ID (실제 user_books ID가 아님)
+    // 샘플 데이터는 상세 페이지 접근이 불가능하도록 특별한 ID 형식 사용
+    return booksWithImages.map((book) => ({
+      id: `sample-${book.id}`, // 샘플 데이터임을 표시하는 접두사 추가
       user_id: null, // 게스트는 user_id가 없음
       book_id: book.id,
       status: "reading" as ReadingStatus, // 기본값
