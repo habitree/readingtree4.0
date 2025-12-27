@@ -130,6 +130,13 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 export async function generateMetadata({
   params,
 }: NoteDetailPageProps): Promise<Metadata> {
+  // params.id 검증
+  if (!params?.id || typeof params.id !== 'string') {
+    return {
+      title: "기록 상세 | Habitree Reading Hub",
+    };
+  }
+
   // UUID 검증
   if (!isValidUUID(params.id)) {
     return {

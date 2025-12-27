@@ -26,6 +26,11 @@ interface BookDetailPageProps {
  * US-009: 독서 상태 관리
  */
 export default async function BookDetailPage({ params }: BookDetailPageProps) {
+  // params.id 검증
+  if (!params?.id || typeof params.id !== 'string') {
+    notFound();
+  }
+
   // 샘플 데이터 ID는 UUID가 아니므로 별도 처리
   // UUID 검증 (샘플 데이터 제외)
   if (!params.id.startsWith("sample-") && !isValidUUID(params.id)) {
@@ -139,8 +144,15 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
 export async function generateMetadata({
   params,
 }: BookDetailPageProps): Promise<Metadata> {
-  // UUID 검증
-  if (!isValidUUID(params.id)) {
+  // params.id 검증
+  if (!params?.id || typeof params.id !== 'string') {
+    return {
+      title: "책 상세 | Habitree Reading Hub",
+    };
+  }
+
+  // UUID 검증 (샘플 데이터는 메타데이터 생성하지 않음)
+  if (!params.id.startsWith("sample-") && !isValidUUID(params.id)) {
     return {
       title: "책 상세 | Habitree Reading Hub",
     };
