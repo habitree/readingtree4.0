@@ -326,6 +326,14 @@ CREATE POLICY "Anyone can view public groups"
         OR 
         -- 사용자가 리더인 그룹을 볼 수 있음
         leader_id = auth.uid()
+        OR
+        -- 사용자가 멤버인 그룹을 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM group_members
+            WHERE group_id = groups.id
+            AND user_id = auth.uid()
+            AND status = 'approved'
+        )
     );
 
 -- 3.7 GroupBooks (모임 책)

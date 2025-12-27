@@ -9,6 +9,7 @@ import { getImageUrl } from "@/lib/utils/image";
 import { getAppUrl } from "@/lib/utils/url";
 import Image from "next/image";
 import type { NoteWithBook } from "@/types/note";
+import { isValidUUID } from "@/lib/utils/validation";
 
 /**
  * 공유 페이지 메타데이터 생성
@@ -18,6 +19,20 @@ export async function generateMetadata({
 }: {
   params: { id: string };
 }): Promise<Metadata> {
+  // params.id 검증
+  if (!params?.id || typeof params.id !== 'string') {
+    return {
+      title: "기록을 찾을 수 없습니다",
+    };
+  }
+
+  // UUID 검증
+  if (!isValidUUID(params.id)) {
+    return {
+      title: "기록을 찾을 수 없습니다",
+    };
+  }
+
   const supabase = await createServerSupabaseClient();
   const { data: note } = await supabase
     .from("notes")
@@ -85,6 +100,16 @@ export default async function ShareNotePage({
 }: {
   params: { id: string };
 }) {
+  // params.id 검증
+  if (!params?.id || typeof params.id !== 'string') {
+    notFound();
+  }
+
+  // UUID 검증
+  if (!isValidUUID(params.id)) {
+    notFound();
+  }
+
   const supabase = await createServerSupabaseClient();
   const { data: note, error } = await supabase
     .from("notes")
