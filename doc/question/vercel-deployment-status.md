@@ -30,7 +30,7 @@
 # main 브랜치로 전환
 git checkout main
 
-# 변경사항 커밋 및 푸시
+# 변경사항 커밋 및 푸시123 45
 git add .
 git commit -m "배포 준비 완료"
 git push origin main
