@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getAppUrl } from "@/lib/utils/url";
 
 /**
  * 카카오톡 OAuth 로그인
@@ -13,7 +14,7 @@ export async function signInWithKakao() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "kakao",
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/callback`,
+      redirectTo: `${getAppUrl()}/callback`,
     },
   });
 
@@ -36,7 +37,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/callback`,
+      redirectTo: `${getAppUrl()}/callback`,
     },
   });
 
