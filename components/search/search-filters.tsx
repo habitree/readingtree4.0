@@ -64,12 +64,12 @@ export function SearchFilters({ onBooksLoaded }: SearchFiltersProps) {
       {/* 책 제목 필터 */}
       <div className="space-y-2">
         <Label>책 제목</Label>
-        <Select value={bookId} onValueChange={(value) => updateFilter("bookId", value)}>
+        <Select value={bookId || "all"} onValueChange={(value) => updateFilter("bookId", value === "all" ? "" : value)}>
           <SelectTrigger>
             <SelectValue placeholder="전체" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">전체</SelectItem>
+            <SelectItem value="all">전체</SelectItem>
             {books.map((userBook) => {
               const book = (userBook as any).books;
               return (
@@ -130,12 +130,12 @@ export function SearchFilters({ onBooksLoaded }: SearchFiltersProps) {
       {/* 유형 필터 */}
       <div className="space-y-2">
         <Label>기록 유형</Label>
-        <Select value={types} onValueChange={(value) => updateFilter("types", value)}>
+        <Select value={types || "all"} onValueChange={(value) => updateFilter("types", value === "all" ? "" : value)}>
           <SelectTrigger>
             <SelectValue placeholder="전체" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">전체</SelectItem>
+            <SelectItem value="all">전체</SelectItem>
             <SelectItem value="quote">필사</SelectItem>
             <SelectItem value="transcription">필사 이미지</SelectItem>
             <SelectItem value="photo">사진</SelectItem>
