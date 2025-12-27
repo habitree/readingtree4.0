@@ -31,6 +31,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "파일이 제공되지 않았습니다." }, { status: 400 });
     }
 
+    // type 파라미터 검증
+    if (!type || !["photo", "transcription"].includes(type)) {
+      return NextResponse.json(
+        { error: "유효하지 않은 파일 타입입니다. (photo 또는 transcription만 지원)" },
+        { status: 400 }
+      );
+    }
+
     // 파일 형식 검증
     if (!validateImageType(file)) {
       return NextResponse.json(
@@ -64,8 +72,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 파일 확장자 추출
-    const fileExt = fileToUpload.name.split(".").pop() || "jpg";
+    // 파일 확장자 추출 (압축된 경우 jpg로 통일)
+    const fileExt = fileToUpload.type === "image/jpeg" ? "jpg" : fileToUpload.name.split(".").pop() || "jpg";
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 9);
     const fileName = `${timestamp}-${random}.${fileExt}`;

@@ -30,30 +30,48 @@ export async function POST(request: NextRequest) {
     }
 
     // 기록 소유 확인
-    const { data: note } = await supabase
+    const { data: note, error: noteCheckError } = await supabase
       .from("notes")
       .select("id, user_id")
       .eq("id", noteId)
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle(); // .single() 대신 .maybeSingle() 사용
+
+    if (noteCheckError && noteCheckError.code !== "PGRST116") {
+      // PGRST116은 "결과가 없음" 에러이므로 무시
+      return NextResponse.json(
+        { error: `기록 조회 실패: ${noteCheckError.message}` },
+        { status: 500 }
+      );
+    }
 
     if (!note) {
-      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+      return NextResponse.json(
+        { error: "권한이 없습니다. 해당 기록에 대한 OCR 처리를 요청할 권한이 없습니다." },
+        { status: 403 }
+      );
     }
 
     // 백그라운드에서 OCR 처리 시작
     // 실제 프로덕션에서는 Queue 시스템(Vercel Queue, Supabase Edge Functions 등)을 사용
-    // 여기서는 즉시 처리하되, 실제로는 비동기로 처리되어야 함
+    // 여기서는 fetch로 비동기 처리하되, 실제로는 Queue 시스템으로 변경 가능
     fetch(`${request.nextUrl.origin}/api/ocr/process`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        // 내부 API 호출이므로 인증 헤더는 필요 없음 (서버 간 통신)
       },
       body: JSON.stringify({ noteId, imageUrl }),
-    }).catch((error) => {
-      console.error("OCR 처리 요청 오류:", error);
-      // 실패해도 사용자에게는 즉시 응답 반환
-    });
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.error("OCR 처리 요청 실패:", response.status, response.statusText);
+        }
+      })
+      .catch((error) => {
+        console.error("OCR 처리 요청 오류:", error);
+        // 실패해도 사용자에게는 즉시 응답 반환 (비동기 처리이므로)
+      });
 
     // 즉시 응답 반환
     return NextResponse.json({ success: true, noteId });

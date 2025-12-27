@@ -49,9 +49,14 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id);
 
     // 검색어 필터 (한글 지원을 위해 ILIKE 사용)
+    // review_issues.md Issue 6 참고: 한글 검색 지원을 위해 ILIKE 패턴 매칭 사용
     if (query.trim()) {
-      // ILIKE 패턴 매칭으로 한글 검색 지원
-      supabaseQuery = supabaseQuery.ilike("content", `%${query}%`);
+      // 검색어를 이스케이프하여 SQL 특수 문자 처리 (%와 _는 ILIKE에서 와일드카드)
+      const escapedQuery = query.trim().replace(/%/g, "\\%").replace(/_/g, "\\_");
+      
+      // content 필드에서 검색 (ILIKE 패턴 매칭으로 한글 검색 지원)
+      // PostgreSQL의 ILIKE는 대소문자 구분 없이 한글 검색을 지원함
+      supabaseQuery = supabaseQuery.ilike("content", `%${escapedQuery}%`);
     }
 
     // 책 필터

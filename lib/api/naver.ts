@@ -40,15 +40,17 @@ export async function searchBooks(
 ): Promise<NaverBookSearchResponse> {
   const { query, display = 10, start = 1 } = params;
 
+  // 검색어 유효성 검사
   if (!query || query.trim().length === 0) {
     throw new Error("검색어를 입력해주세요.");
   }
 
+  // 환경 변수 확인
   const clientId = process.env.NAVER_CLIENT_ID;
   const clientSecret = process.env.NAVER_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error("네이버 API 키가 설정되지 않았습니다.");
+    throw new Error("네이버 API 키가 설정되지 않았습니다. 환경 변수를 확인해주세요.");
   }
 
   const url = new URL("https://openapi.naver.com/v1/search/book.json");
@@ -65,24 +67,51 @@ export async function searchBooks(
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`네이버 API 호출 실패: ${response.status} - ${errorText}`);
+    let errorMessage = `네이버 API 호출 실패: ${response.status}`;
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.errorMessage || errorMessage;
+    } catch {
+      // JSON 파싱 실패 시 텍스트로 처리
+      const errorText = await response.text();
+      errorMessage = errorText || errorMessage;
+    }
+    throw new Error(errorMessage);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // 응답 형식 검증
+  if (!data || typeof data !== "object") {
+    throw new Error("네이버 API 응답 형식이 올바르지 않습니다.");
+  }
+
+  // items 배열이 없으면 빈 배열로 초기화
+  if (!Array.isArray(data.items)) {
+    data.items = [];
+  }
+
+  return data;
 }
 
 /**
  * 네이버 API 응답을 앱 내부 형식으로 변환
+ * @param item 네이버 API에서 반환된 책 정보
+ * @returns 앱 내부 형식의 책 정보
  */
 export function transformNaverBookItem(item: NaverBookItem) {
+  // ISBN 정규화 (하이픈 제거, 공백 제거)
+  const normalizedIsbn = item.isbn
+    ? item.isbn.replace(/[-\s]/g, "").trim() || null
+    : null;
+
   return {
-    isbn: item.isbn || null,
-    title: item.title.replace(/<[^>]*>/g, ""), // HTML 태그 제거
-    author: item.author || null,
-    publisher: item.publisher || null,
+    isbn: normalizedIsbn,
+    title: item.title ? item.title.replace(/<[^>]*>/g, "").trim() : "", // HTML 태그 제거 및 공백 제거
+    author: item.author ? item.author.trim() : null,
+    publisher: item.publisher ? item.publisher.trim() : null,
     published_date: item.pubdate ? formatNaverDate(item.pubdate) : null,
-    cover_image_url: item.image || null,
+    cover_image_url: item.image ? item.image.trim() : null,
   };
 }
 

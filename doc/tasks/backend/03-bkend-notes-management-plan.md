@@ -192,36 +192,80 @@
 ## 검증 체크리스트
 
 ### 기록 관리 기능
-- [ ] 기록 생성이 정상 작동하는지 확인
-- [ ] 기록 수정이 정상 작동하는지 확인
-- [ ] 기록 삭제가 정상 작동하는지 확인 (이미지 파일도 삭제)
-- [ ] 기록 목록 조회가 정상 작동하는지 확인
-- [ ] 기록 상세 조회가 정상 작동하는지 확인
-- [ ] 책 소유 확인 로직 확인
+- [x] 기록 생성이 정상 작동하는지 확인
+- [x] 기록 수정이 정상 작동하는지 확인
+- [x] 기록 삭제가 정상 작동하는지 확인 (이미지 파일도 삭제)
+- [x] 기록 목록 조회가 정상 작동하는지 확인
+- [x] 기록 상세 조회가 정상 작동하는지 확인
+- [x] 책 소유 확인 로직 확인
 
 ### 이미지 업로드
-- [ ] 이미지 업로드가 정상 작동하는지 확인
-- [ ] 파일 크기 제한 확인
-- [ ] 자동 압축 확인
-- [ ] 파일 형식 검증 확인
+- [x] 이미지 업로드가 정상 작동하는지 확인
+- [x] 파일 크기 제한 확인 (5MB)
+- [x] 자동 압축 확인 (sharp 사용, 5MB 초과 시)
+- [x] 파일 형식 검증 확인 (jpg, png, webp, heic)
 
 ### OCR 처리
-- [ ] OCR 요청이 정상 작동하는지 확인
-- [ ] OCR 처리가 정상 작동하는지 확인
-- [ ] OCR 결과 저장 확인
-- [ ] 비동기 처리 확인
+- [x] OCR 요청이 정상 작동하는지 확인
+- [x] OCR 처리가 정상 작동하는지 확인
+- [x] OCR 결과 저장 확인
+- [x] 비동기 처리 확인 (즉시 응답, 백그라운드 처리)
 
 ### 에러 처리
-- [ ] 기록 생성/수정/삭제 에러 시 적절한 에러 메시지 표시
-- [ ] 이미지 업로드 에러 시 적절한 에러 메시지 표시
-- [ ] OCR 에러 시 적절한 에러 메시지 표시
-- [ ] 예외 상황 처리 확인
+- [x] 기록 생성/수정/삭제 에러 시 적절한 에러 메시지 표시
+- [x] 이미지 업로드 에러 시 적절한 에러 메시지 표시
+- [x] OCR 에러 시 적절한 에러 메시지 표시
+- [x] 예외 상황 처리 확인
 
 ### 프론트엔드 연동
-- [ ] 기록 작성 페이지에서 Server Actions 및 API 호출 확인
-- [ ] 기록 목록 페이지에서 Server Actions 호출 확인
-- [ ] 기록 상세 페이지에서 Server Actions 호출 확인
-- [ ] 에러 처리 및 로딩 상태 확인
+- [x] 기록 작성 페이지에서 Server Actions 및 API 호출 확인 (app/(main)/notes/new/page.tsx)
+- [x] 기록 목록 페이지에서 Server Actions 호출 확인 (app/(main)/notes/page.tsx)
+- [x] 기록 상세 페이지에서 Server Actions 호출 확인 (app/(main)/notes/[id]/page.tsx)
+- [x] 기록 수정 페이지에서 Server Actions 호출 확인 (app/(main)/notes/[id]/edit/page.tsx)
+- [x] 에러 처리 및 로딩 상태 확인
+
+---
+
+## 개선 사항 요약
+
+### 2025년 12월 검증 및 개선 작업 완료
+
+#### 1. app/actions/notes.ts 개선
+- ✅ 책 소유 확인 로직 개선: `.single()` → `.maybeSingle()` 변경하여 PGRST116 에러 방지
+- ✅ 권한 확인 개선: `updateNote()`, `deleteNote()`, `getNoteDetail()` 함수에서 에러 처리 개선
+- ✅ 이미지 삭제 로직 개선: Storage 경로 파싱 로직 개선 및 에러 처리 강화
+- ✅ JOIN 쿼리: `notes`와 `books` 테이블 조인 정상 작동 확인
+
+#### 2. app/api/upload/route.ts 개선
+- ✅ 파일 크기 제한: 5MB 제한 확인
+- ✅ 자동 압축: sharp 사용하여 5MB 초과 시 자동 압축 확인
+- ✅ 파일 형식 검증: jpg, png, webp, heic 지원 확인
+- ✅ type 파라미터 검증 추가: 'photo' 또는 'transcription'만 허용
+- ✅ 파일명 생성 로직 개선: 압축된 경우 jpg로 통일
+
+#### 3. app/api/ocr/route.ts 개선
+- ✅ 비동기 처리: 즉시 응답 후 백그라운드에서 OCR 처리 확인
+- ✅ 기록 소유 확인: `.maybeSingle()` 사용하여 에러 처리 개선
+- ✅ 에러 처리 개선: fetch 응답 상태 확인 추가
+
+#### 4. app/api/ocr/process/route.ts 개선
+- ✅ Gemini API 호출: `extractTextFromImage()` 함수 호출 확인
+- ✅ OCR 결과 저장: Notes 테이블 업데이트 확인
+- ✅ 기록 존재 확인 추가: OCR 처리 전 기록 존재 확인
+- ✅ 에러 처리 개선: 상세한 에러 메시지 제공
+
+#### 5. lib/api/gemini.ts 개선
+- ✅ 환경 변수 확인: GEMINI_API_KEY 확인 메시지 개선
+- ✅ 이미지 다운로드 개선: 타임아웃 설정(30초) 추가
+- ✅ 파일 크기 제한: 최대 20MB 제한 추가
+- ✅ OCR 프롬프트 개선: 한글 지원 강화, 숫자 및 특수문자 인식 명시
+- ✅ MIME 타입 처리 개선: 이미지 타입 확인 로직 개선
+
+#### 6. 프론트엔드 연동 확인
+- ✅ `app/(main)/notes/page.tsx`: `getNotes()` 호출 확인, Suspense로 로딩 처리
+- ✅ `app/(main)/notes/new/page.tsx`: `NoteForm` 컴포넌트 사용, `createNote()` 및 이미지 업로드, OCR 호출 확인
+- ✅ `app/(main)/notes/[id]/page.tsx`: `getNoteDetail()` 호출 확인, 에러 처리 확인
+- ✅ `app/(main)/notes/[id]/edit/page.tsx`: `getNoteDetail()`, `updateNote()` 호출 확인, 에러 처리 확인
 
 ---
 

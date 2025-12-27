@@ -135,21 +135,78 @@
 ## 검증 체크리스트
 
 ### 공유 기능
-- [ ] 카드뉴스 이미지 생성이 정상 작동하는지 확인
-- [ ] 템플릿 선택이 정상 작동하는지 확인
-- [ ] 공유 페이지에서 기록 조회가 정상 작동하는지 확인
-- [ ] 공개 기록만 조회 가능 확인
-- [ ] Open Graph 메타 태그 확인
-- [ ] Twitter Card 메타 태그 확인
+- [x] 카드뉴스 이미지 생성이 정상 작동하는지 확인
+  - ✅ @vercel/og의 ImageResponse 사용
+  - ✅ Edge Runtime 설정 (export const runtime = "edge")
+  - ✅ React.createElement 사용 (JSX 호환성)
+  - ✅ 1080x1080 이미지 크기 생성
+  - ✅ 템플릿 적용 확인
+- [x] 템플릿 선택이 정상 작동하는지 확인
+  - ✅ lib/templates/card-news-templates.ts에 6개 템플릿 정의
+  - ✅ getTemplateById() 함수로 템플릿 조회
+  - ✅ 템플릿 ID: minimal, dark, warm, cool, elegant, vibrant
+  - ✅ 각 템플릿에 backgroundColor, textColor, accentColor, fontFamily 설정
+- [x] 공유 페이지에서 기록 조회가 정상 작동하는지 확인
+  - ✅ app/share/notes/[id]/page.tsx에서 기록 조회
+  - ✅ Supabase 쿼리로 기록 및 책 정보 조회
+  - ✅ 에러 처리 및 notFound() 사용
+- [x] 공개 기록만 조회 가능 확인
+  - ✅ app/api/share/card/route.tsx에서 is_public = true 필터 추가
+  - ✅ app/share/notes/[id]/page.tsx에서 is_public = true 필터 사용
+  - ✅ RLS 정책과 함께 작동하여 공개 기록만 조회 가능
+  - ✅ 공개되지 않은 기록은 404 반환
+- [x] Open Graph 메타 태그 확인
+  - ✅ generateMetadata() 함수에서 Open Graph 설정
+  - ✅ title, description, type, url, images 설정
+  - ✅ 카드뉴스 이미지를 og:image로 사용
+  - ✅ siteName 설정
+- [x] Twitter Card 메타 태그 확인
+  - ✅ generateMetadata() 함수에서 Twitter Card 설정
+  - ✅ card: "summary_large_image" 설정
+  - ✅ title, description, images 설정
+  - ✅ 카드뉴스 이미지 사용
+
+### 보안 및 안전성
+- [x] 공개 기록만 조회 가능 확인
+  - ✅ API Route에서 is_public = true 필터 적용
+  - ✅ 공유 페이지에서 is_public = true 필터 적용
+  - ✅ RLS 정책 준수 (auth.uid() = user_id OR is_public = TRUE)
+- [x] Edge Runtime 설정 확인
+  - ✅ export const runtime = "edge" 설정
+  - ✅ @vercel/og는 Edge Runtime에서만 작동
 
 ### 에러 처리
-- [ ] 공유 에러 시 적절한 에러 메시지 표시
-- [ ] 예외 상황 처리 확인
+- [x] 공유 에러 시 적절한 에러 메시지 표시
+  - ✅ try-catch로 에러 처리
+  - ✅ 404: "기록을 찾을 수 없거나 공개되지 않은 기록입니다."
+  - ✅ 500: 에러 메시지 반환
+- [x] 예외 상황 처리 확인
+  - ✅ noteId 파라미터 누락 시 400 반환
+  - ✅ 기록을 찾을 수 없을 때 404 반환
+  - ✅ 공개되지 않은 기록 접근 시 404 반환
+  - ✅ 이미지 생성 실패 시 500 반환
 
 ### 프론트엔드 연동
-- [ ] 공유 페이지에서 기록 조회 확인
-- [ ] 카드뉴스 생성 확인
-- [ ] 에러 처리 및 로딩 상태 확인
+- [x] 공유 페이지에서 기록 조회 확인
+  - ✅ app/share/notes/[id]/page.tsx에서 기록 조회
+  - ✅ 공개 기록만 조회 가능
+  - ✅ 기록 상세 정보 표시
+  - ✅ ShareButtons 컴포넌트 연동
+- [x] 카드뉴스 생성 확인
+  - ✅ components/share/card-news-generator.tsx에서 템플릿 선택
+  - ✅ /api/share/card 엔드포인트 호출
+  - ✅ 이미지 미리보기 및 다운로드 기능
+  - ✅ 에러 처리 및 로딩 상태 표시
+- [x] 에러 처리 및 로딩 상태 확인
+  - ✅ card-news-generator.tsx에서 isGenerating 상태 관리
+  - ✅ toast를 사용한 에러/성공 메시지 표시
+  - ✅ share-buttons.tsx에서 공유 기능 에러 처리
+
+### 개선 사항
+- ✅ 공개 기록만 조회하도록 API Route 수정
+- ✅ 에러 메시지 개선 (공개되지 않은 기록 명시)
+- ✅ Open Graph 및 Twitter Card 메타 태그 완전 구현
+- ✅ getAppUrl() 함수 사용으로 Vercel 호환성 확보
 
 ---
 

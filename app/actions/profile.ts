@@ -164,9 +164,12 @@ export async function updateProfileImage(imageFile: File) {
 
   if (currentProfile?.avatar_url) {
     // Supabase Storage URL에서 경로 추출
-    const oldPath = currentProfile.avatar_url.split("/avatars/")[1];
-    if (oldPath) {
-      await supabase.storage.from("images").remove([`avatars/${oldPath}`]);
+    // URL 형식: https://{project}.supabase.co/storage/v1/object/public/images/avatars/{userId}/{fileName}
+    const urlParts = currentProfile.avatar_url.split("/avatars/");
+    if (urlParts.length > 1) {
+      const oldPath = `avatars/${urlParts[1]}`;
+      // Storage에서 기존 이미지 삭제 (에러는 무시 - 파일이 없을 수 있음)
+      await supabase.storage.from("images").remove([oldPath]);
     }
   }
 

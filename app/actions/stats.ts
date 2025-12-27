@@ -95,26 +95,21 @@ export async function getReadingStats() {
   }
 
   const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-
   const startOfYear = new Date(now.getFullYear(), 0, 1);
 
-  // 이번 주 기록 수
-  const { count: thisWeekNotes } = await supabase
-    .from("notes")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("created_at", startOfWeek.toISOString());
+  // 이번 주 기록 수 (데이터베이스 함수 활용)
+  const { data: thisWeekNotesData, error: weekError } = await supabase.rpc(
+    "get_user_notes_count_this_week",
+    { p_user_id: user.id }
+  );
+  const thisWeekNotes = weekError ? 0 : (thisWeekNotesData || 0);
 
-  // 올해 완독한 책 수
-  const { count: thisYearCompleted } = await supabase
-    .from("user_books")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "completed")
-    .gte("completed_at", startOfYear.toISOString());
+  // 올해 완독한 책 수 (데이터베이스 함수 활용)
+  const { data: thisYearCompletedData, error: yearError } = await supabase.rpc(
+    "get_user_completed_books_count",
+    { p_user_id: user.id, p_year: now.getFullYear() }
+  );
+  const thisYearCompleted = yearError ? 0 : (thisYearCompletedData || 0);
 
   // 올해 작성한 기록 수
   const { count: thisYearNotes } = await supabase
@@ -206,16 +201,13 @@ export async function getGoalProgress() {
 
   const goal = profile.reading_goal || 0;
 
-  // 올해 완독한 책 수
-  const startOfYear = new Date(new Date().getFullYear(), 0, 1);
-  const { count: completed } = await supabase
-    .from("user_books")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "completed")
-    .gte("completed_at", startOfYear.toISOString());
-
-  const completedCount = completed || 0;
+  // 올해 완독한 책 수 (데이터베이스 함수 활용)
+  const currentYear = new Date().getFullYear();
+  const { data: completedData, error: completedError } = await supabase.rpc(
+    "get_user_completed_books_count",
+    { p_user_id: user.id, p_year: currentYear }
+  );
+  const completedCount = completedError ? 0 : (completedData || 0);
   const progress = goal > 0 ? Math.min((completedCount / goal) * 100, 100) : 0;
 
   return {
