@@ -70,11 +70,31 @@ export async function searchBooks(
     let errorMessage = `네이버 API 호출 실패: ${response.status}`;
     try {
       const errorData = await response.json();
-      errorMessage = errorData.errorMessage || errorMessage;
+      const naverErrorMessage = errorData.errorMessage || errorMessage;
+      
+      // 네이버 API 에러 코드에 따른 사용자 친화적인 메시지
+      if (response.status === 400) {
+        errorMessage = "검색어 형식이 올바르지 않습니다. 다시 입력해주세요.";
+      } else if (response.status === 401) {
+        errorMessage = "검색 서비스 인증에 문제가 있습니다. 관리자에게 문의해주세요.";
+      } else if (response.status === 403) {
+        errorMessage = "검색 서비스 접근이 제한되었습니다. 관리자에게 문의해주세요.";
+      } else if (response.status === 429) {
+        errorMessage = "검색 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+      } else if (response.status >= 500) {
+        errorMessage = "검색 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
+      } else {
+        errorMessage = naverErrorMessage;
+      }
     } catch {
-      // JSON 파싱 실패 시 텍스트로 처리
-      const errorText = await response.text();
-      errorMessage = errorText || errorMessage;
+      // JSON 파싱 실패 시 상태 코드 기반 메시지
+      if (response.status >= 500) {
+        errorMessage = "검색 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.";
+      } else if (response.status === 429) {
+        errorMessage = "검색 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+      } else {
+        errorMessage = "책 검색에 실패했습니다. 다시 시도해주세요.";
+      }
     }
     throw new Error(errorMessage);
   }

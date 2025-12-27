@@ -17,13 +17,25 @@ export function isValidImageUrl(url: string | null | undefined): boolean {
 
 /**
  * 이미지 URL에 기본 이미지 적용 (URL이 없거나 유효하지 않을 때)
+ * 기본 이미지가 없을 경우 투명한 1x1 픽셀 데이터 URI 사용
  */
 export function getImageUrl(
   url: string | null | undefined,
   fallback?: string
 ): string {
-  const defaultFallback = "/images/default-book-cover.png";
-  return isValidImageUrl(url) && url ? url : fallback || defaultFallback;
+  // 유효한 URL이 있으면 그대로 반환
+  if (isValidImageUrl(url) && url) {
+    return url;
+  }
+  
+  // fallback이 제공되면 사용
+  if (fallback && isValidImageUrl(fallback)) {
+    return fallback;
+  }
+  
+  // 기본 fallback: 투명한 1x1 픽셀 SVG (로딩 중 깨진 이미지 아이콘 방지)
+  // 실제로는 각 컴포넌트에서 placeholder를 표시하는 것이 더 나음
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3C/svg%3E";
 }
 
 /**

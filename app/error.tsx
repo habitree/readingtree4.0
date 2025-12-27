@@ -35,7 +35,7 @@ export default function Error({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {process.env.NODE_ENV === "development" && error.message && (
+          {process.env.NODE_ENV === "development" && error.message ? (
             <div className="p-3 bg-muted rounded-lg">
               <p className="text-sm font-medium mb-1">에러 상세:</p>
               <p className="text-xs text-muted-foreground break-all">
@@ -47,7 +47,7 @@ export default function Error({
                 </p>
               )}
             </div>
-          )}
+          ) : null}
 
           <div className="flex flex-col gap-2">
             <Button onClick={reset} className="w-full">

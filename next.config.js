@@ -10,6 +10,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'bookthumb.phinf.pstatic.net',
       },
+      {
+        protocol: 'https',
+        hostname: 'shopping-phinf.pstatic.net',
+      },
     ],
   },
 };
