@@ -11,6 +11,8 @@ import { BookStatusSelector } from "@/components/books/book-status-selector";
 import { PenTool } from "lucide-react";
 import type { ReadingStatus } from "@/types/book";
 import { NotesList } from "@/components/notes/notes-list";
+import { isValidUUID } from "@/lib/utils/validation";
+import { sanitizeErrorForLogging } from "@/lib/utils/validation";
 
 interface BookDetailPageProps {
   params: {
@@ -24,11 +26,17 @@ interface BookDetailPageProps {
  * US-009: 독서 상태 관리
  */
 export default async function BookDetailPage({ params }: BookDetailPageProps) {
+  // UUID 검증
+  if (!isValidUUID(params.id)) {
+    notFound();
+  }
+
   let bookDetail;
   try {
     bookDetail = await getBookDetail(params.id);
   } catch (error) {
-    console.error("책 상세 조회 오류:", error);
+    const safeError = sanitizeErrorForLogging(error);
+    console.error("책 상세 조회 오류:", safeError);
     notFound();
   }
 
@@ -130,6 +138,13 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
 export async function generateMetadata({
   params,
 }: BookDetailPageProps): Promise<Metadata> {
+  // UUID 검증
+  if (!isValidUUID(params.id)) {
+    return {
+      title: "책 상세 | Habitree Reading Hub",
+    };
+  }
+
   try {
     const bookDetail = await getBookDetail(params.id);
     const book = bookDetail.books as any;

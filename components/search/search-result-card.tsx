@@ -76,10 +76,11 @@ export function SearchResultCard({ note, searchQuery }: SearchResultCardProps) {
               {note.content && (
                 <p
                   className="text-sm line-clamp-3"
+                  // highlightText 함수가 이미 HTML 이스케이프 처리를 하므로 안전함
                   dangerouslySetInnerHTML={{
                     __html: searchQuery
                       ? highlightText(note.content, searchQuery)
-                      : note.content,
+                      : highlightText(note.content, ""), // 검색어가 없어도 이스케이프 처리
                   }}
                 />
               )}
