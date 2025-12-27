@@ -26,8 +26,9 @@ interface BookDetailPageProps {
  * US-009: 독서 상태 관리
  */
 export default async function BookDetailPage({ params }: BookDetailPageProps) {
-  // UUID 검증
-  if (!isValidUUID(params.id)) {
+  // 샘플 데이터 ID는 UUID가 아니므로 별도 처리
+  // UUID 검증 (샘플 데이터 제외)
+  if (!params.id.startsWith("sample-") && !isValidUUID(params.id)) {
     notFound();
   }
 

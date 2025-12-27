@@ -364,8 +364,54 @@ export async function getBookDetail(userBookId: string) {
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+  // 게스트 사용자가 샘플 책 상세 페이지에 접근 시도
+  if (!user) {
+    if (userBookId.startsWith("sample-")) {
+      const bookId = userBookId.replace("sample-", "");
+      const { data: sampleBook, error: sampleError } = await supabase
+        .from("books")
+        .select("*")
+        .eq("id", bookId)
+        .eq("is_sample", true)
+        .single();
+
+      if (sampleError || !sampleBook) {
+        throw new Error("샘플 책을 찾을 수 없습니다.");
+      }
+
+      // 이미지 URL이 없으면 네이버 API로 동적 검색
+      let finalCoverImageUrl = sampleBook.cover_image_url;
+      if (!finalCoverImageUrl && sampleBook.isbn) {
+        try {
+          const { searchBooks, transformNaverBookItem } = await import("@/lib/api/naver");
+          const naverResponse = await searchBooks({ query: sampleBook.isbn, display: 1 });
+          if (naverResponse.items && naverResponse.items.length > 0) {
+            finalCoverImageUrl = naverResponse.items[0].image;
+            // 데이터베이스 업데이트
+            await supabase
+              .from("books")
+              .update({ cover_image_url: finalCoverImageUrl })
+              .eq("id", sampleBook.id);
+          }
+        } catch (naverApiError) {
+          console.warn(`네이버 API 이미지 검색 실패 (ISBN: ${sampleBook.isbn}):`, naverApiError);
+        }
+      }
+
+      return {
+        id: userBookId,
+        user_id: null,
+        book_id: sampleBook.id,
+        status: "reading" as ReadingStatus,
+        started_at: sampleBook.created_at || new Date().toISOString(),
+        completed_at: null,
+        created_at: sampleBook.created_at || new Date().toISOString(),
+        updated_at: sampleBook.updated_at || new Date().toISOString(),
+        books: { ...sampleBook, cover_image_url: finalCoverImageUrl },
+      };
+    } else {
+      throw new Error("로그인이 필요합니다.");
+    }
   }
 
   const { data, error } = await supabase
