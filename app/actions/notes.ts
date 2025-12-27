@@ -22,15 +22,20 @@ export async function createNote(data: CreateNoteInput) {
   }
 
   // 책 소유 확인
-  const { data: userBook } = await supabase
+  const { data: userBook, error: bookCheckError } = await supabase
     .from("user_books")
     .select("id")
     .eq("id", data.book_id)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle(); // .single() 대신 .maybeSingle() 사용
+
+  if (bookCheckError && bookCheckError.code !== "PGRST116") {
+    // PGRST116은 "결과가 없음" 에러이므로 무시
+    throw new Error(`책 소유 확인 실패: ${bookCheckError.message}`);
+  }
 
   if (!userBook) {
-    throw new Error("권한이 없습니다.");
+    throw new Error("권한이 없습니다. 해당 책을 소유하고 있지 않습니다.");
   }
 
   // 기록 생성
@@ -79,15 +84,20 @@ export async function updateNote(noteId: string, data: UpdateNoteInput) {
   }
 
   // 기록 소유 확인
-  const { data: note } = await supabase
+  const { data: note, error: noteCheckError } = await supabase
     .from("notes")
     .select("id, book_id")
     .eq("id", noteId)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle(); // .single() 대신 .maybeSingle() 사용
+
+  if (noteCheckError && noteCheckError.code !== "PGRST116") {
+    // PGRST116은 "결과가 없음" 에러이므로 무시
+    throw new Error(`기록 조회 실패: ${noteCheckError.message}`);
+  }
 
   if (!note) {
-    throw new Error("권한이 없습니다.");
+    throw new Error("권한이 없습니다. 해당 기록을 수정할 권한이 없습니다.");
   }
 
   // 기록 수정
@@ -130,28 +140,47 @@ export async function deleteNote(noteId: string) {
   }
 
   // 기록 소유 확인
-  const { data: note } = await supabase
+  const { data: note, error: noteCheckError } = await supabase
     .from("notes")
     .select("id, book_id, image_url")
     .eq("id", noteId)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle(); // .single() 대신 .maybeSingle() 사용
+
+  if (noteCheckError && noteCheckError.code !== "PGRST116") {
+    // PGRST116은 "결과가 없음" 에러이므로 무시
+    throw new Error(`기록 조회 실패: ${noteCheckError.message}`);
+  }
 
   if (!note) {
-    throw new Error("권한이 없습니다.");
+    throw new Error("권한이 없습니다. 해당 기록을 삭제할 권한이 없습니다.");
   }
 
   // 이미지가 있으면 Storage에서 삭제
   if (note.image_url) {
     try {
       // Supabase Storage 경로 추출
+      // URL 형식: https://[project].supabase.co/storage/v1/object/public/images/photos/[userId]/[fileName]
       const url = new URL(note.image_url);
       const pathParts = url.pathname.split("/storage/v1/object/public/");
+      
       if (pathParts.length === 2) {
-        const [bucket, ...filePathParts] = pathParts[1].split("/");
-        const filePath = filePathParts.join("/");
+        const fullPath = pathParts[1];
+        const pathSegments = fullPath.split("/");
+        
+        if (pathSegments.length >= 2) {
+          const bucket = pathSegments[0]; // "images"
+          const filePath = pathSegments.slice(1).join("/"); // "photos/[userId]/[fileName]"
 
-        await supabase.storage.from(bucket).remove([filePath]);
+          const { error: removeError } = await supabase.storage
+            .from(bucket)
+            .remove([filePath]);
+
+          if (removeError) {
+            console.error("이미지 삭제 오류:", removeError);
+            // 이미지 삭제 실패해도 기록은 삭제 진행
+          }
+        }
       }
     } catch (error) {
       console.error("이미지 삭제 오류:", error);
@@ -256,12 +285,15 @@ export async function getNoteDetail(noteId: string) {
     )
     .eq("id", noteId)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle(); // .single() 대신 .maybeSingle() 사용
 
-  if (error || !data) {
-    throw new Error(
-      `기록 상세 조회 실패: ${error?.message || "기록을 찾을 수 없습니다."}`
-    );
+  if (error && error.code !== "PGRST116") {
+    // PGRST116은 "결과가 없음" 에러이므로 무시
+    throw new Error(`기록 상세 조회 실패: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("기록을 찾을 수 없거나 권한이 없습니다.");
   }
 
   return data;

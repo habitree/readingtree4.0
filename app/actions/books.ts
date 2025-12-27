@@ -38,11 +38,16 @@ export async function addBook(
 
   // ISBN이 있고 기존 책이 있는지 확인
   if (bookData.isbn) {
-    const { data: existingBook } = await supabase
+    const { data: existingBook, error: findError } = await supabase
       .from("books")
       .select("id")
       .eq("isbn", bookData.isbn)
-      .single();
+      .maybeSingle(); // .single() 대신 .maybeSingle() 사용하여 에러 없이 null 반환
+
+    if (findError && findError.code !== "PGRST116") {
+      // PGRST116은 "결과가 없음" 에러이므로 무시
+      throw new Error(`책 조회 실패: ${findError.message}`);
+    }
 
     if (existingBook) {
       // 기존 책 재사용
@@ -89,13 +94,18 @@ export async function addBook(
     bookId = newBook.id;
   }
 
-  // 사용자가 이미 이 책을 추가했는지 확인
-  const { data: existingUserBook } = await supabase
+  // 사용자가 이미 이 책을 추가했는지 확인 (UNIQUE 제약조건으로도 방지되지만 명시적 체크)
+  const { data: existingUserBook, error: checkError } = await supabase
     .from("user_books")
     .select("id")
     .eq("user_id", user.id)
     .eq("book_id", bookId)
-    .single();
+    .maybeSingle(); // .single() 대신 .maybeSingle() 사용
+
+  if (checkError && checkError.code !== "PGRST116") {
+    // PGRST116은 "결과가 없음" 에러이므로 무시
+    throw new Error(`중복 체크 실패: ${checkError.message}`);
+  }
 
   if (existingUserBook) {
     throw new Error("이미 추가된 책입니다.");

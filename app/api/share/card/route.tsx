@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       return new Response("noteId가 필요합니다.", { status: 400 });
     }
 
-    // 기록 조회
+    // 기록 조회 (공개 기록만 조회 가능)
     const supabase = await createServerSupabaseClient();
     const { data: note, error } = await supabase
       .from("notes")
@@ -36,10 +36,11 @@ export async function GET(request: NextRequest) {
       `
       )
       .eq("id", noteId)
+      .eq("is_public", true) // 공개 기록만 조회 가능
       .single();
 
     if (error || !note) {
-      return new Response("기록을 찾을 수 없습니다.", { status: 404 });
+      return new Response("기록을 찾을 수 없거나 공개되지 않은 기록입니다.", { status: 404 });
     }
 
     // 템플릿 가져오기
