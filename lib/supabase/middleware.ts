@@ -43,9 +43,9 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 보호된 경로 확인 (루트 경로 포함)
-  const protectedPaths = ["/", "/books", "/notes", "/timeline", "/groups", "/profile"];
-  const isProtectedPath = protectedPaths.some((path) => {
+  // 게스트 접근 가능한 경로 (읽기 전용)
+  const guestAccessiblePaths = ["/", "/books", "/notes", "/timeline", "/groups", "/search"];
+  const isGuestAccessiblePath = guestAccessiblePaths.some((path) => {
     // 루트 경로는 정확히 일치해야 함
     if (path === "/") {
       return request.nextUrl.pathname === "/";
@@ -53,19 +53,32 @@ export async function updateSession(request: NextRequest) {
     return request.nextUrl.pathname.startsWith(path);
   });
 
+  // 엄격히 보호되는 경로 (인증 필수 - 작성/수정 관련)
+  const strictProtectedPaths = [
+    "/profile",
+    "/notes/new",
+    "/books/search", // 책 검색 및 추가는 인증 필요
+    "/groups/new", // 모임 생성은 인증 필요
+  ];
+  const isStrictProtectedPath = strictProtectedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+
   // 인증 페이지 경로 (로그인, 온보딩)
   const authPaths = ["/login", "/onboarding"];
   const isAuthPath = authPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
 
-  // 인증되지 않은 사용자는 로그인 페이지로 리다이렉트
-  if (isProtectedPath && !user) {
+  // 엄격히 보호되는 경로는 인증 필수
+  if (isStrictProtectedPath && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectedFrom", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
+
+  // 게스트 접근 가능한 경로는 인증 없이도 접근 허용 (리다이렉트하지 않음)
 
   // 이미 로그인한 사용자가 로그인 페이지 접근 시 홈으로 리다이렉트
   if (request.nextUrl.pathname === "/login" && user) {
