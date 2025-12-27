@@ -46,33 +46,19 @@ export function DashboardContent() {
     setError(null);
     
     try {
-      // 게스트 사용자는 샘플 데이터만 로드
-      if (isGuest) {
-        const [progress, readingStats, monthly, notes] = await Promise.all([
-          getGoalProgress(),
-          getReadingStats(),
-          getMonthlyStats(),
-          getNotes(undefined, undefined),
-        ]);
+      // 게스트와 인증 사용자 모두 동일한 데이터 로드 로직 사용
+      // 각 함수 내부에서 게스트 여부를 확인하여 샘플 데이터 또는 실제 데이터 반환
+      const [progress, readingStats, monthly, notes] = await Promise.all([
+        getGoalProgress(),
+        getReadingStats(),
+        getMonthlyStats(),
+        getNotes(undefined, undefined),
+      ]);
 
-        setGoalProgress(progress);
-        setStats(readingStats);
-        setMonthlyStats(monthly);
-        setRecentNotes((notes as NoteWithBook[]).slice(0, 5));
-      } else {
-        // 인증된 사용자는 모든 데이터 로드
-        const [progress, readingStats, monthly, notes] = await Promise.all([
-          getGoalProgress(),
-          getReadingStats(),
-          getMonthlyStats(),
-          getNotes(undefined, undefined),
-        ]);
-
-        setGoalProgress(progress);
-        setStats(readingStats);
-        setMonthlyStats(monthly);
-        setRecentNotes((notes as NoteWithBook[]).slice(0, 5));
-      }
+      setGoalProgress(progress);
+      setStats(readingStats);
+      setMonthlyStats(monthly);
+      setRecentNotes((notes as NoteWithBook[]).slice(0, 5));
     } catch (err) {
       const error = err instanceof Error ? err : new Error("대시보드 데이터를 불러오는데 실패했습니다.");
       setError(error);

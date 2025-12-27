@@ -48,29 +48,39 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:bg-background">
+    <aside 
+      className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:bg-background"
+      aria-label="주요 네비게이션"
+    >
       <div className="flex flex-col flex-1 pt-6 pb-4 overflow-y-auto">
         <div className="flex items-center flex-shrink-0 px-6 mb-8">
           <h1 className="text-xl font-bold">Habitree Reading Hub</h1>
         </div>
-        <nav className="flex-1 px-3 space-y-1">
+        <nav className="flex-1 px-3 space-y-1" aria-label="메인 메뉴">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
-              <Link key={item.href} href={item.href}>
+              <Link 
+                key={item.href} 
+                href={item.href}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
+              >
                 <Button
                   variant={isActive ? "secondary" : "ghost"}
                   className={cn(
                     "w-full justify-start gap-3 h-11",
                     isActive && "bg-secondary font-medium"
                   )}
+                  aria-label={item.label}
+                  aria-pressed={isActive}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-5 w-5" aria-hidden="true" />
                   <span className="flex-1 text-left">{item.label}</span>
                   {item.badge && item.badge > 0 && (
-                    <Badge variant="secondary" className="ml-auto">
+                    <Badge variant="secondary" className="ml-auto" aria-label={`${item.badge}개의 알림`}>
                       {item.badge}
                     </Badge>
                   )}

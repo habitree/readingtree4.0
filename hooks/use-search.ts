@@ -42,14 +42,36 @@ export function useSearch() {
               Object.entries(params).filter(([_, v]) => v !== undefined && v !== "")
             ).toString();
 
-      const response = await fetch(`/api/search?${queryString}`);
+      // 재시도 로직이 포함된 fetch
+      const { withRetry } = await import("@/lib/utils/retry");
+      
+      const data = await withRetry(
+        async () => {
+          const response = await fetch(`/api/search?${queryString}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "검색에 실패했습니다.");
-      }
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "검색에 실패했습니다.");
+          }
 
-      const data = await response.json();
+          return await response.json();
+        },
+        {
+          maxRetries: 2,
+          initialDelay: 500,
+          retryableErrors: (error) => {
+            const message = error.message.toLowerCase();
+            return (
+              message.includes("network") ||
+              message.includes("fetch") ||
+              message.includes("timeout") ||
+              message.includes("503") ||
+              message.includes("502")
+            );
+          },
+        }
+      );
+
       return data;
     } catch (err) {
       const error = err instanceof Error ? err : new Error("검색에 실패했습니다.");

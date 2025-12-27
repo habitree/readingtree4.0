@@ -240,10 +240,15 @@ export async function getUserBooks(status?: ReadingStatus) {
     }
 
     // 샘플 데이터의 이미지가 없으면 네이버 API를 통해 가져오기
-    const booksWithImages = await Promise.all(
-      (sampleBooks || []).map(async (book) => {
-        // 이미지 URL이 없으면 네이버 API로 검색
-        if (!book.cover_image_url && book.isbn) {
+    // 이미지가 없는 책만 필터링하여 처리 (성능 최적화)
+    const booksWithoutImages = (sampleBooks || []).filter(
+      (book) => !book.cover_image_url && book.isbn
+    );
+
+    // 이미지가 없는 책들만 네이버 API로 검색 (배치 처리)
+    if (booksWithoutImages.length > 0) {
+      await Promise.all(
+        booksWithoutImages.map(async (book) => {
           try {
             const searchQuery = `${book.title} ${book.author || ""}`.trim();
             const naverResponse = await searchBooks({ query: searchQuery, display: 1 });
@@ -258,18 +263,23 @@ export async function getUserBooks(status?: ReadingStatus) {
                   .update({ cover_image_url: naverBook.cover_image_url })
                   .eq("id", book.id);
                 
+                // 메모리상의 book 객체도 업데이트
                 book.cover_image_url = naverBook.cover_image_url;
               }
             }
           } catch (error) {
             // 네이버 API 호출 실패 시 무시 (기존 이미지 없음 상태 유지)
-            console.error(`네이버 API 이미지 검색 실패 (${book.title}):`, error);
+            // 에러 로깅은 개발 환경에서만
+            if (process.env.NODE_ENV === "development") {
+              console.error(`네이버 API 이미지 검색 실패 (${book.title}):`, error);
+            }
           }
-        }
-        
-        return book;
-      })
-    );
+        })
+      );
+    }
+
+    // 모든 책 반환 (이미지가 업데이트된 책 포함)
+    const booksWithImages = sampleBooks || [];
 
     // 샘플 데이터를 user_books 형식으로 변환
     // 샘플 데이터는 상세 페이지 접근이 불가능하도록 특별한 ID 형식 사용

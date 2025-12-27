@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import sharp from "sharp";
 import { validateImageSize, validateImageType } from "@/lib/utils/image";
 import { isValidUUID, sanitizeErrorMessage, sanitizeErrorForLogging } from "@/lib/utils/validation";
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * 이미지 업로드 API
@@ -10,6 +11,24 @@ import { isValidUUID, sanitizeErrorMessage, sanitizeErrorForLogging } from "@/li
  * 파일 크기가 5MB를 초과하면 자동으로 압축합니다.
  */
 export async function POST(request: NextRequest) {
+  // Rate limiting 체크 (분당 30회 제한 - 파일 업로드는 더 엄격하게)
+  const rateLimitResult = await checkRateLimit(request, 30);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: "업로드 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": "60",
+          "X-RateLimit-Limit": "30",
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     const supabase = await createServerSupabaseClient();
 

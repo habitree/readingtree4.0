@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getUserBooks, addBook, updateBookStatus } from "@/app/actions/books";
-import type { ReadingStatus } from "@/types/book";
+import type { ReadingStatus, UserBook } from "@/types/book";
 import type { AddBookInput } from "@/app/actions/books";
 
 /**
@@ -10,11 +10,11 @@ import type { AddBookInput } from "@/app/actions/books";
  * 책 목록 조회, 추가, 상태 변경 기능 제공
  */
 export function useBooks(status?: ReadingStatus) {
-  const [books, setBooks] = useState<any[]>([]);
+  const [books, setBooks] = useState<UserBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchBooks = async () => {
+  const fetchBooks = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -27,11 +27,11 @@ export function useBooks(status?: ReadingStatus) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [status]);
 
   useEffect(() => {
     fetchBooks();
-  }, [status]);
+  }, [fetchBooks]);
 
   const handleAddBook = async (
     bookData: AddBookInput,

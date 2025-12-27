@@ -58,13 +58,42 @@ export async function searchBooks(
   url.searchParams.append("display", display.toString());
   url.searchParams.append("start", start.toString());
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      "X-Naver-Client-Id": clientId,
-      "X-Naver-Client-Secret": clientSecret,
+  // 재시도 로직이 포함된 fetch
+  const { withRetry } = await import("@/lib/utils/retry");
+  
+  const response = await withRetry(
+    async () => {
+      const res = await fetch(url.toString(), {
+        headers: {
+          "X-Naver-Client-Id": clientId,
+          "X-Naver-Client-Secret": clientSecret,
+        },
+        next: { revalidate: 3600 }, // 1시간 캐시
+      });
+      
+      // 5xx 오류는 재시도 가능
+      if (res.status >= 500 && res.status < 600) {
+        throw new Error(`네이버 API 호출 실패: ${res.status}`);
+      }
+      
+      return res;
     },
-    next: { revalidate: 3600 }, // 1시간 캐시
-  });
+    {
+      maxRetries: 3,
+      initialDelay: 500,
+      retryableErrors: (error) => {
+        const message = error.message.toLowerCase();
+        return (
+          message.includes("network") ||
+          message.includes("fetch") ||
+          message.includes("timeout") ||
+          message.includes("503") ||
+          message.includes("502") ||
+          message.includes("504")
+        );
+      },
+    }
+  );
 
   if (!response.ok) {
     let errorMessage = `네이버 API 호출 실패: ${response.status}`;

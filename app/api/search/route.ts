@@ -9,6 +9,7 @@ import {
   sanitizeErrorMessage,
   sanitizeErrorForLogging,
 } from "@/lib/utils/validation";
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -18,6 +19,24 @@ const ITEMS_PER_PAGE = 20;
  * 한글 검색 지원을 위해 ILIKE 패턴 매칭 사용
  */
 export async function GET(request: NextRequest) {
+  // Rate limiting 체크 (분당 100회 제한)
+  const rateLimitResult = await checkRateLimit(request, 100);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": "60",
+          "X-RateLimit-Limit": "100",
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     const supabase = await createServerSupabaseClient();
 
