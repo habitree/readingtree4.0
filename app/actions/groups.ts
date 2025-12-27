@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { sanitizeSearchQuery } from "@/lib/utils/validation";
 
 export type MemberRole = "leader" | "member";
 export type MemberStatus = "pending" | "approved" | "rejected";
@@ -286,7 +287,11 @@ export async function getPublicGroups(searchQuery?: string) {
     .order("created_at", { ascending: false });
 
   if (searchQuery) {
-    query = query.or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+    // 검색어 이스케이프 처리 (SQL Injection 방지)
+    const sanitizedQuery = sanitizeSearchQuery(searchQuery);
+    if (sanitizedQuery) {
+      query = query.or(`name.ilike.%${sanitizedQuery}%,description.ilike.%${sanitizedQuery}%`);
+    }
   }
 
   const { data, error } = await query;

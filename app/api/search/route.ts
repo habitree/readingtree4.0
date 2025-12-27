@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import {
+  isValidUUID,
+  isValidPage,
+  isValidDate,
+  isValidTags,
+  sanitizeSearchQuery,
+  sanitizeErrorMessage,
+  sanitizeErrorForLogging,
+} from "@/lib/utils/validation";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -29,7 +38,49 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const tags = searchParams.get("tags");
     const types = searchParams.get("types");
-    const page = parseInt(searchParams.get("page") || "1", 10);
+    const pageParam = searchParams.get("page") || "1";
+    const page = parseInt(pageParam, 10);
+
+    // 페이지 번호 검증
+    if (!isValidPage(page)) {
+      return NextResponse.json(
+        { error: "유효하지 않은 페이지 번호입니다." },
+        { status: 400 }
+      );
+    }
+
+    // bookId UUID 검증
+    if (bookId && !isValidUUID(bookId)) {
+      return NextResponse.json(
+        { error: "유효하지 않은 책 ID입니다." },
+        { status: 400 }
+      );
+    }
+
+    // 날짜 형식 검증
+    if (startDate && !isValidDate(startDate)) {
+      return NextResponse.json(
+        { error: "유효하지 않은 시작 날짜 형식입니다." },
+        { status: 400 }
+      );
+    }
+    if (endDate && !isValidDate(endDate)) {
+      return NextResponse.json(
+        { error: "유효하지 않은 종료 날짜 형식입니다." },
+        { status: 400 }
+      );
+    }
+
+    // 태그 배열 검증
+    if (tags) {
+      const tagArray = tags.split(",").map((t) => t.trim()).filter(t => t.length > 0);
+      if (!isValidTags(tagArray)) {
+        return NextResponse.json(
+          { error: "태그는 최대 10개까지, 각 태그는 50자 이하여야 합니다." },
+          { status: 400 }
+        );
+      }
+    }
 
     // 기본 쿼리 구성
     let supabaseQuery = supabase
@@ -50,13 +101,11 @@ export async function GET(request: NextRequest) {
 
     // 검색어 필터 (한글 지원을 위해 ILIKE 사용)
     // review_issues.md Issue 6 참고: 한글 검색 지원을 위해 ILIKE 패턴 매칭 사용
-    if (query.trim()) {
-      // 검색어를 이스케이프하여 SQL 특수 문자 처리 (%와 _는 ILIKE에서 와일드카드)
-      const escapedQuery = query.trim().replace(/%/g, "\\%").replace(/_/g, "\\_");
-      
+    const sanitizedQuery = sanitizeSearchQuery(query);
+    if (sanitizedQuery) {
       // content 필드에서 검색 (ILIKE 패턴 매칭으로 한글 검색 지원)
       // PostgreSQL의 ILIKE는 대소문자 구분 없이 한글 검색을 지원함
-      supabaseQuery = supabaseQuery.ilike("content", `%${escapedQuery}%`);
+      supabaseQuery = supabaseQuery.ilike("content", `%${sanitizedQuery}%`);
     }
 
     // 책 필터
@@ -100,9 +149,10 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await supabaseQuery;
 
     if (error) {
-      console.error("검색 오류:", error);
+      const safeError = sanitizeErrorForLogging(error);
+      console.error("검색 오류:", safeError);
       return NextResponse.json(
-        { error: `검색 실패: ${error.message}` },
+        { error: sanitizeErrorMessage(error) },
         { status: 500 }
       );
     }
@@ -117,11 +167,11 @@ export async function GET(request: NextRequest) {
       itemsPerPage: ITEMS_PER_PAGE,
     });
   } catch (error) {
-    console.error("검색 API 오류:", error);
+    const safeError = sanitizeErrorForLogging(error);
+    console.error("검색 API 오류:", safeError);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "검색에 실패했습니다.",
+        error: sanitizeErrorMessage(error),
       },
       { status: 500 }
     );

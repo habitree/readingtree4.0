@@ -10,6 +10,8 @@ import { formatDate, formatSmartDate } from "@/lib/utils/date";
 import { NoteActions } from "@/components/notes/note-actions";
 import { ShareDialog } from "@/components/share/share-dialog";
 import { FileText, PenTool, Camera, ImageIcon } from "lucide-react";
+import { isValidUUID } from "@/lib/utils/validation";
+import { sanitizeErrorForLogging } from "@/lib/utils/validation";
 
 interface NoteDetailPageProps {
   params: {
@@ -21,11 +23,17 @@ interface NoteDetailPageProps {
  * 기록 상세 페이지
  */
 export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
+  // UUID 검증
+  if (!isValidUUID(params.id)) {
+    notFound();
+  }
+
   let note;
   try {
     note = await getNoteDetail(params.id);
   } catch (error) {
-    console.error("기록 상세 조회 오류:", error);
+    const safeError = sanitizeErrorForLogging(error);
+    console.error("기록 상세 조회 오류:", safeError);
     notFound();
   }
 
@@ -122,6 +130,13 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 export async function generateMetadata({
   params,
 }: NoteDetailPageProps): Promise<Metadata> {
+  // UUID 검증
+  if (!isValidUUID(params.id)) {
+    return {
+      title: "기록 상세 | Habitree Reading Hub",
+    };
+  }
+
   try {
     const note = await getNoteDetail(params.id);
     return {

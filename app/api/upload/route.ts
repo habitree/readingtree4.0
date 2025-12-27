@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import sharp from "sharp";
 import { validateImageSize, validateImageType } from "@/lib/utils/image";
+import { isValidUUID, sanitizeErrorMessage, sanitizeErrorForLogging } from "@/lib/utils/validation";
 
 /**
  * 이미지 업로드 API
@@ -20,6 +21,14 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // user.id UUID 검증
+    if (!isValidUUID(user.id)) {
+      return NextResponse.json(
+        { error: "유효하지 않은 사용자 ID입니다." },
+        { status: 400 }
+      );
     }
 
     // 폼 데이터 파싱
@@ -64,7 +73,8 @@ export async function POST(request: NextRequest) {
           type: "image/jpeg",
         });
       } catch (error) {
-        console.error("이미지 압축 오류:", error);
+        const safeError = sanitizeErrorForLogging(error);
+        console.error("이미지 압축 오류:", safeError);
         return NextResponse.json(
           { error: "이미지 압축에 실패했습니다." },
           { status: 500 }
@@ -90,9 +100,10 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error("업로드 오류:", uploadError);
+      const safeError = sanitizeErrorForLogging(uploadError);
+      console.error("업로드 오류:", safeError);
       return NextResponse.json(
-        { error: `업로드 실패: ${uploadError.message}` },
+        { error: sanitizeErrorMessage(uploadError) },
         { status: 500 }
       );
     }
@@ -104,11 +115,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: publicUrl });
   } catch (error) {
-    console.error("업로드 API 오류:", error);
+    const safeError = sanitizeErrorForLogging(error);
+    console.error("업로드 API 오류:", safeError);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "업로드에 실패했습니다.",
+        error: sanitizeErrorMessage(error),
       },
       { status: 500 }
     );

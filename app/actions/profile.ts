@@ -3,6 +3,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import sharp from "sharp";
+import { isValidUUID, sanitizeErrorForLogging, sanitizeErrorMessage } from "@/lib/utils/validation";
 
 /**
  * 프로필 조회
@@ -87,7 +88,7 @@ export async function updateProfile(data: {
     .eq("id", user.id);
 
   if (error) {
-    throw new Error(`프로필 수정 실패: ${error.message}`);
+    throw new Error(sanitizeErrorMessage(error));
   }
 
   revalidatePath("/profile");
@@ -141,7 +142,8 @@ export async function updateProfileImage(imageFile: File) {
         { type: "image/jpeg" }
       );
     } catch (error) {
-      console.error("이미지 압축 오류:", error);
+      const safeError = sanitizeErrorForLogging(error);
+      console.error("이미지 압축 오류:", safeError);
       // 압축 실패해도 원본 파일로 업로드 시도
     }
   }
@@ -182,8 +184,9 @@ export async function updateProfileImage(imageFile: File) {
     });
 
   if (uploadError) {
-    console.error("업로드 오류:", uploadError);
-    throw new Error(`업로드 실패: ${uploadError.message}`);
+    const safeError = sanitizeErrorForLogging(uploadError);
+    console.error("업로드 오류:", safeError);
+    throw new Error("업로드에 실패했습니다. 잠시 후 다시 시도해주세요.");
   }
 
   // 공개 URL 생성

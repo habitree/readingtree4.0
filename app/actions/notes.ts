@@ -3,6 +3,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { CreateNoteInput, UpdateNoteInput, NoteType } from "@/types/note";
+import { isValidUUID, isValidLength, isValidTags, sanitizeErrorMessage, sanitizeErrorForLogging } from "@/lib/utils/validation";
 
 /**
  * 기록 생성
@@ -21,6 +22,26 @@ export async function createNote(data: CreateNoteInput) {
     throw new Error("로그인이 필요합니다.");
   }
 
+  // UUID 검증
+  if (!isValidUUID(data.book_id)) {
+    throw new Error("유효하지 않은 책 ID입니다.");
+  }
+
+  // 입력 검증
+  if (data.content && !isValidLength(data.content, 1, 10000)) {
+    throw new Error("내용은 1자 이상 10,000자 이하여야 합니다.");
+  }
+
+  if (data.tags && !isValidTags(data.tags, 10, 50)) {
+    throw new Error("태그는 최대 10개까지, 각 태그는 50자 이하여야 합니다.");
+  }
+
+  if (data.page_number !== null && data.page_number !== undefined) {
+    if (!Number.isInteger(data.page_number) || data.page_number < 1) {
+      throw new Error("페이지 번호는 1 이상의 정수여야 합니다.");
+    }
+  }
+
   // 책 소유 확인
   const { data: userBook, error: bookCheckError } = await supabase
     .from("user_books")
@@ -31,7 +52,7 @@ export async function createNote(data: CreateNoteInput) {
 
   if (bookCheckError && bookCheckError.code !== "PGRST116") {
     // PGRST116은 "결과가 없음" 에러이므로 무시
-    throw new Error(`책 소유 확인 실패: ${bookCheckError.message}`);
+    throw new Error("책 소유 확인에 실패했습니다.");
   }
 
   if (!userBook) {
@@ -55,7 +76,7 @@ export async function createNote(data: CreateNoteInput) {
     .single();
 
   if (error || !note) {
-    throw new Error(`기록 생성 실패: ${error?.message || "알 수 없는 오류"}`);
+    throw new Error(sanitizeErrorMessage(error || new Error("기록 생성에 실패했습니다.")));
   }
 
   revalidatePath("/notes");
@@ -93,7 +114,7 @@ export async function updateNote(noteId: string, data: UpdateNoteInput) {
 
   if (noteCheckError && noteCheckError.code !== "PGRST116") {
     // PGRST116은 "결과가 없음" 에러이므로 무시
-    throw new Error(`기록 조회 실패: ${noteCheckError.message}`);
+    throw new Error("기록 조회에 실패했습니다.");
   }
 
   if (!note) {
@@ -112,7 +133,7 @@ export async function updateNote(noteId: string, data: UpdateNoteInput) {
     .eq("id", noteId);
 
   if (error) {
-    throw new Error(`기록 수정 실패: ${error.message}`);
+    throw new Error(sanitizeErrorMessage(error));
   }
 
   revalidatePath("/notes");
@@ -149,7 +170,7 @@ export async function deleteNote(noteId: string) {
 
   if (noteCheckError && noteCheckError.code !== "PGRST116") {
     // PGRST116은 "결과가 없음" 에러이므로 무시
-    throw new Error(`기록 조회 실패: ${noteCheckError.message}`);
+    throw new Error("기록 조회에 실패했습니다.");
   }
 
   if (!note) {
@@ -177,13 +198,15 @@ export async function deleteNote(noteId: string) {
             .remove([filePath]);
 
           if (removeError) {
-            console.error("이미지 삭제 오류:", removeError);
+            const safeError = sanitizeErrorForLogging(removeError);
+            console.error("이미지 삭제 오류:", safeError);
             // 이미지 삭제 실패해도 기록은 삭제 진행
           }
         }
       }
     } catch (error) {
-      console.error("이미지 삭제 오류:", error);
+      const safeError = sanitizeErrorForLogging(error);
+      console.error("이미지 삭제 오류:", safeError);
       // 이미지 삭제 실패해도 기록은 삭제 진행
     }
   }
@@ -192,7 +215,7 @@ export async function deleteNote(noteId: string) {
   const { error } = await supabase.from("notes").delete().eq("id", noteId);
 
   if (error) {
-    throw new Error(`기록 삭제 실패: ${error.message}`);
+    throw new Error(sanitizeErrorMessage(error));
   }
 
   revalidatePath("/notes");
@@ -282,7 +305,7 @@ export async function getNotes(bookId?: string, type?: NoteType) {
   const { data, error } = await query;
 
   if (error) {
-    throw new Error(`기록 목록 조회 실패: ${error.message}`);
+    throw new Error(sanitizeErrorMessage(error));
   }
 
   return data || [];
@@ -324,7 +347,7 @@ export async function getNoteDetail(noteId: string) {
 
   if (error && error.code !== "PGRST116") {
     // PGRST116은 "결과가 없음" 에러이므로 무시
-    throw new Error(`기록 상세 조회 실패: ${error.message}`);
+    throw new Error(sanitizeErrorMessage(error));
   }
 
   if (!data) {
