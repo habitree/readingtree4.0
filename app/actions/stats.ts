@@ -332,8 +332,15 @@ export async function getGoalProgress() {
     .eq("id", user.id)
     .single();
 
+  // 프로필이 없거나 목표가 설정되지 않은 경우 기본값 반환
   if (profileError || !profile) {
-    throw new Error("사용자 정보를 찾을 수 없습니다.");
+    // 프로필이 없으면 기본값 반환 (온보딩으로 리다이렉트하지 않음 - 대시보드에서 처리)
+    return {
+      goal: 0,
+      completed: 0,
+      progress: 0,
+      remaining: 0,
+    };
   }
 
   const goal = profile.reading_goal || 0;

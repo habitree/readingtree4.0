@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -41,25 +41,38 @@ export function DashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    
     try {
-      const [progress, readingStats, monthly, notes] = await Promise.all([
-        getGoalProgress(),
-        getReadingStats(),
-        getMonthlyStats(),
-        getNotes(undefined, undefined),
-      ]);
+      // 게스트 사용자는 샘플 데이터만 로드
+      if (isGuest) {
+        const [progress, readingStats, monthly, notes] = await Promise.all([
+          getGoalProgress(),
+          getReadingStats(),
+          getMonthlyStats(),
+          getNotes(undefined, undefined),
+        ]);
 
-      setGoalProgress(progress);
-      setStats(readingStats);
-      setMonthlyStats(monthly);
-      setRecentNotes((notes as NoteWithBook[]).slice(0, 5));
+        setGoalProgress(progress);
+        setStats(readingStats);
+        setMonthlyStats(monthly);
+        setRecentNotes((notes as NoteWithBook[]).slice(0, 5));
+      } else {
+        // 인증된 사용자는 모든 데이터 로드
+        const [progress, readingStats, monthly, notes] = await Promise.all([
+          getGoalProgress(),
+          getReadingStats(),
+          getMonthlyStats(),
+          getNotes(undefined, undefined),
+        ]);
+
+        setGoalProgress(progress);
+        setStats(readingStats);
+        setMonthlyStats(monthly);
+        setRecentNotes((notes as NoteWithBook[]).slice(0, 5));
+      }
     } catch (err) {
       const error = err instanceof Error ? err : new Error("대시보드 데이터를 불러오는데 실패했습니다.");
       setError(error);
@@ -72,7 +85,11 @@ export function DashboardContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isGuest, router]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   if (isLoading) {
     return (
@@ -94,9 +111,13 @@ export function DashboardContent() {
                 {error.message}
               </p>
             </div>
-            <Button onClick={loadDashboardData} variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              다시 시도
+            <Button 
+              onClick={loadDashboardData} 
+              variant="outline"
+              disabled={isLoading}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              {isLoading ? '로딩 중...' : '다시 시도'}
             </Button>
           </div>
         </CardContent>
@@ -153,7 +174,7 @@ export function DashboardContent() {
           </div>
         </CardHeader>
         <CardContent>
-          {goalProgress ? (
+          {goalProgress && goalProgress.goal > 0 ? (
             <div className="space-y-2">
               <Progress value={goalProgress.progress} className="h-4" />
               <p className="text-sm text-muted-foreground">
@@ -161,10 +182,17 @@ export function DashboardContent() {
               </p>
             </div>
           ) : (
-            <div className="text-center py-4">
+            <div className="text-center py-4 space-y-2">
               <p className="text-sm text-muted-foreground">
-                프로필에서 독서 목표를 설정해주세요
+                {isGuest 
+                  ? "로그인하여 독서 목표를 설정해보세요"
+                  : "프로필에서 독서 목표를 설정해주세요"}
               </p>
+              {!isGuest && (
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/profile">목표 설정하기</Link>
+                </Button>
+              )}
             </div>
           )}
         </CardContent>

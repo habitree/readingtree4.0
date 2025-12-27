@@ -22,10 +22,18 @@ interface BookCardProps {
 export function BookCard({ book, userBookId, status }: BookCardProps) {
   const [imageError, setImageError] = useState(false);
   const hasValidImage = isValidImageUrl(book.cover_image_url) && book.cover_image_url && !imageError;
+  const isSample = userBookId.startsWith("sample-");
 
   return (
-    <Link href={`/books/${userBookId}`}>
-      <Card className="group hover:shadow-lg transition-shadow cursor-pointer h-full">
+    <Link 
+      href={isSample ? "/books" : `/books/${userBookId}`} 
+      onClick={isSample ? (e) => {
+        e.preventDefault();
+        // 샘플 데이터는 상세 페이지 접근 불가 안내
+        alert("샘플 데이터는 상세 페이지를 볼 수 없습니다. 로그인하여 나만의 서재를 만들어보세요!");
+      } : undefined}
+    >
+      <Card className={`group hover:shadow-lg transition-shadow h-full ${isSample ? 'cursor-not-allowed opacity-90' : 'cursor-pointer'}`}>
         <CardContent className="p-0">
           <div className="relative aspect-[3/4] w-full overflow-hidden rounded-t-lg bg-muted">
             {hasValidImage ? (
@@ -38,8 +46,9 @@ export function BookCard({ book, userBookId, status }: BookCardProps) {
                 onError={() => setImageError(true)}
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                <BookOpen className="w-12 h-12 text-muted-foreground" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/50">
+                <BookOpen className="w-12 h-12 text-muted-foreground mb-2" />
+                <span className="text-xs text-muted-foreground">이미지 없음</span>
               </div>
             )}
           </div>

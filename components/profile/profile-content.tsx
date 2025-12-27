@@ -2,9 +2,11 @@ import { getProfile } from "@/app/actions/profile";
 import { ProfileForm } from "./profile-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatSmartDate } from "@/lib/utils/date";
-import { User } from "lucide-react";
+import { User, AlertCircle, RefreshCw } from "lucide-react";
+import { sanitizeErrorForLogging } from "@/lib/utils/validation";
 
 /**
  * 프로필 컨텐츠 컴포넌트
@@ -15,12 +17,36 @@ export async function ProfileContent() {
   try {
     user = await getProfile();
   } catch (error) {
-    console.error("프로필 조회 오류:", error);
+    const safeError = sanitizeErrorForLogging(error);
+    console.error("프로필 조회 오류:", safeError);
+    const errorMessage = error instanceof Error ? error.message : "프로필을 불러올 수 없습니다.";
+    
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">프로필을 불러올 수 없습니다.</p>
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <AlertCircle className="h-12 w-12 text-destructive" />
+            <div className="text-center space-y-2">
+              <p className="text-lg font-semibold">프로필을 불러올 수 없습니다</p>
+              <p className="text-sm text-muted-foreground">
+                {errorMessage.includes("로그인이 필요합니다") 
+                  ? "로그인이 필요합니다. 다시 로그인해주세요."
+                  : "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요."}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button asChild variant="outline">
+                <a href="/profile">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  다시 시도
+                </a>
+              </Button>
+              {errorMessage.includes("로그인이 필요합니다") && (
+                <Button asChild>
+                  <a href="/login">로그인하기</a>
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

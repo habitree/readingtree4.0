@@ -1,5 +1,8 @@
 import { BookCard } from "./book-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Plus, BookOpen } from "lucide-react";
+import Link from "next/link";
 import type { BookWithUserBook } from "@/types/book";
 import type { UserBook } from "@/types/book";
 
@@ -41,8 +44,24 @@ export function BookList({ books, isLoading }: BookListProps) {
 
   if (books.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">등록된 책이 없습니다.</p>
+      <div className="text-center py-16 space-y-4">
+        <div className="flex justify-center">
+          <div className="rounded-full bg-muted p-6">
+            <BookOpen className="h-12 w-12 text-muted-foreground" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-lg font-semibold">등록된 책이 없습니다</h3>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            첫 번째 책을 추가하고 독서 여정을 시작해보세요!
+          </p>
+        </div>
+        <Button asChild className="mt-4">
+          <Link href="/books/search">
+            <Plus className="mr-2 h-4 w-4" />
+            책 추가하기
+          </Link>
+        </Button>
       </div>
     );
   }
