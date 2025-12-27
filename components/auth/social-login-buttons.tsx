@@ -4,6 +4,7 @@ import { signInWithKakao, signInWithGoogle } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 /**
  * 소셜 로그인 버튼 컴포넌트
@@ -19,7 +20,11 @@ export function SocialLoginButtons() {
     } catch (error) {
       console.error("카카오톡 로그인 오류:", error);
       setIsLoading(null);
-      // TODO: 에러 토스트 표시
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "카카오톡 로그인에 실패했습니다. 다시 시도해주세요."
+      );
     }
   };
 
@@ -30,7 +35,11 @@ export function SocialLoginButtons() {
     } catch (error) {
       console.error("구글 로그인 오류:", error);
       setIsLoading(null);
-      // TODO: 에러 토스트 표시
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "구글 로그인에 실패했습니다. 다시 시도해주세요."
+      );
     }
   };
 
