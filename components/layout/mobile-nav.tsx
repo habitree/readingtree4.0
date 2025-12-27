@@ -35,22 +35,33 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background lg:hidden">
-      <div className="flex items-center justify-around h-16">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background lg:hidden"
+      aria-label="모바일 네비게이션"
+    >
+      <div className="flex items-center justify-around h-16" role="list">
         {mobileNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (
-            <Link key={item.href} href={item.href} className="flex-1">
+            <Link 
+              key={item.href} 
+              href={item.href} 
+              className="flex-1"
+              aria-label={item.label}
+              aria-current={isActive ? "page" : undefined}
+            >
               <Button
                 variant="ghost"
                 className={cn(
                   "w-full flex flex-col items-center justify-center h-full gap-1 rounded-none",
                   isActive && "text-primary bg-secondary/50"
                 )}
+                aria-label={item.label}
+                aria-pressed={isActive}
               >
-                <Icon className={cn("h-5 w-5", isActive && "text-primary")} />
+                <Icon className={cn("h-5 w-5", isActive && "text-primary")} aria-hidden="true" />
                 <span className={cn("text-xs", isActive && "text-primary font-medium")}>
                   {item.label}
                 </span>

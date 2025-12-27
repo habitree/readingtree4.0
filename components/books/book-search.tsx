@@ -44,23 +44,65 @@ export function BookSearch({ onBookAdded }: BookSearchProps) {
 
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `/api/books/search?query=${encodeURIComponent(searchQuery)}&display=10`
-      );
-
-      if (!response.ok) {
-        // API에서 반환한 에러 메시지 가져오기
-        let errorMessage = "검색에 실패했습니다.";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch {
-          // JSON 파싱 실패 시 기본 메시지 사용
+      // 캐시 확인 (클라이언트 사이드에서만)
+      if (typeof window !== "undefined") {
+        const { cache } = await import("@/lib/utils/cache");
+        const cacheKey = `book-search-${searchQuery}`;
+        const cached = cache.get<any>(cacheKey);
+        
+        if (cached) {
+          setResults(cached.books || []);
+          setIsSearching(false);
+          return;
         }
-        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
+      // 재시도 로직이 포함된 fetch
+      const { withRetry } = await import("@/lib/utils/retry");
+      
+      const data = await withRetry(
+        async () => {
+          const response = await fetch(
+            `/api/books/search?query=${encodeURIComponent(searchQuery)}&display=10`
+          );
+
+          if (!response.ok) {
+            // API에서 반환한 에러 메시지 가져오기
+            let errorMessage = "검색에 실패했습니다.";
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.error || errorMessage;
+            } catch {
+              // JSON 파싱 실패 시 기본 메시지 사용
+            }
+            throw new Error(errorMessage);
+          }
+
+          return await response.json();
+        },
+        {
+          maxRetries: 2,
+          initialDelay: 500,
+          retryableErrors: (error) => {
+            const message = error.message.toLowerCase();
+            return (
+              message.includes("network") ||
+              message.includes("fetch") ||
+              message.includes("timeout") ||
+              message.includes("503") ||
+              message.includes("502")
+            );
+          },
+        }
+      );
+
+      // 캐시에 저장 (5분간 유지)
+      if (typeof window !== "undefined") {
+        const { cache } = await import("@/lib/utils/cache");
+        const cacheKey = `book-search-${searchQuery}`;
+        cache.set(cacheKey, data, 5 * 60 * 1000);
+      }
+
       setResults(data.books || []);
     } catch (error) {
       console.error("책 검색 오류:", error);

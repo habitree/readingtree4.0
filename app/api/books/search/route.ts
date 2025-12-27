@@ -1,11 +1,30 @@
 import { NextResponse } from "next/server";
 import { searchBooks, transformNaverBookItem } from "@/lib/api/naver";
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * 책 검색 API Route
  * 네이버 검색 API를 통해 책을 검색합니다.
  */
 export async function GET(request: Request) {
+  // Rate limiting 체크 (분당 60회 제한)
+  const rateLimitResult = await checkRateLimit(request, 60);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      {
+        error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": "60",
+          "X-RateLimit-Limit": "60",
+          "X-RateLimit-Remaining": "0",
+        },
+      }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query");

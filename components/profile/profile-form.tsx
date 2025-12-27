@@ -34,6 +34,12 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 이미 제출 중이면 무시
+    if (isSubmitting || isUploading) {
+      return;
+    }
+    
     setIsSubmitting(true);
 
     try {
@@ -165,6 +171,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 placeholder="이름을 입력하세요"
                 required
                 maxLength={100}
+                disabled={isSubmitting || isUploading}
               />
             </div>
 
@@ -184,6 +191,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 }
                 placeholder="1-100 사이의 숫자"
                 required
+                disabled={isSubmitting || isUploading}
               />
               <p className="text-xs text-muted-foreground">
                 1-100 사이의 숫자를 입력하세요
@@ -191,11 +199,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
             </div>
 
             <div className="flex gap-2">
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
+              <Button type="submit" disabled={isSubmitting || isUploading}>
+                {isSubmitting || isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    저장 중...
+                    {isSubmitting ? "저장 중..." : "업로드 중..."}
                   </>
                 ) : (
                   "저장"

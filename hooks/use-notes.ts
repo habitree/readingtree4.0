@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getNotes, createNote, updateNote, deleteNote } from "@/app/actions/notes";
-import type { NoteType } from "@/types/note";
+import type { NoteType, NoteWithBook } from "@/types/note";
 import type { CreateNoteInput, UpdateNoteInput } from "@/types/note";
 
 /**
@@ -10,11 +10,11 @@ import type { CreateNoteInput, UpdateNoteInput } from "@/types/note";
  * 기록 목록 조회, 생성, 수정, 삭제 기능 제공
  */
 export function useNotes(bookId?: string, type?: NoteType) {
-  const [notes, setNotes] = useState<any[]>([]);
+  const [notes, setNotes] = useState<NoteWithBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -27,11 +27,11 @@ export function useNotes(bookId?: string, type?: NoteType) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bookId, type]);
 
   useEffect(() => {
     fetchNotes();
-  }, [bookId, type]);
+  }, [fetchNotes]);
 
   const handleCreateNote = async (data: CreateNoteInput) => {
     try {
