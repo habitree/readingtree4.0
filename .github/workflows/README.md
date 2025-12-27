@@ -55,7 +55,7 @@ GitHub 저장소의 **Settings → Secrets and variables → Actions**에서 다
 | `NAVER_CLIENT_SECRET` | 네이버 API Client Secret | `your_naver_client_secret` |
 | `GEMINI_API_KEY` | Gemini API Key | `your_gemini_api_key` |
 | `KAKAO_APP_KEY` | 카카오 앱 키 | `your_kakao_app_key` |
-| `NEXT_PUBLIC_APP_URL` | 앱 URL (프로덕션) | `https://readingtree.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | 앱 URL (프로덕션) | `https://readingtree2-0.vercel.app` |
 
 ### Vercel 배포용 Secrets
 
