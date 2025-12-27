@@ -11,7 +11,8 @@
 2. [카카오 앱 키 종류](#카카오-앱-키-종류)
 3. [앱 키 확인 방법](#앱-키-확인-방법)
 4. [프로젝트에서 사용하는 앱 키](#프로젝트에서-사용하는-앱-키)
-5. [앱 키 설정 방법](#앱-키-설정-방법)
+5. [환경 변수 이름 차이점](#환경-변수-이름-차이점) ⭐ **중요**
+6. [앱 키 설정 방법](#앱-키-설정-방법)
 
 ---
 
@@ -120,8 +121,10 @@ NEXT_PUBLIC_KAKAO_APP_KEY=your_javascript_key_here
 1. GitHub 저장소 → **Settings** → **Secrets and variables** → **Actions**
 2. **New repository secret** 클릭
 3. 다음 Secret 추가:
-   - **Name**: `KAKAO_APP_KEY`
+   - **Name**: `KAKAO_APP_KEY` (GitHub Secrets 이름)
    - **Value**: JavaScript 키 값
+
+> **참고**: GitHub Secrets에는 `KAKAO_APP_KEY`로 저장하지만, GitHub Actions 워크플로우에서 빌드 시 `NEXT_PUBLIC_KAKAO_APP_KEY` 환경 변수로 매핑됩니다. 자세한 내용은 아래 ["환경 변수 이름 차이점"](#환경-변수-이름-차이점) 섹션을 참고하세요.
 
 ---
 
@@ -162,9 +165,108 @@ NEXT_PUBLIC_KAKAO_APP_KEY=복사한_JavaScript_키
 2. **Settings** → **Secrets and variables** → **Actions**
 3. **New repository secret** 클릭
 4. 다음 정보 입력:
-   - **Name**: `KAKAO_APP_KEY`
+   - **Name**: `KAKAO_APP_KEY` (GitHub Secrets 이름)
    - **Secret**: JavaScript 키
 5. **Add secret** 클릭
+
+> **중요**: GitHub Secrets에는 `KAKAO_APP_KEY`로 저장하지만, GitHub Actions 워크플로우에서 자동으로 `NEXT_PUBLIC_KAKAO_APP_KEY` 환경 변수로 매핑됩니다. 워크플로우 파일(`.github/workflows/*.yml`)을 확인하면 `NEXT_PUBLIC_KAKAO_APP_KEY: ${{ secrets.KAKAO_APP_KEY }}` 형태로 설정되어 있습니다.
+
+---
+
+## 환경 변수 이름 차이점
+
+### 왜 이름이 다른가요?
+
+프로젝트에서 두 가지 다른 이름을 사용하는 이유는 **사용 위치와 목적**이 다르기 때문입니다.
+
+#### 1. `NEXT_PUBLIC_KAKAO_APP_KEY` (Next.js 환경 변수)
+
+**사용 위치:**
+- 로컬 개발 환경 (`.env.local`)
+- Vercel 환경 변수
+- Next.js 애플리케이션 코드 내부
+
+**특징:**
+- `NEXT_PUBLIC_` 접두사는 Next.js의 특별한 규칙입니다
+- 이 접두사가 있으면 **클라이언트 사이드(브라우저)에서도 접근 가능**합니다
+- JavaScript 키는 브라우저에서 사용하므로 이 접두사가 **필수**입니다
+- 빌드 시 JavaScript 번들에 포함되어 브라우저에 노출됩니다
+
+**사용 예시:**
+```typescript
+// 클라이언트 사이드에서 접근 가능
+const appKey = process.env.NEXT_PUBLIC_KAKAO_APP_KEY;
+window.Kakao.init(appKey);
+```
+
+#### 2. `KAKAO_APP_KEY` (GitHub Secrets 이름)
+
+**사용 위치:**
+- GitHub Secrets (저장소 설정)
+- GitHub Actions 워크플로우 파일
+
+**특징:**
+- GitHub Secrets의 이름은 간단하게 `KAKAO_APP_KEY`로 저장합니다
+- GitHub Actions에서 빌드할 때 `NEXT_PUBLIC_KAKAO_APP_KEY` 환경 변수로 매핑합니다
+- 이렇게 하는 이유는:
+  1. GitHub Secrets 이름을 간단하게 유지
+  2. 워크플로우에서 필요에 따라 다른 이름으로 매핑 가능
+  3. 여러 환경 변수를 관리할 때 일관성 유지
+
+**GitHub Actions 워크플로우 예시:**
+```yaml
+# .github/workflows/ci.yml
+- name: Build
+  run: npm run build
+  env:
+    # GitHub Secrets의 KAKAO_APP_KEY를 
+    # Next.js 환경 변수 NEXT_PUBLIC_KAKAO_APP_KEY로 매핑
+    NEXT_PUBLIC_KAKAO_APP_KEY: ${{ secrets.KAKAO_APP_KEY }}
+```
+
+### 요약 표
+
+| 위치 | 변수 이름 | 용도 | 접근 가능 범위 |
+|------|----------|------|---------------|
+| `.env.local` | `NEXT_PUBLIC_KAKAO_APP_KEY` | 로컬 개발 | 클라이언트 + 서버 |
+| Vercel | `NEXT_PUBLIC_KAKAO_APP_KEY` | 프로덕션 배포 | 클라이언트 + 서버 |
+| GitHub Secrets | `KAKAO_APP_KEY` | CI/CD 빌드 | GitHub Actions만 |
+| GitHub Actions | `NEXT_PUBLIC_KAKAO_APP_KEY` | 빌드 시 매핑 | 빌드 프로세스 |
+
+### 왜 이렇게 복잡하게 하나요?
+
+**간단한 답변:**
+- Next.js는 `NEXT_PUBLIC_` 접두사가 있어야 브라우저에서 사용 가능
+- GitHub Secrets는 간단한 이름으로 저장하는 것이 관리하기 쉬움
+- 워크플로우에서 매핑하면 유연하게 관리 가능
+
+**실제로는:**
+- GitHub Secrets에도 `NEXT_PUBLIC_KAKAO_APP_KEY`로 저장해도 됩니다
+- 하지만 일반적으로는 간단한 이름(`KAKAO_APP_KEY`)으로 저장하고 워크플로우에서 매핑합니다
+
+### 권장 설정 방법
+
+**옵션 1: 현재 방식 (권장)**
+```yaml
+# GitHub Secrets
+KAKAO_APP_KEY = "your_key_here"
+
+# GitHub Actions
+env:
+  NEXT_PUBLIC_KAKAO_APP_KEY: ${{ secrets.KAKAO_APP_KEY }}
+```
+
+**옵션 2: 직접 매핑**
+```yaml
+# GitHub Secrets
+NEXT_PUBLIC_KAKAO_APP_KEY = "your_key_here"
+
+# GitHub Actions
+env:
+  NEXT_PUBLIC_KAKAO_APP_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_APP_KEY }}
+```
+
+두 방식 모두 작동하지만, 옵션 1이 더 일반적이고 관리하기 쉽습니다.
 
 ---
 
@@ -284,7 +386,7 @@ export function LoginButton() {
 - [ ] 카카오 개발자 센터에서 JavaScript 키 확인
 - [ ] 로컬 `.env.local` 파일에 `NEXT_PUBLIC_KAKAO_APP_KEY` 설정
 - [ ] Vercel 환경 변수에 `NEXT_PUBLIC_KAKAO_APP_KEY` 설정
-- [ ] GitHub Secrets에 `KAKAO_APP_KEY` 설정
+- [ ] GitHub Secrets에 `KAKAO_APP_KEY` 설정 (워크플로우에서 자동으로 `NEXT_PUBLIC_KAKAO_APP_KEY`로 매핑됨)
 - [ ] 카카오 개발자 센터에서 Web 플랫폼 등록
 - [ ] 리다이렉트 URI 등록
 - [ ] 카카오 로그인 테스트
