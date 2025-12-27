@@ -42,10 +42,11 @@ export async function createNote(data: CreateNoteInput) {
     }
   }
 
-  // 책 소유 확인
+  // 책 소유 확인 및 book_id 조회
+  // data.book_id는 user_books.id이므로, user_books에서 book_id를 조회해야 함
   const { data: userBook, error: bookCheckError } = await supabase
     .from("user_books")
-    .select("id")
+    .select("id, book_id")
     .eq("id", data.book_id)
     .eq("user_id", user.id)
     .maybeSingle(); // .single() 대신 .maybeSingle() 사용
@@ -55,16 +56,17 @@ export async function createNote(data: CreateNoteInput) {
     throw new Error("책 소유 확인에 실패했습니다.");
   }
 
-  if (!userBook) {
+  if (!userBook || !userBook.book_id) {
     throw new Error("권한이 없습니다. 해당 책을 소유하고 있지 않습니다.");
   }
 
   // 기록 생성
+  // notes.book_id는 books.id를 참조하므로 userBook.book_id를 사용
   const { data: note, error } = await supabase
     .from("notes")
     .insert({
       user_id: user.id,
-      book_id: data.book_id,
+      book_id: userBook.book_id,
       type: data.type,
       content: data.content || null,
       image_url: data.image_url || null,
