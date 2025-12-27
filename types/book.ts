@@ -1,0 +1,34 @@
+/**
+ * 책 관련 타입 정의
+ */
+
+export type ReadingStatus = "reading" | "completed" | "paused";
+
+export interface Book {
+  id: string;
+  isbn: string | null;
+  title: string;
+  author: string | null;
+  publisher: string | null;
+  published_date: string | null;
+  cover_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserBook {
+  id: string;
+  user_id: string;
+  book_id: string;
+  status: ReadingStatus;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BookWithUserBook extends Book {
+  user_book?: UserBook;
+  notes_count?: number;
+}
+
