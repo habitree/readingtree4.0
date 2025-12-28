@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getAppUrl } from "@/lib/utils/url";
 
 /**
@@ -90,6 +91,122 @@ export async function signInWithGoogle() {
   if (data.url) {
     redirect(data.url);
   }
+}
+
+/**
+ * 이메일 로그인
+ * Supabase Auth를 통해 이메일/비밀번호로 로그인
+ * 
+ * 규칙: 서버 중심 세션 관리
+ * - 로그인 성공 시 세션이 생성됨 (쿠키 저장)
+ * - 세션은 미들웨어에서 자동 갱신됨
+ * 
+ * @param email 이메일 주소
+ * @param password 비밀번호
+ */
+export async function signInWithEmail(email: string, password: string) {
+  const supabase = await createServerSupabaseClient();
+
+  // 유효성 검사
+  if (!email || !email.includes("@")) {
+    throw new Error("유효한 이메일 주소를 입력해주세요.");
+  }
+
+  if (!password || password.length < 1) {
+    throw new Error("비밀번호를 입력해주세요.");
+  }
+
+  // 이메일/비밀번호로 로그인
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    // 에러 메시지 처리
+    if (error.message.includes("Invalid login credentials") || error.message.includes("invalid")) {
+      throw new Error("이메일 또는 비밀번호가 올바르지 않습니다.");
+    }
+    if (error.message.includes("Email not confirmed")) {
+      throw new Error("이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.");
+    }
+    throw new Error(`로그인 실패: ${error.message}`);
+  }
+
+  // 로그인 성공 - 세션 생성됨
+  // 사용자 프로필 확인 및 온보딩 상태 체크
+  if (!data.user) {
+    throw new Error("로그인에 실패했습니다. 다시 시도해주세요.");
+  }
+
+  // 사용자 프로필 확인
+  let profile = null;
+  let retryCount = 0;
+  const maxRetries = 3;
+
+  while (retryCount < maxRetries && !profile) {
+    const { data: profileData, error: profileError } = await supabase
+      .from("users")
+      .select("reading_goal, terms_agreed, privacy_agreed")
+      .eq("id", data.user.id)
+      .single();
+
+    if (!profileError && profileData) {
+      profile = profileData;
+      break;
+    }
+
+    if (retryCount < maxRetries - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    retryCount++;
+  }
+
+  // 프로필이 없으면 수동 생성 시도
+  if (!profile) {
+    const { error: insertError } = await supabase.from("users").insert({
+      id: data.user.id,
+      email: data.user.email,
+      name: data.user.user_metadata?.name || data.user.email?.split("@")[0] || "사용자",
+      avatar_url: data.user.user_metadata?.avatar_url || null,
+      reading_goal: 12,
+      terms_agreed: false,
+      privacy_agreed: false,
+    });
+
+    if (!insertError) {
+      profile = {
+        reading_goal: 12,
+        terms_agreed: false,
+        privacy_agreed: false,
+      };
+      
+      // 프로필 생성 후 관련 페이지 캐시 무효화
+      revalidatePath("/");
+      revalidatePath("/profile");
+      revalidatePath("/dashboard");
+    }
+  } else {
+    // 프로필이 있는 경우에도 캐시 무효화
+    revalidatePath("/");
+    revalidatePath("/profile");
+    revalidatePath("/dashboard");
+  }
+
+  const appUrl = getAppUrl();
+
+  // 약관 동의 여부 확인 (최우선)
+  if (!profile || !profile.terms_agreed || !profile.privacy_agreed) {
+    redirect(`${appUrl}/onboarding/consent`);
+  }
+
+  // 온보딩 완료 여부 확인
+  if (!profile || !profile.reading_goal || profile.reading_goal === 0) {
+    redirect(`${appUrl}/onboarding/goal`);
+  }
+
+  // 온보딩 완료 시 메인으로 리다이렉트
+  redirect(`${appUrl}/`);
 }
 
 /**
