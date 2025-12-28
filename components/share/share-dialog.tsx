@@ -30,6 +30,11 @@ export function ShareDialog({ note }: ShareDialogProps) {
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const defaultCardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=minimal`;
 
+  const handleCardNewsGenerated = (templateId: string = "minimal") => {
+    const newCardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=${templateId}`;
+    setCardNewsUrl(newCardNewsUrl);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -38,7 +43,7 @@ export function ShareDialog({ note }: ShareDialogProps) {
           공유
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>공유하기</DialogTitle>
           <DialogDescription>
@@ -51,7 +56,7 @@ export function ShareDialog({ note }: ShareDialogProps) {
             <h3 className="text-sm font-medium mb-4">카드뉴스 생성</h3>
             <CardNewsGenerator
               note={note}
-              onClose={() => setCardNewsUrl(defaultCardNewsUrl)}
+              onCardNewsGenerated={handleCardNewsGenerated}
             />
           </div>
 

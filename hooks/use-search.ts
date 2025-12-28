@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { NoteWithBook } from "@/types/note";
 
 export interface SearchParams {
@@ -29,7 +29,7 @@ export function useSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const search = async (params: URLSearchParams | SearchParams): Promise<SearchResults> => {
+  const search = useCallback(async (params: URLSearchParams | SearchParams): Promise<SearchResults> => {
     setIsLoading(true);
     setError(null);
 
@@ -81,7 +81,7 @@ export function useSearch() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   return {
     search,

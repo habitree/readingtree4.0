@@ -21,22 +21,35 @@ interface NoteEditPageProps {
  * US-018: 기록 수정 및 삭제
  */
 export default async function NoteEditPage({ params }: NoteEditPageProps) {
+  // Next.js 15+ 에서 params는 Promise일 수 있음
+  const resolvedParams = await params;
+  const noteId = resolvedParams.id;
+
   // params.id 검증
-  if (!params?.id || typeof params.id !== 'string') {
+  if (!noteId || typeof noteId !== 'string') {
+    console.error("NoteEditPage: noteId가 유효하지 않습니다.", { noteId, params: resolvedParams });
     notFound();
   }
 
   // UUID 검증
-  if (!isValidUUID(params.id)) {
+  if (!isValidUUID(noteId)) {
+    console.error("NoteEditPage: noteId가 유효한 UUID가 아닙니다.", { noteId });
     notFound();
   }
 
   let note;
   try {
-    note = await getNoteDetail(params.id);
+    console.log("NoteEditPage: 기록 상세 조회 시도", { noteId });
+    note = await getNoteDetail(noteId);
+    console.log("NoteEditPage: 기록 상세 조회 성공", { noteId, hasNote: !!note });
   } catch (error) {
     const safeError = sanitizeErrorForLogging(error);
-    console.error("기록 상세 조회 오류:", safeError);
+    console.error("기록 상세 조회 오류:", {
+      noteId,
+      error: safeError,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     notFound();
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { SearchFilters } from "@/components/search/search-filters";
@@ -16,9 +16,13 @@ import { Loader2 } from "lucide-react";
  */
 export default function SearchPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { search, isLoading, error } = useSearch();
+  const isInitialMount = useRef(true);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+  // 초기 검색어는 URL에서 가져오기
+  const [query, setQuery] = useState(() => searchParams.get("q") || "");
   const [results, setResults] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(
@@ -26,9 +30,24 @@ export default function SearchPage() {
   );
   const [totalPages, setTotalPages] = useState(0);
 
+  // URL 파라미터에서 필터 값 추출 (의존성 최적화)
+  const bookId = searchParams.get("bookId");
+  const startDate = searchParams.get("startDate");
+  const endDate = searchParams.get("endDate");
+  const tags = searchParams.get("tags");
+  const types = searchParams.get("types");
+  const urlPage = parseInt(searchParams.get("page") || "1", 10);
+
   // 검색 실행 함수 (디바운싱)
-  const performSearch = useCallback(async () => {
-    if (!query.trim() && !searchParams.get("bookId") && !searchParams.get("tags") && !searchParams.get("types")) {
+  const performSearch = useCallback(async (searchQuery: string) => {
+    // 검색어나 필터가 하나라도 있으면 검색 실행
+    const hasQuery = searchQuery.trim().length > 0;
+    const hasBookFilter = !!bookId;
+    const hasDateFilter = !!startDate || !!endDate;
+    const hasTagFilter = !!tags;
+    const hasTypeFilter = !!types;
+
+    if (!hasQuery && !hasBookFilter && !hasDateFilter && !hasTagFilter && !hasTypeFilter) {
       setResults([]);
       setTotal(0);
       setTotalPages(0);
@@ -37,50 +56,104 @@ export default function SearchPage() {
 
     try {
       const params = new URLSearchParams();
-      if (query.trim()) params.set("q", query);
-      if (searchParams.get("bookId")) params.set("bookId", searchParams.get("bookId")!);
-      if (searchParams.get("startDate")) params.set("startDate", searchParams.get("startDate")!);
-      if (searchParams.get("endDate")) params.set("endDate", searchParams.get("endDate")!);
-      if (searchParams.get("tags")) params.set("tags", searchParams.get("tags")!);
-      if (searchParams.get("types")) params.set("types", searchParams.get("types")!);
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      if (bookId) params.set("bookId", bookId);
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      if (tags) params.set("tags", tags);
+      if (types) params.set("types", types);
       params.set("page", currentPage.toString());
 
+      // URL 업데이트 (검색 실행과 함께)
+      router.replace(`/search?${params.toString()}`, { scroll: false });
+
       const data = await search(params);
-      setResults(data.results);
-      setTotal(data.total);
-      setTotalPages(data.totalPages);
+      setResults(data.results || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 0);
     } catch (err) {
       console.error("검색 오류:", err);
+      setResults([]);
+      setTotal(0);
+      setTotalPages(0);
     }
-  }, [query, searchParams, currentPage, search]);
+  }, [bookId, startDate, endDate, tags, types, currentPage, search, router]);
 
-  // URL 파라미터 변경 시 검색 실행
+  // 초기 마운트 시 URL 파라미터에서 검색어 가져오기 및 검색 실행
   useEffect(() => {
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    setCurrentPage(page);
-  }, [searchParams]);
+    if (isInitialMount.current) {
+      const urlQuery = searchParams.get("q") || "";
+      const hasQuery = urlQuery.trim().length > 0;
+      const hasBookFilter = !!bookId;
+      const hasDateFilter = !!startDate || !!endDate;
+      const hasTagFilter = !!tags;
+      const hasTypeFilter = !!types;
+      
+      // 초기 마운트 시 검색 실행 (URL에 검색어나 필터가 있는 경우)
+      if (hasQuery || hasBookFilter || hasDateFilter || hasTagFilter || hasTypeFilter) {
+        // URL 파라미터를 직접 사용하여 검색 실행
+        const params = new URLSearchParams();
+        if (urlQuery.trim()) params.set("q", urlQuery.trim());
+        if (bookId) params.set("bookId", bookId);
+        if (startDate) params.set("startDate", startDate);
+        if (endDate) params.set("endDate", endDate);
+        if (tags) params.set("tags", tags);
+        if (types) params.set("types", types);
+        params.set("page", urlPage.toString());
+
+        search(params)
+          .then((data) => {
+            setResults(data.results || []);
+            setTotal(data.total || 0);
+            setTotalPages(data.totalPages || 0);
+          })
+          .catch((err) => {
+            console.error("초기 검색 오류:", err);
+            setResults([]);
+            setTotal(0);
+            setTotalPages(0);
+          });
+      }
+      
+      isInitialMount.current = false;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // URL 파라미터 변경 시 페이지 번호 업데이트 (외부에서 URL 변경 시)
+  useEffect(() => {
+    if (urlPage !== currentPage && !isInitialMount.current) {
+      setCurrentPage(urlPage);
+    }
+  }, [urlPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 검색어 또는 필터 변경 시 검색 실행 (디바운싱)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      performSearch();
+    // 초기 마운트 시에는 검색 실행하지 않음 (위의 useEffect에서 처리)
+    if (isInitialMount.current) {
+      return;
+    }
+
+    // 이전 타이머 취소
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(query);
     }, 300);
 
-    return () => clearTimeout(timer);
-  }, [performSearch]);
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [query, bookId, startDate, endDate, tags, types, currentPage, performSearch]);
 
-  // 초기 검색어 설정
-  useEffect(() => {
-    const urlQuery = searchParams.get("q");
-    if (urlQuery) {
-      setQuery(urlQuery);
-    }
-  }, [searchParams]);
-
-  const handleQueryChange = (value: string) => {
+  const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
     setCurrentPage(1);
-  };
+    // URL 업데이트와 검색 실행은 performSearch의 useEffect에서 처리
+  }, []);
 
   return (
     <div className="space-y-6">

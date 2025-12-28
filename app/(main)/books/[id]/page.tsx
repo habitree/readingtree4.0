@@ -8,6 +8,7 @@ import { getBookDetail, updateBookStatus } from "@/app/actions/books";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatDate } from "@/lib/utils/date";
 import { BookStatusSelector } from "@/components/books/book-status-selector";
+import { BookDeleteButton } from "@/components/books/book-delete-button";
 import { PenTool } from "lucide-react";
 import type { ReadingStatus } from "@/types/book";
 import { NotesList } from "@/components/notes/notes-list";
@@ -122,7 +123,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             )}
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <BookStatusSelector
               currentStatus={userBook.status as ReadingStatus}
               userBookId={userBook.id}
@@ -133,6 +134,12 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
                 기록 작성
               </Link>
             </Button>
+            {!bookId.startsWith("sample-") && (
+              <BookDeleteButton
+                userBookId={userBook.id}
+                bookTitle={book.title}
+              />
+            )}
           </div>
         </div>
       </div>
