@@ -2,6 +2,7 @@ import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
 import { getTemplateById } from "@/lib/templates/card-news-templates";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getPublicNote } from "@/app/actions/notes";
 import React from "react";
 
 export const runtime = "edge";
@@ -20,40 +21,14 @@ export async function GET(request: NextRequest) {
       return new Response("noteId가 필요합니다.", { status: 400 });
     }
 
-    // 기록 조회 (공개 기록 또는 본인 기록 조회 가능)
+    // 사용자 확인 (선택적)
     const supabase = await createServerSupabaseClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    let query = supabase
-      .from("notes")
-      .select(
-        `
-        *,
-        books (
-          id,
-          title,
-          author,
-          cover_image_url
-        )
-      `
-      )
-      .eq("id", noteId);
-
-    // 로그인한 사용자인 경우 본인 기록도 조회 가능
-    if (user) {
-      query = query.or(`is_public.eq.true,user_id.eq.${user.id}`);
-    } else {
-      // 비로그인 사용자는 공개 기록만 조회 가능
-      query = query.eq("is_public", true);
-    }
-
-    const { data: note, error } = await query.single();
-
-    if (error || !note) {
-      return new Response("기록을 찾을 수 없거나 공개되지 않은 기록입니다.", { status: 404 });
-    }
+    // 기록 조회 (공개 기록 또는 본인 기록 조회 가능)
+    const note = await getPublicNote(noteId, user?.id);
 
     // 템플릿 가져오기
     const template = getTemplateById(templateId);

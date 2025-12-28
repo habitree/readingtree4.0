@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { extractTextFromImage } from "@/lib/api/gemini";
+import { updateNoteContent } from "@/app/actions/notes";
 
 /**
  * OCR 실제 처리 API
@@ -8,8 +8,6 @@ import { extractTextFromImage } from "@/lib/api/gemini";
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-
     const { noteId, imageUrl } = await request.json();
 
     // 파라미터 검증
@@ -20,41 +18,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 기록 존재 확인 (RLS 정책으로 인해 권한 확인도 함께 수행)
-    const { data: note, error: noteError } = await supabase
-      .from("notes")
-      .select("id")
-      .eq("id", noteId)
-      .maybeSingle();
-
-    if (noteError && noteError.code !== "PGRST116") {
-      console.error("기록 조회 오류:", noteError);
-      return NextResponse.json(
-        { error: `기록 조회 실패: ${noteError.message}` },
-        { status: 500 }
-      );
-    }
-
-    if (!note) {
-      return NextResponse.json(
-        { error: "기록을 찾을 수 없습니다." },
-        { status: 404 }
-      );
-    }
-
     // OCR 처리 (비동기)
     const extractedText = await extractTextFromImage(imageUrl);
 
     // Notes 테이블 업데이트
-    const { error: updateError } = await supabase
-      .from("notes")
-      .update({ content: extractedText })
-      .eq("id", noteId);
-
-    if (updateError) {
-      console.error("OCR 결과 저장 오류:", updateError);
-      throw updateError;
-    }
+    await updateNoteContent(noteId, extractedText);
 
     return NextResponse.json({ success: true, extractedText });
   } catch (error) {

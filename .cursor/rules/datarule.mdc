@@ -11,6 +11,8 @@ alwaysApply: true
 **버전:** 2.0  
 **적용 범위:** 전체 프로젝트
 
+**참고:** 레이어 분리 상세 규칙은 `.cursor/rules/ui_datarule.mdc`를 참조하세요.
+
 ---
 
 ## 목차
