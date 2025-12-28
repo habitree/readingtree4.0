@@ -5,52 +5,82 @@ import { revalidatePath } from "next/cache";
 import { getAppUrl } from "@/lib/utils/url";
 
 /**
- * OAuth 콜백 처리
- * Supabase Auth의 OAuth 인증 완료 후 호출되는 엔드포인트
+ * OAuth 및 이메일 인증 콜백 처리
+ * Supabase Auth의 OAuth 인증 또는 이메일 인증 완료 후 호출되는 엔드포인트
  * 
  * 처리 순서:
- * 1. OAuth 코드를 세션으로 교환
+ * 1. OAuth 코드 또는 이메일 인증 토큰을 세션으로 교환
  * 2. 사용자 프로필 자동 생성 확인 (TASK-00의 handle_new_user 트리거)
  * 3. 온보딩 상태 확인 및 리다이렉트
  */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
+  const token = requestUrl.searchParams.get("token");
+  const type = requestUrl.searchParams.get("type");
   const next = requestUrl.searchParams.get("next") || "/";
-
-  if (!code) {
-    // 코드가 없으면 로그인 페이지로 리다이렉트
-    // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
-    const baseUrl = getAppUrl();
-    return NextResponse.redirect(new URL("/login", baseUrl));
-  }
 
   const supabase = await createServerSupabaseClient();
 
   try {
-    // OAuth 코드를 세션으로 교환
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (exchangeError) {
-      console.error("OAuth 콜백 오류:", {
-        message: exchangeError.message,
-        status: exchangeError.status,
-        code: exchangeError.code,
+    // 이메일 인증 토큰 처리
+    if (token && (type === "email" || type === "recovery" || type === "signup")) {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: type === "recovery" ? "recovery" : "email",
       });
-      
-      // 사용자 친화적인 에러 메시지
-      let errorMessage = "로그인 처리 중 오류가 발생했습니다.";
-      if (exchangeError.message.includes("expired") || exchangeError.message.includes("invalid")) {
-        errorMessage = "로그인 세션이 만료되었습니다. 다시 시도해주세요.";
-      } else if (exchangeError.message.includes("provider")) {
-        errorMessage = "로그인 제공자 설정에 문제가 있습니다. 관리자에게 문의해주세요.";
+
+      if (verifyError) {
+        console.error("이메일 인증 오류:", {
+          message: verifyError.message,
+          status: verifyError.status,
+          code: verifyError.code,
+        });
+
+        let errorMessage = "이메일 인증 처리 중 오류가 발생했습니다.";
+        if (verifyError.message.includes("expired") || verifyError.message.includes("invalid")) {
+          errorMessage = "인증 링크가 만료되었거나 유효하지 않습니다. 다시 시도해주세요.";
+        }
+
+        const baseUrl = getAppUrl();
+        return NextResponse.redirect(
+          new URL(`/login?error=${encodeURIComponent(errorMessage)}`, baseUrl)
+        );
       }
-      
-      // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+
+      // 이메일 인증 성공, 세션 생성됨
+      // 아래 프로필 확인 로직으로 진행
+    }
+    // OAuth 코드 처리
+    else if (code) {
+      // OAuth 코드를 세션으로 교환
+      const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+      if (exchangeError) {
+        console.error("OAuth 콜백 오류:", {
+          message: exchangeError.message,
+          status: exchangeError.status,
+          code: exchangeError.code,
+        });
+        
+        // 사용자 친화적인 에러 메시지
+        let errorMessage = "로그인 처리 중 오류가 발생했습니다.";
+        if (exchangeError.message.includes("expired") || exchangeError.message.includes("invalid")) {
+          errorMessage = "로그인 세션이 만료되었습니다. 다시 시도해주세요.";
+        } else if (exchangeError.message.includes("provider")) {
+          errorMessage = "로그인 제공자 설정에 문제가 있습니다. 관리자에게 문의해주세요.";
+        }
+        
+        // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+        const baseUrl = getAppUrl();
+        return NextResponse.redirect(
+          new URL(`/login?error=${encodeURIComponent(errorMessage)}`, baseUrl)
+        );
+      }
+    } else {
+      // 코드도 토큰도 없으면 로그인 페이지로 리다이렉트
       const baseUrl = getAppUrl();
-      return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(errorMessage)}`, baseUrl)
-      );
+      return NextResponse.redirect(new URL("/login", baseUrl));
     }
 
     // 사용자 정보 확인
@@ -80,7 +110,7 @@ export async function GET(request: NextRequest) {
     while (retryCount < maxRetries && !profile) {
       const { data, error: profileError } = await supabase
         .from("users")
-        .select("reading_goal")
+        .select("reading_goal, terms_agreed, privacy_agreed")
         .eq("id", user.id)
         .single();
 
@@ -104,6 +134,8 @@ export async function GET(request: NextRequest) {
         name: user.user_metadata?.name || user.email?.split("@")[0] || "사용자",
         avatar_url: user.user_metadata?.avatar_url || null,
         reading_goal: 12, // 기본값
+        terms_agreed: false, // 약관 동의는 별도 페이지에서 처리
+        privacy_agreed: false, // 약관 동의는 별도 페이지에서 처리
       });
 
       if (insertError) {
@@ -118,7 +150,7 @@ export async function GET(request: NextRequest) {
         // 프로필 생성 성공, 다시 조회
         const { data: newProfile } = await supabase
           .from("users")
-          .select("reading_goal")
+          .select("reading_goal, terms_agreed, privacy_agreed")
           .eq("id", user.id)
           .single();
         profile = newProfile;
@@ -135,6 +167,13 @@ export async function GET(request: NextRequest) {
       revalidatePath("/");
       revalidatePath("/profile");
       revalidatePath("/dashboard");
+    }
+
+    // 약관 동의 여부 확인 (최우선)
+    // 약관 동의가 완료되지 않았으면 약관 동의 페이지로 리다이렉트
+    if (!profile || !profile.terms_agreed || !profile.privacy_agreed) {
+      const baseUrl = getAppUrl();
+      return NextResponse.redirect(new URL("/onboarding/consent", baseUrl));
     }
 
     // 온보딩 완료 여부 확인

@@ -76,3 +76,81 @@ export async function checkOnboardingComplete() {
   };
 }
 
+/**
+ * 약관 동의 저장
+ * @param termsAgreed 이용약관 동의 여부
+ * @param privacyAgreed 개인정보처리방침 동의 여부
+ */
+export async function agreeToTerms(termsAgreed: boolean, privacyAgreed: boolean) {
+  // 유효성 검사
+  if (!termsAgreed || !privacyAgreed) {
+    throw new Error("이용약관과 개인정보처리방침에 모두 동의해야 합니다.");
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  // 현재 사용자 확인
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  // Users 테이블 업데이트
+  const { error } = await supabase
+    .from("users")
+    .update({
+      terms_agreed: termsAgreed,
+      privacy_agreed: privacyAgreed,
+      consent_date: new Date().toISOString(),
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    throw new Error(`약관 동의 저장 실패: ${error.message}`);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/profile");
+
+  return { success: true };
+}
+
+/**
+ * 약관 동의 여부 확인
+ */
+export async function checkConsentComplete() {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { isComplete: false, needsConsent: true };
+  }
+
+  // Users 테이블에서 약관 동의 여부 확인
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select("terms_agreed, privacy_agreed")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !profile) {
+    return { isComplete: false, needsConsent: true };
+  }
+
+  // 약관 동의가 완료되었는지 확인
+  const isComplete = profile.terms_agreed === true && profile.privacy_agreed === true;
+
+  return {
+    isComplete,
+    needsConsent: !isComplete,
+  };
+}
+

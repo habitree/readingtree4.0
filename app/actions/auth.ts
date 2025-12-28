@@ -114,6 +114,70 @@ export async function signOut() {
 }
 
 /**
+ * 이메일 회원가입
+ * Supabase Auth를 통해 이메일/비밀번호로 회원가입
+ * 
+ * 규칙: 서버 중심 세션 관리
+ * - 회원가입 후 이메일 인증 링크가 자동으로 전송됨
+ * - 이메일 인증 완료 후 /callback에서 세션이 생성됨 (쿠키 저장)
+ * - 세션은 미들웨어에서 자동 갱신됨
+ * 
+ * @param email 이메일 주소
+ * @param password 비밀번호 (최소 8자)
+ * @param name 사용자 이름
+ */
+export async function signUpWithEmail(email: string, password: string, name: string) {
+  const supabase = await createServerSupabaseClient();
+
+  // 유효성 검사
+  if (!email || !email.includes("@")) {
+    throw new Error("유효한 이메일 주소를 입력해주세요.");
+  }
+
+  if (!password || password.length < 8) {
+    throw new Error("비밀번호는 최소 8자 이상이어야 합니다.");
+  }
+
+  if (!name || name.trim().length === 0 || name.length > 100) {
+    throw new Error("이름은 1-100자 사이여야 합니다.");
+  }
+
+  // 프로덕션 URL 확실하게 가져오기
+  const appUrl = getAppUrl();
+  const redirectTo = `${appUrl}/callback`;
+
+  // 회원가입 (이메일 인증 링크 자동 전송)
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: redirectTo,
+      data: {
+        name: name.trim(),
+      },
+    },
+  });
+
+  if (error) {
+    // 에러 메시지 처리
+    if (error.message.includes("already registered") || error.message.includes("already exists")) {
+      throw new Error("이미 가입된 이메일입니다. 로그인해주세요.");
+    }
+    if (error.message.includes("Password")) {
+      throw new Error("비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.");
+    }
+    throw new Error(`회원가입 실패: ${error.message}`);
+  }
+
+  // 회원가입 성공 (이메일 인증 대기 중)
+  return {
+    success: true,
+    message: "회원가입이 완료되었습니다. 이메일 인증 링크를 확인해주세요.",
+    user: data.user,
+  };
+}
+
+/**
  * 현재 사용자 정보 조회
  * 
  * 규칙: 서버 중심 세션 관리
