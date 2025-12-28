@@ -414,6 +414,8 @@ export async function getBookDetail(userBookId: string) {
     }
   }
 
+  console.log("getBookDetail: 책 상세 조회 시작", { userBookId, userId: user.id });
+
   const { data, error } = await supabase
     .from("user_books")
     .select(
@@ -434,9 +436,31 @@ export async function getBookDetail(userBookId: string) {
     .eq("user_id", user.id)
     .single();
 
-  if (error || !data) {
-    throw new Error(`책 상세 조회 실패: ${error?.message || "책을 찾을 수 없습니다."}`);
+  if (error) {
+    console.error("getBookDetail: Supabase 쿼리 오류", {
+      userBookId,
+      userId: user.id,
+      error: error.message,
+      errorCode: error.code,
+      errorDetails: error.details,
+      errorHint: error.hint,
+    });
+    throw new Error(`책 상세 조회 실패: ${error.message || "책을 찾을 수 없습니다."}`);
   }
+
+  if (!data) {
+    console.error("getBookDetail: 데이터가 없습니다", {
+      userBookId,
+      userId: user.id,
+    });
+    throw new Error("책을 찾을 수 없습니다.");
+  }
+
+  console.log("getBookDetail: 책 상세 조회 성공", {
+    userBookId,
+    bookId: data.book_id,
+    bookTitle: data.books?.title,
+  });
 
   return data;
 }
