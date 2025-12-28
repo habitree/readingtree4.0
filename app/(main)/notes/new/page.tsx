@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { NoteForm } from "@/components/notes/note-form";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/app/actions/auth";
 import { isValidUUID } from "@/lib/utils/validation";
 
 export const metadata: Metadata = {
@@ -36,19 +37,16 @@ export default async function NewNotePage({ searchParams }: NewNotePageProps) {
     redirect("/books");
   }
 
-  // 책 소유 확인
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
+  const user = await getCurrentUser();
 
   // 로그인 확인
-  if (authError || !user) {
+  if (!user) {
     redirect("/login");
   }
 
   // 책 소유 확인
+  const supabase = await createServerSupabaseClient();
   const { data: userBook, error: bookError } = await supabase
     .from("user_books")
     .select("id")

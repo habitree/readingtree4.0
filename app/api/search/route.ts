@@ -35,14 +35,15 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q") || "";
-    const bookId = searchParams.get("bookId");
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
-    const tags = searchParams.get("tags");
-    const types = searchParams.get("types");
-    const pageParam = searchParams.get("page") || "1";
+    // URL의 searchParams를 urlSearchParams로 명명하여 변수명 충돌 방지
+    const { searchParams: urlSearchParams } = new URL(request.url);
+    const query = urlSearchParams.get("q") || "";
+    const bookId = urlSearchParams.get("bookId");
+    const startDate = urlSearchParams.get("startDate");
+    const endDate = urlSearchParams.get("endDate");
+    const tags = urlSearchParams.get("tags");
+    const types = urlSearchParams.get("types");
+    const pageParam = urlSearchParams.get("page") || "1";
     const page = parseInt(pageParam, 10);
 
     // 페이지 번호 검증

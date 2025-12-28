@@ -148,6 +148,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 - **SELECT**: 자신의 프로필만 조회 가능 (`auth.uid() = id`)
 - **INSERT**: 자신의 프로필만 생성 가능 (`auth.uid() = id`)
 - **UPDATE**: 자신의 프로필만 수정 가능 (`auth.uid() = id`)
+- **DELETE**: 자신의 프로필만 삭제 가능 (`auth.uid() = id`)
 
 **특수 기능**:
 - `handle_new_user()` 트리거: `auth.users`에 새 사용자 생성 시 자동으로 프로필 생성
@@ -324,6 +325,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 - **SELECT**: 리더가 볼 수 있는 그룹의 멤버, 공개 그룹의 멤버, 자신의 멤버십 정보 조회 가능
 - **INSERT**: 사용자가 자신의 가입 요청 생성 가능 (`auth.uid() = user_id`)
 - **UPDATE**: 리더만 멤버십 상태 변경 가능
+- **DELETE**: 리더만 멤버 제거 가능
 
 ---
 
@@ -353,6 +355,8 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 **RLS 정책 요약**:
 - **SELECT**: 리더가 볼 수 있는 그룹의 책, 공개 그룹의 책 조회 가능
 - **INSERT**: 리더만 책 추가 가능
+- **UPDATE**: 리더만 책 정보 수정 가능
+- **DELETE**: 리더만 책 제거 가능
 
 ---
 
@@ -380,6 +384,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 **RLS 정책 요약**:
 - **SELECT**: 리더가 볼 수 있는 그룹의 공유 기록, 공개 그룹의 공유 기록, 멤버가 볼 수 있는 그룹의 공유 기록 조회 가능
 - **INSERT**: 기록 소유자만 그룹에 공유 가능 (`auth.uid() = note.user_id`)
+- **DELETE**: 기록 소유자만 그룹에서 공유 해제 가능 (`auth.uid() = note.user_id`)
 
 ---
 
@@ -482,6 +487,21 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
   - 기록 관리 (인용구, 메모, 사진, 전사)
   - 독서모임 기능
   - 샘플 데이터 지원 (게스트 사용자용)
+
+### 2025-12-28 (RLS 정책 보완)
+
+- **변경 내용**: 누락된 RLS 정책 추가
+  - `users` 테이블에 DELETE 정책 추가
+  - `group_members` 테이블에 DELETE 정책 추가
+  - `group_books` 테이블에 UPDATE/DELETE 정책 추가
+  - `group_notes` 테이블에 DELETE 정책 추가
+- **영향받는 테이블**:
+  - `users`
+  - `group_members`
+  - `group_books`
+  - `group_notes`
+- **마이그레이션 파일**: `migration-202512282221__rls__add_missing_policies.sql`
+- **목적**: DB/RLS 규칙 완전 준수 (모든 테이블에 SELECT/INSERT/UPDATE/DELETE 정책 완비)
 
 ### 향후 변경 사항
 

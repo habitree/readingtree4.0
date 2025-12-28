@@ -93,6 +93,11 @@ CREATE POLICY "Users can update own profile"
     ON users FOR UPDATE
     USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can delete own profile" ON users;
+CREATE POLICY "Users can delete own profile"
+    ON users FOR DELETE
+    USING (auth.uid() = id);
+
 -- 3.2 Books (책)
 CREATE TABLE IF NOT EXISTS books (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -312,6 +317,13 @@ CREATE POLICY "Leaders can manage members"
         SELECT leader_id FROM groups WHERE id = group_members.group_id
     ));
 
+DROP POLICY IF EXISTS "Leaders can remove members" ON group_members;
+CREATE POLICY "Leaders can remove members"
+    ON group_members FOR DELETE
+    USING (auth.uid() IN (
+        SELECT leader_id FROM groups WHERE id = group_members.group_id
+    ));
+
 -- ============================================
 -- 3.6.1 Groups 테이블 RLS 정책 업데이트
 -- ============================================
@@ -381,6 +393,20 @@ CREATE POLICY "Leaders can add group books"
         SELECT leader_id FROM groups WHERE id = group_books.group_id
     ));
 
+DROP POLICY IF EXISTS "Leaders can update group books" ON group_books;
+CREATE POLICY "Leaders can update group books"
+    ON group_books FOR UPDATE
+    USING (auth.uid() IN (
+        SELECT leader_id FROM groups WHERE id = group_books.group_id
+    ));
+
+DROP POLICY IF EXISTS "Leaders can remove group books" ON group_books;
+CREATE POLICY "Leaders can remove group books"
+    ON group_books FOR DELETE
+    USING (auth.uid() IN (
+        SELECT leader_id FROM groups WHERE id = group_books.group_id
+    ));
+
 -- 3.8 GroupNotes (모임 내 공유 기록)
 CREATE TABLE IF NOT EXISTS group_notes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -431,6 +457,13 @@ DROP POLICY IF EXISTS "Note owners can share to groups" ON group_notes;
 CREATE POLICY "Note owners can share to groups"
     ON group_notes FOR INSERT
     WITH CHECK (auth.uid() IN (
+        SELECT user_id FROM notes WHERE id = group_notes.note_id
+    ));
+
+DROP POLICY IF EXISTS "Note owners can unshare from groups" ON group_notes;
+CREATE POLICY "Note owners can unshare from groups"
+    ON group_notes FOR DELETE
+    USING (auth.uid() IN (
         SELECT user_id FROM notes WHERE id = group_notes.note_id
     ));
 
