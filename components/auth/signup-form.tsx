@@ -1,0 +1,401 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { signUpWithEmail, signInWithKakao, signInWithGoogle } from "@/app/actions/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import Link from "next/link";
+
+const signupFormSchema = z.object({
+  email: z.string().email("유효한 이메일 주소를 입력해주세요."),
+  password: z.string().min(8, "비밀번호는 최소 8자 이상이어야 합니다."),
+  passwordConfirm: z.string().min(8, "비밀번호 확인을 입력해주세요."),
+  name: z.string().min(1, "이름을 입력해주세요.").max(100, "이름은 100자 이하여야 합니다."),
+  termsAgreed: z.boolean().refine((val) => val === true, {
+    message: "이용약관에 동의해주세요.",
+  }),
+  privacyAgreed: z.boolean().refine((val) => val === true, {
+    message: "개인정보처리방침에 동의해주세요.",
+  }),
+}).refine((data) => data.password === data.passwordConfirm, {
+  message: "비밀번호가 일치하지 않습니다.",
+  path: ["passwordConfirm"],
+});
+
+type SignupFormValues = z.infer<typeof signupFormSchema>;
+
+/**
+ * 회원가입 폼 컴포넌트
+ * 카카오, 구글 소셜 회원가입과 이메일 회원가입을 모두 지원
+ */
+export function SignupForm() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState<"kakao" | "google" | "email" | null>(null);
+  const [emailSignupSuccess, setEmailSignupSuccess] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupFormSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      passwordConfirm: "",
+      name: "",
+      termsAgreed: false,
+      privacyAgreed: false,
+    },
+  });
+
+  // 소셜 회원가입 핸들러
+  const handleKakaoSignup = async () => {
+    try {
+      setIsLoading("kakao");
+      await signInWithKakao();
+      // redirect()가 성공하면 여기까지 도달하지 않음
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes("NEXT_REDIRECT") || errorMessage.includes("redirect")) {
+        return;
+      }
+      
+      console.error("카카오 회원가입 오류:", error);
+      setIsLoading(null);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "카카오 회원가입에 실패했습니다. 다시 시도해주세요."
+      );
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      setIsLoading("google");
+      await signInWithGoogle();
+      // redirect()가 성공하면 여기까지 도달하지 않음
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes("NEXT_REDIRECT") || errorMessage.includes("redirect")) {
+        return;
+      }
+      
+      console.error("구글 회원가입 오류:", error);
+      setIsLoading(null);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "구글 회원가입에 실패했습니다. 다시 시도해주세요."
+      );
+    }
+  };
+
+  // 이메일 회원가입 핸들러
+  const onSubmit = async (data: SignupFormValues) => {
+    try {
+      setIsLoading("email");
+      const result = await signUpWithEmail(data.email, data.password, data.name);
+      
+      if (result.success) {
+        setEmailSignupSuccess(true);
+        toast.success(result.message);
+      }
+    } catch (error) {
+      console.error("이메일 회원가입 오류:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "회원가입에 실패했습니다. 다시 시도해주세요."
+      );
+      setIsLoading(null);
+    }
+  };
+
+  // 이메일 인증 대기 화면
+  if (emailSignupSuccess) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            이메일 확인 필요
+          </CardTitle>
+          <CardDescription className="text-center">
+            회원가입이 완료되었습니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground">
+              입력하신 이메일 주소로 인증 링크를 전송했습니다.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              이메일을 확인하고 인증 링크를 클릭해주세요.
+            </p>
+          </div>
+          <div className="pt-4">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push("/login")}
+            >
+              로그인 페이지로 이동
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">
+          Habitree Reading Hub
+        </CardTitle>
+        <CardDescription className="text-center">
+          회원가입하고 독서 기록을 시작하세요
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* 소셜 회원가입 버튼 */}
+        <div className="space-y-3">
+          <Button
+            type="button"
+            onClick={handleKakaoSignup}
+            disabled={isLoading !== null}
+            className="w-full bg-[#FEE500] text-[#000000] hover:bg-[#FEE500]/90"
+            size="lg"
+          >
+            {isLoading === "kakao" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                처리 중...
+              </>
+            ) : (
+              <>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="mr-2"
+                >
+                  <path
+                    d="M9 0C4.03 0 0 3.27 0 7.3c0 2.55 1.7 4.8 4.25 6.05L3.5 17.5l4.5-2.45c.5.05 1 .1 1.5.1 4.97 0 9-3.27 9-7.3S13.97 0 9 0z"
+                    fill="#000000"
+                  />
+                </svg>
+                카카오로 회원가입
+              </>
+            )}
+          </Button>
+
+          <Button
+            type="button"
+            onClick={handleGoogleSignup}
+            disabled={isLoading !== null}
+            variant="outline"
+            className="w-full"
+            size="lg"
+          >
+            {isLoading === "google" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                처리 중...
+              </>
+            ) : (
+              <>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 18 18"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="mr-2"
+                >
+                  <path
+                    d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M9 18c2.43 0 4.467-.806 5.956-2.186l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M3.964 10.705c-.18-.54-.282-1.117-.282-1.705s.102-1.165.282-1.705V4.963H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.037l3.007-2.332z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.963L3.964 7.295C4.672 5.163 6.656 3.58 9 3.58z"
+                    fill="#EA4335"
+                  />
+                </svg>
+                구글로 회원가입
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">또는</span>
+          </div>
+        </div>
+
+        {/* 이메일 회원가입 폼 */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">이메일</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="example@email.com"
+              disabled={isLoading !== null}
+              {...register("email")}
+            />
+            {errors.email && (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">비밀번호</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="최소 8자 이상"
+              disabled={isLoading !== null}
+              {...register("password")}
+            />
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="passwordConfirm">비밀번호 확인</Label>
+            <Input
+              id="passwordConfirm"
+              type="password"
+              placeholder="비밀번호를 다시 입력하세요"
+              disabled={isLoading !== null}
+              {...register("passwordConfirm")}
+            />
+            {errors.passwordConfirm && (
+              <p className="text-xs text-destructive">{errors.passwordConfirm.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="name">이름</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="이름을 입력하세요"
+              disabled={isLoading !== null}
+              {...register("name")}
+            />
+            {errors.name && (
+              <p className="text-xs text-destructive">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                disabled={isLoading !== null}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                {...register("termsAgreed")}
+              />
+              <div className="flex-1">
+                <span className="text-sm">
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-primary hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    이용약관
+                  </Link>
+                  에 동의합니다 <span className="text-destructive">(필수)</span>
+                </span>
+              </div>
+            </label>
+            {errors.termsAgreed && (
+              <p className="text-xs text-destructive ml-7">{errors.termsAgreed.message}</p>
+            )}
+
+            <label className="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                disabled={isLoading !== null}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                {...register("privacyAgreed")}
+              />
+              <div className="flex-1">
+                <span className="text-sm">
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="text-primary hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    개인정보처리방침
+                  </Link>
+                  에 동의합니다 <span className="text-destructive">(필수)</span>
+                </span>
+              </div>
+            </label>
+            {errors.privacyAgreed && (
+              <p className="text-xs text-destructive ml-7">{errors.privacyAgreed.message}</p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full"
+            size="lg"
+            disabled={isLoading !== null}
+          >
+            {isLoading === "email" ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                처리 중...
+              </>
+            ) : (
+              "회원가입"
+            )}
+          </Button>
+        </form>
+
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
+            이미 계정이 있으신가요?{" "}
+            <Link href="/login" className="text-primary hover:underline">
+              로그인
+            </Link>
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+

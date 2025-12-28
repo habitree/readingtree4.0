@@ -24,6 +24,61 @@ const nextConfig = {
       },
     ],
   },
+  // 개발 환경에서 CSP 설정 (Turbopack HMR을 위해 필요)
+  async headers() {
+    // 개발 환경에서만 unsafe-eval 허용
+    if (process.env.NODE_ENV === 'development') {
+      return [
+        {
+          source: '/:path*',
+          headers: [
+            {
+              key: 'Content-Security-Policy',
+              value: [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://*.supabase.co https://*.kakao.com https://*.googleapis.com",
+                "style-src 'self' 'unsafe-inline'",
+                "img-src 'self' data: https: blob:",
+                "font-src 'self' data:",
+                "connect-src 'self' https://*.supabase.co https://*.kakao.com https://*.googleapis.com wss://*.supabase.co",
+                "frame-src 'self' https://*.supabase.co https://*.kakao.com https://accounts.google.com",
+                "object-src 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+                "frame-ancestors 'none'",
+                "upgrade-insecure-requests",
+              ].join('; '),
+            },
+          ],
+        },
+      ];
+    }
+    // 프로덕션 환경에서는 strict CSP
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' https://*.supabase.co https://*.kakao.com https://*.googleapis.com",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.supabase.co https://*.kakao.com https://*.googleapis.com wss://*.supabase.co",
+              "frame-src 'self' https://*.supabase.co https://*.kakao.com https://accounts.google.com",
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+              "upgrade-insecure-requests",
+            ].join('; '),
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

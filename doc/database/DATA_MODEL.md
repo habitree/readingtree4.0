@@ -132,6 +132,9 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 - `name` (VARCHAR(100), NOT NULL): 사용자 이름
 - `avatar_url` (TEXT): 프로필 이미지 URL
 - `reading_goal` (INTEGER, DEFAULT 12): 올해 읽을 책 목표 수
+- `terms_agreed` (BOOLEAN, DEFAULT FALSE): 이용약관 동의 여부
+- `privacy_agreed` (BOOLEAN, DEFAULT FALSE): 개인정보처리방침 동의 여부
+- `consent_date` (TIMESTAMP WITH TIME ZONE): 약관 동의 일시
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
 
 **관계 정의**:
@@ -502,6 +505,20 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
   - `group_notes`
 - **마이그레이션 파일**: `migration-202512282221__rls__add_missing_policies.sql`
 - **목적**: DB/RLS 규칙 완전 준수 (모든 테이블에 SELECT/INSERT/UPDATE/DELETE 정책 완비)
+
+### 2025-12-28 (약관 동의 기능 추가)
+
+- **변경 내용**: 약관 동의 기능 추가
+  - `users` 테이블에 약관 동의 관련 필드 추가
+    - `terms_agreed`: 이용약관 동의 여부
+    - `privacy_agreed`: 개인정보처리방침 동의 여부
+    - `consent_date`: 약관 동의 일시
+  - 약관 동의 페이지 생성 (`/onboarding/consent`)
+  - 콜백 로직에 약관 동의 체크 추가
+- **영향받는 테이블**:
+  - `users`
+- **마이그레이션 파일**: `migration-202512282233__users__add_consent_fields.sql`
+- **목적**: 로그인 후 약관 동의 페이지를 통한 명시적 동의 수집
 
 ### 향후 변경 사항
 

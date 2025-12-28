@@ -67,6 +67,9 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(100) NOT NULL,
     avatar_url TEXT,
     reading_goal INTEGER DEFAULT 12,
+    terms_agreed BOOLEAN DEFAULT FALSE, -- 이용약관 동의 여부
+    privacy_agreed BOOLEAN DEFAULT FALSE, -- 개인정보처리방침 동의 여부
+    consent_date TIMESTAMP WITH TIME ZONE, -- 동의 일시
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
