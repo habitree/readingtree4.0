@@ -164,8 +164,9 @@ export function NoteForm({ bookId, initialType = "quote" }: NoteFormProps) {
       }
 
       toast.success("기록이 저장되었습니다.");
+      // router.push만 사용 (Next.js App Router가 자동으로 서버 컴포넌트를 다시 렌더링)
+      // router.refresh()는 제거 - push와 동시에 호출하면 이전 페이지로 돌아가는 문제 발생
       router.push(`/books/${bookId}`);
-      router.refresh();
     } catch (error) {
       console.error("기록 저장 오류:", error);
       toast.error(

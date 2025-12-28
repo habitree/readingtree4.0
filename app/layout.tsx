@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Habitree Reading Hub",
   description: "독서 기록 및 공유 플랫폼",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 /**

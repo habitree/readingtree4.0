@@ -26,23 +26,36 @@ interface BookDetailPageProps {
  * US-009: 독서 상태 관리
  */
 export default async function BookDetailPage({ params }: BookDetailPageProps) {
+  // Next.js 15+ 에서 params는 Promise일 수 있음
+  const resolvedParams = await params;
+  const bookId = resolvedParams.id;
+
   // params.id 검증
-  if (!params?.id || typeof params.id !== 'string') {
+  if (!bookId || typeof bookId !== 'string') {
+    console.error("BookDetailPage: bookId가 유효하지 않습니다.", { bookId, params: resolvedParams });
     notFound();
   }
 
   // 샘플 데이터 ID는 UUID가 아니므로 별도 처리
   // UUID 검증 (샘플 데이터 제외)
-  if (!params.id.startsWith("sample-") && !isValidUUID(params.id)) {
+  if (!bookId.startsWith("sample-") && !isValidUUID(bookId)) {
+    console.error("BookDetailPage: bookId가 유효한 UUID가 아닙니다.", { bookId });
     notFound();
   }
 
   let bookDetail;
   try {
-    bookDetail = await getBookDetail(params.id);
+    console.log("BookDetailPage: 책 상세 조회 시도", { bookId });
+    bookDetail = await getBookDetail(bookId);
+    console.log("BookDetailPage: 책 상세 조회 성공", { bookId, hasBook: !!bookDetail });
   } catch (error) {
     const safeError = sanitizeErrorForLogging(error);
-    console.error("책 상세 조회 오류:", safeError);
+    console.error("책 상세 조회 오류:", {
+      bookId,
+      error: safeError,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     notFound();
   }
 
@@ -144,22 +157,26 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
 export async function generateMetadata({
   params,
 }: BookDetailPageProps): Promise<Metadata> {
+  // Next.js 15+ 에서 params는 Promise일 수 있음
+  const resolvedParams = await params;
+  const bookId = resolvedParams.id;
+
   // params.id 검증
-  if (!params?.id || typeof params.id !== 'string') {
+  if (!bookId || typeof bookId !== 'string') {
     return {
       title: "책 상세 | Habitree Reading Hub",
     };
   }
 
   // UUID 검증 (샘플 데이터는 메타데이터 생성하지 않음)
-  if (!params.id.startsWith("sample-") && !isValidUUID(params.id)) {
+  if (!bookId.startsWith("sample-") && !isValidUUID(bookId)) {
     return {
       title: "책 상세 | Habitree Reading Hub",
     };
   }
 
   try {
-    const bookDetail = await getBookDetail(params.id);
+    const bookDetail = await getBookDetail(bookId);
     const book = bookDetail.books as any;
 
     return {
