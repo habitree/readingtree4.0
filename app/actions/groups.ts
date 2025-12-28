@@ -28,8 +28,8 @@ export async function createGroup(data: {
     throw new Error("로그인이 필요합니다.");
   }
 
-  // 모임 생성
-  const { data: group, error: groupError } = await supabase
+  // 모임 생성 (RLS 재귀 방지를 위해 select 제거)
+  const { data: insertResult, error: groupError } = await supabase
     .from("groups")
     .insert({
       name: data.name,
@@ -37,16 +37,18 @@ export async function createGroup(data: {
       leader_id: user.id,
       is_public: data.isPublic,
     })
-    .select()
+    .select("id")
     .single();
 
-  if (groupError || !group) {
+  if (groupError || !insertResult) {
     throw new Error(`모임 생성 실패: ${groupError?.message || "알 수 없는 오류"}`);
   }
 
+  const groupId = insertResult.id;
+
   // 생성자를 리더로 자동 추가
   const { error: memberError } = await supabase.from("group_members").insert({
-    group_id: group.id,
+    group_id: groupId,
     user_id: user.id,
     role: "leader",
     status: "approved",
@@ -54,12 +56,12 @@ export async function createGroup(data: {
 
   if (memberError) {
     // 모임은 생성되었지만 멤버 추가 실패 시 모임 삭제
-    await supabase.from("groups").delete().eq("id", group.id);
+    await supabase.from("groups").delete().eq("id", groupId);
     throw new Error(`멤버 추가 실패: ${memberError.message}`);
   }
 
   revalidatePath("/groups");
-  return { success: true, groupId: group.id };
+  return { success: true, groupId };
 }
 
 /**
@@ -237,20 +239,39 @@ export async function getGroups(isPublic?: boolean) {
     throw new Error("로그인이 필요합니다.");
   }
 
+  // 먼저 사용자가 멤버인 그룹 ID 목록 조회 (RLS 재귀 방지)
+  const { data: memberships, error: membersError } = await supabase
+    .from("group_members")
+    .select("group_id, role, status")
+    .eq("user_id", user.id)
+    .eq("status", "approved");
+
+  if (membersError) {
+    throw new Error(`멤버십 조회 실패: ${membersError.message}`);
+  }
+
+  // 멤버인 그룹 ID 목록 추출
+  const groupIds = (memberships || []).map((m) => m.group_id);
+
+  // 그룹이 없으면 빈 배열 반환
+  if (groupIds.length === 0) {
+    return [];
+  }
+
+  // 그룹 정보 조회 (멤버십 정보 포함)
   let query = supabase
     .from("groups")
     .select(
       `
       *,
-      group_members!inner (
+      group_members (
         user_id,
         role,
         status
       )
     `
     )
-    .eq("group_members.user_id", user.id)
-    .eq("group_members.status", "approved");
+    .in("id", groupIds);
 
   if (isPublic !== undefined) {
     query = query.eq("is_public", isPublic);
@@ -262,7 +283,19 @@ export async function getGroups(isPublic?: boolean) {
     throw new Error(`모임 목록 조회 실패: ${error.message}`);
   }
 
-  return data || [];
+  // 조회된 그룹에 사용자의 멤버십 정보 추가
+  const groupsWithMembership = (data || []).map((group) => {
+    const membership = memberships?.find((m) => m.group_id === group.id);
+    return {
+      ...group,
+      group_members: group.group_members?.filter(
+        (m: { user_id: string; role: string; status: string }) =>
+          m.user_id === user.id
+      ) || [],
+    };
+  });
+
+  return groupsWithMembership;
 }
 
 /**

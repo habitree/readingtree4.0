@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { verifyNoteOwnership } from "@/app/actions/notes";
 
 /**
  * OCR 처리 요청 API
@@ -30,22 +31,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 기록 소유 확인
-    const { data: note, error: noteCheckError } = await supabase
-      .from("notes")
-      .select("id, user_id")
-      .eq("id", noteId)
-      .eq("user_id", user.id)
-      .maybeSingle(); // .single() 대신 .maybeSingle() 사용
+    const hasOwnership = await verifyNoteOwnership(noteId, user.id);
 
-    if (noteCheckError && noteCheckError.code !== "PGRST116") {
-      // PGRST116은 "결과가 없음" 에러이므로 무시
-      return NextResponse.json(
-        { error: `기록 조회 실패: ${noteCheckError.message}` },
-        { status: 500 }
-      );
-    }
-
-    if (!note) {
+    if (!hasOwnership) {
       return NextResponse.json(
         { error: "권한이 없습니다. 해당 기록에 대한 OCR 처리를 요청할 권한이 없습니다." },
         { status: 403 }

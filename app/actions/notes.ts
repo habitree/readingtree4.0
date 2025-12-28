@@ -420,3 +420,105 @@ export async function getNoteDetail(noteId: string) {
   };
 }
 
+/**
+ * 기록 소유권 검증
+ * @param noteId 기록 ID
+ * @param userId 사용자 ID
+ * @returns 소유권이 있으면 true, 없으면 false
+ */
+export async function verifyNoteOwnership(noteId: string, userId: string): Promise<boolean> {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: note, error: noteCheckError } = await supabase
+    .from("notes")
+    .select("id, user_id")
+    .eq("id", noteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (noteCheckError && noteCheckError.code !== "PGRST116") {
+    // PGRST116은 "결과가 없음" 에러이므로 무시
+    throw new Error(`기록 조회 실패: ${noteCheckError.message}`);
+  }
+
+  return note !== null;
+}
+
+/**
+ * 공개 기록 조회 (카드뉴스용)
+ * 공개 기록 또는 본인 기록 조회 가능
+ * @param noteId 기록 ID
+ * @param userId 사용자 ID (선택, 로그인한 경우)
+ * @returns 기록 데이터 (books 정보 포함)
+ */
+export async function getPublicNote(noteId: string, userId?: string) {
+  const supabase = await createServerSupabaseClient();
+
+  let query = supabase
+    .from("notes")
+    .select(
+      `
+      *,
+      books (
+        id,
+        title,
+        author,
+        cover_image_url
+      )
+    `
+    )
+    .eq("id", noteId);
+
+  // 로그인한 사용자인 경우 본인 기록도 조회 가능
+  if (userId) {
+    query = query.or(`is_public.eq.true,user_id.eq.${userId}`);
+  } else {
+    // 비로그인 사용자는 공개 기록만 조회 가능
+    query = query.eq("is_public", true);
+  }
+
+  const { data: note, error } = await query.single();
+
+  if (error || !note) {
+    throw new Error("기록을 찾을 수 없거나 공개되지 않은 기록입니다.");
+  }
+
+  return note;
+}
+
+/**
+ * 기록 내용 업데이트 (OCR 결과 저장용)
+ * @param noteId 기록 ID
+ * @param content 업데이트할 내용
+ */
+export async function updateNoteContent(noteId: string, content: string) {
+  const supabase = await createServerSupabaseClient();
+
+  // 기록 존재 확인 (RLS 정책으로 인해 권한 확인도 함께 수행)
+  const { data: note, error: noteError } = await supabase
+    .from("notes")
+    .select("id")
+    .eq("id", noteId)
+    .maybeSingle();
+
+  if (noteError && noteError.code !== "PGRST116") {
+    throw new Error(`기록 조회 실패: ${noteError.message}`);
+  }
+
+  if (!note) {
+    throw new Error("기록을 찾을 수 없습니다.");
+  }
+
+  // Notes 테이블 업데이트
+  const { error: updateError } = await supabase
+    .from("notes")
+    .update({ content })
+    .eq("id", noteId);
+
+  if (updateError) {
+    throw new Error(`기록 업데이트 실패: ${updateError.message}`);
+  }
+
+  return { success: true };
+}
+
