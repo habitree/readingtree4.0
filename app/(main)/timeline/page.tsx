@@ -6,17 +6,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/app/actions/auth";
 
 /**
  * 타임라인 페이지
  * US-029, US-032: 독서 타임라인 조회 및 정렬
  */
 export default async function TimelinePage() {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
+  const user = await getCurrentUser();
   const isGuest = !user;
 
   return (

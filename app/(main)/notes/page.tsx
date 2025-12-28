@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LogIn } from "lucide-react";
 import Link from "next/link";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/app/actions/auth";
 import type { NoteType } from "@/types/note";
 
 export const metadata: Metadata = {
@@ -28,10 +28,8 @@ interface NotesPageProps {
 export default async function NotesPage({ searchParams }: NotesPageProps) {
   const type = searchParams.type as NoteType | undefined;
   const bookId = searchParams.bookId;
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
+  const user = await getCurrentUser();
   const isGuest = !user;
 
   return (

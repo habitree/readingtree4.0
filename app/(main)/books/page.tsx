@@ -8,7 +8,7 @@ import { Plus, LogIn } from "lucide-react";
 import Link from "next/link";
 import { getUserBooks } from "@/app/actions/books";
 import { StatusFilter } from "@/components/books/status-filter";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/app/actions/auth";
 import type { ReadingStatus } from "@/types/book";
 
 export const metadata: Metadata = {
@@ -28,10 +28,8 @@ interface BooksPageProps {
  */
 export default async function BooksPage({ searchParams }: BooksPageProps) {
   const status = (searchParams.status as ReadingStatus | undefined) || undefined;
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
+  const user = await getCurrentUser();
   const isGuest = !user;
 
   return (
