@@ -18,6 +18,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'image.aladin.co.kr',
       },
+      {
+        protocol: 'https',
+        hostname: 'k.kakaocdn.net',
+      },
     ],
   },
 };

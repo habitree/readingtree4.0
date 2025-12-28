@@ -25,7 +25,13 @@ export function BookCard({ book, userBookId, status }: BookCardProps) {
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 2; // 최대 2번 재시도
   const hasValidImage = isValidImageUrl(book.cover_image_url) && book.cover_image_url && !imageError;
-  const isSample = userBookId.startsWith("sample-");
+  const isSample = userBookId?.startsWith("sample-") || false;
+  
+  // userBookId 검증
+  if (!userBookId || typeof userBookId !== 'string' || userBookId.trim() === '') {
+    console.error('BookCard: userBookId가 유효하지 않습니다.', { userBookId, book });
+    return null;
+  }
 
   const handleImageError = () => {
     if (retryCount < MAX_RETRIES) {
@@ -67,7 +73,7 @@ export function BookCard({ book, userBookId, status }: BookCardProps) {
             {hasValidImage ? (
               <Image
                 key={`${book.cover_image_url}-retry-${retryCount}`}
-                src={book.cover_image_url!}
+                src={getImageUrl(book.cover_image_url)}
                 alt={`${book.title} 표지`}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform"
