@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
+import { getAppUrl } from "@/lib/utils/url";
 
 /**
  * OAuth 콜백 처리
@@ -19,7 +20,9 @@ export async function GET(request: NextRequest) {
 
   if (!code) {
     // 코드가 없으면 로그인 페이지로 리다이렉트
-    return NextResponse.redirect(new URL("/login", request.url));
+    // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+    const baseUrl = getAppUrl();
+    return NextResponse.redirect(new URL("/login", baseUrl));
   }
 
   const supabase = await createServerSupabaseClient();
@@ -43,8 +46,10 @@ export async function GET(request: NextRequest) {
         errorMessage = "로그인 제공자 설정에 문제가 있습니다. 관리자에게 문의해주세요.";
       }
       
+      // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+      const baseUrl = getAppUrl();
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(errorMessage)}`, request.url)
+        new URL(`/login?error=${encodeURIComponent(errorMessage)}`, baseUrl)
       );
     }
 
@@ -59,8 +64,10 @@ export async function GET(request: NextRequest) {
         error: userError,
         hasUser: !!user,
       });
+      // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+      const baseUrl = getAppUrl();
       return NextResponse.redirect(
-        new URL("/login?error=사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.", request.url)
+        new URL("/login?error=사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.", baseUrl)
       );
     }
 
@@ -133,11 +140,15 @@ export async function GET(request: NextRequest) {
     // 온보딩 완료 여부 확인
     // 목표가 설정되지 않았으면 온보딩으로 리다이렉트
     if (!profile || !profile.reading_goal || profile.reading_goal === 0) {
-      return NextResponse.redirect(new URL("/onboarding/goal", request.url));
+      // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+      const baseUrl = getAppUrl();
+      return NextResponse.redirect(new URL("/onboarding/goal", baseUrl));
     }
 
     // 온보딩 완료 시 메인으로 리다이렉트 (캐시 무효화 후)
-    const redirectUrl = new URL(next, request.url);
+    // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+    const baseUrl = getAppUrl();
+    const redirectUrl = new URL(next, baseUrl);
     redirectUrl.searchParams.set("refreshed", "true"); // 클라이언트에서 새로고침 유도
     redirectUrl.searchParams.set("login", "success"); // 로그인 성공 표시
     return NextResponse.redirect(redirectUrl);
@@ -154,8 +165,10 @@ export async function GET(request: NextRequest) {
           : "로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.")
       : "알 수 없는 오류가 발생했습니다. 다시 시도해주세요.";
     
+    // getAppUrl()을 사용하여 올바른 프로덕션 URL로 리다이렉트
+    const baseUrl = getAppUrl();
     return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(errorMessage)}`, request.url)
+      new URL(`/login?error=${encodeURIComponent(errorMessage)}`, baseUrl)
     );
   }
 }
