@@ -23,17 +23,35 @@ interface NoteDetailPageProps {
  * 기록 상세 페이지
  */
 export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
+  // Next.js 15+ 에서 params는 Promise일 수 있음
+  const resolvedParams = await params;
+  const noteId = resolvedParams.id;
+
+  // params.id 검증
+  if (!noteId || typeof noteId !== 'string') {
+    console.error("NoteDetailPage: noteId가 유효하지 않습니다.", { noteId, params: resolvedParams });
+    notFound();
+  }
+
   // UUID 검증
-  if (!isValidUUID(params.id)) {
+  if (!isValidUUID(noteId)) {
+    console.error("NoteDetailPage: noteId가 유효한 UUID가 아닙니다.", { noteId });
     notFound();
   }
 
   let note;
   try {
-    note = await getNoteDetail(params.id);
+    console.log("NoteDetailPage: 기록 상세 조회 시도", { noteId });
+    note = await getNoteDetail(noteId);
+    console.log("NoteDetailPage: 기록 상세 조회 성공", { noteId, hasNote: !!note });
   } catch (error) {
     const safeError = sanitizeErrorForLogging(error);
-    console.error("기록 상세 조회 오류:", safeError);
+    console.error("기록 상세 조회 오류:", {
+      noteId,
+      error: safeError,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+    });
     notFound();
   }
 
@@ -72,7 +90,10 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 
       {note.book && (
         <div className="flex items-center gap-2">
-          <Link href={`/books/${note.book.id}`} className="text-sm text-muted-foreground hover:text-foreground">
+          <Link 
+            href={note.user_book_id ? `/books/${note.user_book_id}` : '#'} 
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
             {note.book.title}
           </Link>
           {note.page_number && (
@@ -130,22 +151,26 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 export async function generateMetadata({
   params,
 }: NoteDetailPageProps): Promise<Metadata> {
+  // Next.js 15+ 에서 params는 Promise일 수 있음
+  const resolvedParams = await params;
+  const noteId = resolvedParams.id;
+
   // params.id 검증
-  if (!params?.id || typeof params.id !== 'string') {
+  if (!noteId || typeof noteId !== 'string') {
     return {
       title: "기록 상세 | Habitree Reading Hub",
     };
   }
 
   // UUID 검증
-  if (!isValidUUID(params.id)) {
+  if (!isValidUUID(noteId)) {
     return {
       title: "기록 상세 | Habitree Reading Hub",
     };
   }
 
   try {
-    const note = await getNoteDetail(params.id);
+    const note = await getNoteDetail(noteId);
     return {
       title: `${note.type} 기록 | Habitree Reading Hub`,
       description: note.content?.substring(0, 100) || "기록 상세",

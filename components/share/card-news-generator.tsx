@@ -11,14 +11,14 @@ import { toast } from "sonner";
 
 interface CardNewsGeneratorProps {
   note: NoteWithBook;
-  onClose?: () => void;
+  onCardNewsGenerated?: (templateId: string) => void;
 }
 
 /**
  * 카드뉴스 생성 컴포넌트
  * 템플릿 선택 및 미리보기 제공
  */
-export function CardNewsGenerator({ note, onClose }: CardNewsGeneratorProps) {
+export function CardNewsGenerator({ note, onCardNewsGenerated }: CardNewsGeneratorProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<CardNewsTemplate>(
     CARD_NEWS_TEMPLATES[0]
   );
@@ -46,6 +46,11 @@ export function CardNewsGenerator({ note, onClose }: CardNewsGeneratorProps) {
       window.URL.revokeObjectURL(url);
 
       toast.success("카드뉴스가 다운로드되었습니다.");
+      
+      // 카드뉴스 생성 완료 콜백 호출
+      if (onCardNewsGenerated) {
+        onCardNewsGenerated(selectedTemplate.id);
+      }
     } catch (error) {
       console.error("카드뉴스 다운로드 오류:", error);
       toast.error("카드뉴스 다운로드에 실패했습니다.");
@@ -72,7 +77,13 @@ export function CardNewsGenerator({ note, onClose }: CardNewsGeneratorProps) {
           value={selectedTemplate.id}
           onValueChange={(value) => {
             const template = CARD_NEWS_TEMPLATES.find((t) => t.id === value);
-            if (template) setSelectedTemplate(template);
+            if (template) {
+              setSelectedTemplate(template);
+              // 템플릿 변경 시 카드뉴스 URL 업데이트
+              if (onCardNewsGenerated) {
+                onCardNewsGenerated(template.id);
+              }
+            }
           }}
         >
           <SelectTrigger>
@@ -91,11 +102,11 @@ export function CardNewsGenerator({ note, onClose }: CardNewsGeneratorProps) {
       {/* 미리보기 */}
       <Card>
         <CardContent className="p-4">
-          <div className="aspect-square relative bg-muted rounded-lg overflow-hidden">
+          <div className="aspect-square relative bg-muted rounded-lg overflow-hidden flex items-center justify-center">
             <img
               src={previewUrl}
               alt="카드뉴스 미리보기"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
         </CardContent>
@@ -120,11 +131,6 @@ export function CardNewsGenerator({ note, onClose }: CardNewsGeneratorProps) {
             </>
           )}
         </Button>
-        {onClose && (
-          <Button variant="outline" onClick={onClose}>
-            닫기
-          </Button>
-        )}
       </div>
     </div>
   );

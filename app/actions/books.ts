@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { searchBooks, transformNaverBookItem } from "@/lib/api/naver";
 import type { ReadingStatus } from "@/types/book";
+import { isValidUUID, sanitizeErrorForLogging } from "@/lib/utils/validation";
 
 export interface AddBookInput {
   isbn?: string | null;
@@ -463,5 +464,108 @@ export async function getBookDetail(userBookId: string) {
   });
 
   return data;
+}
+
+/**
+ * 책 삭제
+ * @param userBookId UserBooks 테이블의 ID
+ */
+export async function deleteBook(userBookId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  // 현재 사용자 확인
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  // UUID 검증
+  if (!isValidUUID(userBookId)) {
+    throw new Error("유효하지 않은 책 ID입니다.");
+  }
+
+  // 사용자의 책인지 확인 및 book_id 조회
+  const { data: userBook, error: bookCheckError } = await supabase
+    .from("user_books")
+    .select("id, book_id")
+    .eq("id", userBookId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (bookCheckError && bookCheckError.code !== "PGRST116") {
+    throw new Error("책 조회에 실패했습니다.");
+  }
+
+  if (!userBook) {
+    throw new Error("권한이 없습니다. 해당 책을 삭제할 권한이 없습니다.");
+  }
+
+  // 해당 책의 모든 기록 조회 (이미지 파일 삭제를 위해)
+  const { data: notes, error: notesError } = await supabase
+    .from("notes")
+    .select("id, image_url")
+    .eq("book_id", userBook.book_id)
+    .eq("user_id", user.id);
+
+  if (notesError) {
+    console.error("기록 조회 오류:", notesError);
+    // 기록 조회 실패해도 책 삭제는 진행
+  }
+
+  // 기록의 이미지 파일 삭제
+  if (notes && notes.length > 0) {
+    for (const note of notes) {
+      if (note.image_url) {
+        try {
+          const url = new URL(note.image_url);
+          const pathParts = url.pathname.split("/storage/v1/object/public/");
+          
+          if (pathParts.length === 2) {
+            const fullPath = pathParts[1];
+            const pathSegments = fullPath.split("/");
+            
+            if (pathSegments.length >= 2) {
+              const bucket = pathSegments[0];
+              const filePath = pathSegments.slice(1).join("/");
+
+              const { error: removeError } = await supabase.storage
+                .from(bucket)
+                .remove([filePath]);
+
+              if (removeError) {
+                const safeError = sanitizeErrorForLogging(removeError);
+                console.error("이미지 삭제 오류:", safeError);
+                // 이미지 삭제 실패해도 책 삭제는 진행
+              }
+            }
+          }
+        } catch (error) {
+          const safeError = sanitizeErrorForLogging(error);
+          console.error("이미지 삭제 오류:", safeError);
+          // 이미지 삭제 실패해도 책 삭제는 진행
+        }
+      }
+    }
+  }
+
+  // user_books에서 삭제 (CASCADE로 notes도 자동 삭제됨)
+  const { error } = await supabase
+    .from("user_books")
+    .delete()
+    .eq("id", userBookId);
+
+  if (error) {
+    throw new Error(`책 삭제 실패: ${error.message}`);
+  }
+
+  revalidatePath("/books");
+  revalidatePath("/");
+  revalidatePath(`/books/${userBookId}`);
+
+  return { success: true };
 }
 

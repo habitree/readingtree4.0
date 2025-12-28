@@ -10,7 +10,9 @@ export const metadata: Metadata = {
 };
 
 interface NewNotePageProps {
-  searchParams: {
+  searchParams: Promise<{
+    bookId?: string;
+  }> | {
     bookId?: string;
   };
 }
@@ -20,7 +22,9 @@ interface NewNotePageProps {
  * US-010~US-015: 기록 작성 기능
  */
 export default async function NewNotePage({ searchParams }: NewNotePageProps) {
-  const bookId = searchParams.bookId;
+  // Next.js 15+ 에서 searchParams는 Promise일 수 있음
+  const resolvedSearchParams = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams));
+  const bookId = resolvedSearchParams.bookId;
 
   // bookId 검증
   if (!bookId || typeof bookId !== 'string') {

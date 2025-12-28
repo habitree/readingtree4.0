@@ -84,6 +84,7 @@ export async function createNote(data: CreateNoteInput) {
   revalidatePath("/notes");
   revalidatePath(`/books/${data.book_id}`);
   revalidatePath(`/notes/${note.id}`);
+  revalidatePath("/"); // 홈페이지도 갱신
 
   return { success: true, noteId: note.id };
 }
@@ -138,9 +139,21 @@ export async function updateNote(noteId: string, data: UpdateNoteInput) {
     throw new Error(sanitizeErrorMessage(error));
   }
 
+  // user_books.id를 찾아서 revalidatePath에 사용
+  // note.book_id는 books.id이므로, user_books에서 book_id로 조회해야 함
+  const { data: userBook } = await supabase
+    .from("user_books")
+    .select("id")
+    .eq("book_id", note.book_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   revalidatePath("/notes");
-  revalidatePath(`/books/${note.book_id}`);
+  if (userBook) {
+    revalidatePath(`/books/${userBook.id}`);
+  }
   revalidatePath(`/notes/${noteId}`);
+  revalidatePath("/"); // 홈페이지도 갱신
 
   return { success: true };
 }
@@ -220,8 +233,20 @@ export async function deleteNote(noteId: string) {
     throw new Error(sanitizeErrorMessage(error));
   }
 
+  // user_books.id를 찾아서 revalidatePath에 사용
+  // note.book_id는 books.id이므로, user_books에서 book_id로 조회해야 함
+  const { data: userBook } = await supabase
+    .from("user_books")
+    .select("id")
+    .eq("book_id", note.book_id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   revalidatePath("/notes");
-  revalidatePath(`/books/${note.book_id}`);
+  if (userBook) {
+    revalidatePath(`/books/${userBook.id}`);
+  }
+  revalidatePath("/"); // 홈페이지도 갱신
 
   return { success: true };
 }
@@ -279,6 +304,24 @@ export async function getNotes(bookId?: string, type?: NoteType) {
   }
 
   // 인증된 사용자는 기존 로직 사용
+  let actualBookId = bookId;
+
+  // bookId가 user_books.id인 경우, books.id를 조회해야 함
+  if (bookId && isValidUUID(bookId)) {
+    const { data: userBook, error: userBookError } = await supabase
+      .from("user_books")
+      .select("book_id")
+      .eq("id", bookId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!userBookError && userBook) {
+      // user_books.id를 받았으므로 books.id로 변환
+      actualBookId = userBook.book_id;
+    }
+    // userBook이 없으면 bookId가 이미 books.id일 수 있으므로 그대로 사용
+  }
+
   let query = supabase
     .from("notes")
     .select(
@@ -296,8 +339,8 @@ export async function getNotes(bookId?: string, type?: NoteType) {
     .order("page_number", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false });
 
-  if (bookId) {
-    query = query.eq("book_id", bookId);
+  if (actualBookId) {
+    query = query.eq("book_id", actualBookId);
   }
 
   if (type) {
@@ -356,6 +399,24 @@ export async function getNoteDetail(noteId: string) {
     throw new Error("기록을 찾을 수 없거나 권한이 없습니다.");
   }
 
-  return data;
+  // user_books.id 조회 (책 상세 페이지 링크용)
+  let userBookId = null;
+  if (data.book_id) {
+    const { data: userBook } = await supabase
+      .from("user_books")
+      .select("id")
+      .eq("book_id", data.book_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (userBook) {
+      userBookId = userBook.id;
+    }
+  }
+
+  return {
+    ...data,
+    user_book_id: userBookId,
+  };
 }
 

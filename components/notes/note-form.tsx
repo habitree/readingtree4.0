@@ -113,6 +113,14 @@ export function NoteForm({ bookId, initialType = "quote" }: NoteFormProps) {
 
   const onSubmit = async (data: NoteFormValues) => {
     try {
+      // bookId 검증
+      if (!bookId || typeof bookId !== 'string' || bookId.trim() === '') {
+        console.error("NoteForm: bookId가 유효하지 않습니다.", { bookId });
+        toast.error("책 정보를 찾을 수 없습니다. 다시 시도해주세요.");
+        router.push("/books");
+        return;
+      }
+
       // 이미지가 필요한 유형인데 이미지가 없으면 에러
       if ((type === "transcription" || type === "photo") && images.length === 0) {
         toast.error("이미지를 업로드해주세요.");
@@ -166,7 +174,14 @@ export function NoteForm({ bookId, initialType = "quote" }: NoteFormProps) {
       toast.success("기록이 저장되었습니다.");
       // router.push만 사용 (Next.js App Router가 자동으로 서버 컴포넌트를 다시 렌더링)
       // router.refresh()는 제거 - push와 동시에 호출하면 이전 페이지로 돌아가는 문제 발생
-      router.push(`/books/${bookId}`);
+      // bookId가 유효한지 다시 한 번 확인 후 리다이렉트
+      if (bookId && typeof bookId === 'string' && bookId.trim() !== '') {
+        router.push(`/books/${bookId}`);
+      } else {
+        console.error("NoteForm: 리다이렉트 시 bookId가 유효하지 않습니다.", { bookId });
+        toast.error("책 정보를 찾을 수 없습니다.");
+        router.push("/books");
+      }
     } catch (error) {
       console.error("기록 저장 오류:", error);
       toast.error(
