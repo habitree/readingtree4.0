@@ -17,7 +17,22 @@ export function SocialLoginButtons() {
     try {
       setIsLoading("kakao");
       await signInWithKakao();
-    } catch (error) {
+      // redirect()가 성공하면 여기까지 도달하지 않음
+      // NEXT_REDIRECT는 Next.js의 정상적인 리다이렉트 메커니즘
+    } catch (error: unknown) {
+      // NEXT_REDIRECT는 Next.js의 정상적인 리다이렉트 메커니즘
+      // 이 예외는 무시하고 리다이렉트를 기다림
+      // Next.js의 redirect()는 특별한 타입의 예외를 던지므로
+      // 에러 메시지나 타입으로 확인
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes("NEXT_REDIRECT") || errorMessage.includes("redirect")) {
+        // 리다이렉트가 진행 중이므로 로딩 상태 유지
+        // 에러를 표시하지 않음
+        return;
+      }
+      
+      // 실제 에러인 경우에만 처리
       console.error("카카오톡 로그인 오류:", error);
       setIsLoading(null);
       toast.error(
@@ -32,7 +47,20 @@ export function SocialLoginButtons() {
     try {
       setIsLoading("google");
       await signInWithGoogle();
-    } catch (error) {
+      // redirect()가 성공하면 여기까지 도달하지 않음
+      // NEXT_REDIRECT는 Next.js의 정상적인 리다이렉트 메커니즘
+    } catch (error: unknown) {
+      // NEXT_REDIRECT는 Next.js의 정상적인 리다이렉트 메커니즘
+      // 이 예외는 무시하고 리다이렉트를 기다림
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      if (errorMessage.includes("NEXT_REDIRECT") || errorMessage.includes("redirect")) {
+        // 리다이렉트가 진행 중이므로 로딩 상태 유지
+        // 에러를 표시하지 않음
+        return;
+      }
+      
+      // 실제 에러인 경우에만 처리
       console.error("구글 로그인 오류:", error);
       setIsLoading(null);
       toast.error(

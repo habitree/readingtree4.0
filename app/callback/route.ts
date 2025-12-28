@@ -29,9 +29,22 @@ export async function GET(request: NextRequest) {
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (exchangeError) {
-      console.error("OAuth 콜백 오류:", exchangeError);
+      console.error("OAuth 콜백 오류:", {
+        message: exchangeError.message,
+        status: exchangeError.status,
+        code: exchangeError.code,
+      });
+      
+      // 사용자 친화적인 에러 메시지
+      let errorMessage = "로그인 처리 중 오류가 발생했습니다.";
+      if (exchangeError.message.includes("expired") || exchangeError.message.includes("invalid")) {
+        errorMessage = "로그인 세션이 만료되었습니다. 다시 시도해주세요.";
+      } else if (exchangeError.message.includes("provider")) {
+        errorMessage = "로그인 제공자 설정에 문제가 있습니다. 관리자에게 문의해주세요.";
+      }
+      
       return NextResponse.redirect(
-        new URL(`/login?error=${encodeURIComponent(exchangeError.message)}`, request.url)
+        new URL(`/login?error=${encodeURIComponent(errorMessage)}`, request.url)
       );
     }
 
@@ -42,9 +55,12 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (userError || !user) {
-      console.error("사용자 정보를 가져올 수 없습니다:", userError);
+      console.error("사용자 정보를 가져올 수 없습니다:", {
+        error: userError,
+        hasUser: !!user,
+      });
       return NextResponse.redirect(
-        new URL("/login?error=사용자 정보를 가져올 수 없습니다", request.url)
+        new URL("/login?error=사용자 정보를 가져올 수 없습니다. 다시 로그인해주세요.", request.url)
       );
     }
 
@@ -84,8 +100,13 @@ export async function GET(request: NextRequest) {
       });
 
       if (insertError) {
-        console.error("프로필 생성 오류:", insertError);
+        console.error("프로필 생성 오류:", {
+          message: insertError.message,
+          code: insertError.code,
+          details: insertError.details,
+        });
         // 프로필 생성 실패해도 계속 진행 (RLS 정책에 따라 접근 제한될 수 있음)
+        // 하지만 프로필이 없으면 온보딩으로 리다이렉트됨
       } else {
         // 프로필 생성 성공, 다시 조회
         const { data: newProfile } = await supabase
@@ -121,14 +142,20 @@ export async function GET(request: NextRequest) {
     redirectUrl.searchParams.set("login", "success"); // 로그인 성공 표시
     return NextResponse.redirect(redirectUrl);
   } catch (error) {
-    console.error("OAuth 콜백 처리 중 예외 발생:", error);
+    console.error("OAuth 콜백 처리 중 예외 발생:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
+    // 사용자 친화적인 에러 메시지
+    const errorMessage = error instanceof Error 
+      ? (error.message.includes("NEXT_REDIRECT") 
+          ? "리다이렉트 처리 중..." 
+          : "로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.")
+      : "알 수 없는 오류가 발생했습니다. 다시 시도해주세요.";
+    
     return NextResponse.redirect(
-      new URL(
-        `/login?error=${encodeURIComponent(
-          error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다"
-        )}`,
-        request.url
-      )
+      new URL(`/login?error=${encodeURIComponent(errorMessage)}`, request.url)
     );
   }
 }
