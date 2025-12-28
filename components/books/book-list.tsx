@@ -68,14 +68,22 @@ export function BookList({ books, isLoading }: BookListProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {books.map((userBook) => (
-        <BookCard
-          key={userBook.id}
-          book={userBook.books as BookWithUserBook}
-          userBookId={userBook.id}
-          status={userBook.status}
-        />
-      ))}
+      {books.map((userBook) => {
+        // userBook.id 검증
+        if (!userBook.id || typeof userBook.id !== 'string' || userBook.id.trim() === '') {
+          console.error('BookList: userBook.id가 유효하지 않습니다.', { userBook });
+          return null;
+        }
+        
+        return (
+          <BookCard
+            key={userBook.id}
+            book={userBook.books as BookWithUserBook}
+            userBookId={userBook.id}
+            status={userBook.status}
+          />
+        );
+      })}
     </div>
   );
 }

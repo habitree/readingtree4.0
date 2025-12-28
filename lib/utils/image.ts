@@ -16,21 +16,43 @@ export function isValidImageUrl(url: string | null | undefined): boolean {
 }
 
 /**
+ * HTTP URL을 HTTPS로 변환
+ * Mixed Content 경고 방지를 위해 HTTP 이미지 URL을 HTTPS로 변환
+ */
+export function convertToHttps(url: string): string {
+  if (!url) return url;
+  
+  try {
+    const urlObj = new URL(url);
+    // HTTP인 경우 HTTPS로 변환
+    if (urlObj.protocol === 'http:') {
+      urlObj.protocol = 'https:';
+      return urlObj.toString();
+    }
+    return url;
+  } catch {
+    // URL 파싱 실패 시 원본 반환
+    return url;
+  }
+}
+
+/**
  * 이미지 URL에 기본 이미지 적용 (URL이 없거나 유효하지 않을 때)
  * 기본 이미지가 없을 경우 투명한 1x1 픽셀 데이터 URI 사용
+ * HTTP URL은 자동으로 HTTPS로 변환
  */
 export function getImageUrl(
   url: string | null | undefined,
   fallback?: string
 ): string {
-  // 유효한 URL이 있으면 그대로 반환
+  // 유효한 URL이 있으면 HTTPS로 변환하여 반환
   if (isValidImageUrl(url) && url) {
-    return url;
+    return convertToHttps(url);
   }
   
-  // fallback이 제공되면 사용
+  // fallback이 제공되면 HTTPS로 변환하여 사용
   if (fallback && isValidImageUrl(fallback)) {
-    return fallback;
+    return convertToHttps(fallback);
   }
   
   // 기본 fallback: 투명한 1x1 픽셀 SVG (로딩 중 깨진 이미지 아이콘 방지)

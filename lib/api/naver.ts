@@ -154,13 +154,19 @@ export function transformNaverBookItem(item: NaverBookItem) {
     ? item.isbn.replace(/[-\s]/g, "").trim() || null
     : null;
 
+  // 이미지 URL을 HTTPS로 변환 (Mixed Content 경고 방지)
+  let coverImageUrl = item.image ? item.image.trim() : null;
+  if (coverImageUrl && coverImageUrl.startsWith('http://')) {
+    coverImageUrl = coverImageUrl.replace('http://', 'https://');
+  }
+
   return {
     isbn: normalizedIsbn,
     title: item.title ? item.title.replace(/<[^>]*>/g, "").trim() : "", // HTML 태그 제거 및 공백 제거
     author: item.author ? item.author.trim() : null,
     publisher: item.publisher ? item.publisher.trim() : null,
     published_date: item.pubdate ? formatNaverDate(item.pubdate) : null,
-    cover_image_url: item.image ? item.image.trim() : null,
+    cover_image_url: coverImageUrl,
   };
 }
 
