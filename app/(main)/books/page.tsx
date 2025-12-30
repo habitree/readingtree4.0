@@ -1,12 +1,16 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
 import { BookList } from "@/components/books/book-list";
+import { BookTable } from "@/components/books/book-table";
+import { BookStatsCards } from "@/components/books/book-stats-cards";
+import { BookSearchInput } from "@/components/books/book-search-input";
+import { ViewModeToggle } from "@/components/books/view-mode-toggle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, LogIn } from "lucide-react";
 import Link from "next/link";
-import { getUserBooks } from "@/app/actions/books";
+import { getUserBooks, getUserBooksWithNotes } from "@/app/actions/books";
 import { StatusFilter } from "@/components/books/status-filter";
 import { getCurrentUser } from "@/app/actions/auth";
 import type { ReadingStatus } from "@/types/book";
@@ -19,18 +23,27 @@ export const metadata: Metadata = {
 interface BooksPageProps {
   searchParams: {
     status?: string;
+    view?: string;
+    q?: string;
   };
 }
 
 /**
  * 내 서재 페이지
  * US-008: 책 정보 조회
+ * habitree.io/search 페이지 기능 마이그레이션
  */
 export default async function BooksPage({ searchParams }: BooksPageProps) {
   const status = (searchParams.status as ReadingStatus | undefined) || undefined;
+  const view = searchParams.view || "grid";
+  const query = searchParams.q || undefined;
+  
   // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
   const user = await getCurrentUser();
   const isGuest = !user;
+
+  // 통계 및 책 목록 조회 (기록 정보 포함)
+  const { books, stats } = await getUserBooksWithNotes(status, query, user);
 
   return (
     <div className="space-y-6">
@@ -77,19 +90,40 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
-        <StatusFilter currentStatus={status} />
+      {/* 통계 카드 */}
+      {!isGuest && <BookStatsCards stats={stats} />}
+
+      {/* 필터 및 검색 */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="flex-1 w-full sm:w-auto">
+          <BookSearchInput />
+        </div>
+        <div className="flex items-center gap-4">
+          <StatusFilter currentStatus={status} />
+          {!isGuest && <ViewModeToggle />}
+        </div>
       </div>
 
+      {/* 책 목록 (그리드 또는 테이블) */}
       <Suspense fallback={<BookList books={[]} isLoading />}>
-        <BooksList status={status} />
+        {view === "table" && !isGuest ? (
+          <BookTable books={books} />
+        ) : (
+          <BooksListGrid status={status} query={query} />
+        )}
       </Suspense>
     </div>
   );
 }
 
-async function BooksList({ status }: { status?: ReadingStatus }) {
+async function BooksListGrid({
+  status,
+  query,
+}: {
+  status?: ReadingStatus;
+  query?: string;
+}) {
+  // 그리드 형태는 기존 getUserBooks 사용 (호환성 유지)
   const books = await getUserBooks(status);
-
   return <BookList books={books as any} />;
 }
