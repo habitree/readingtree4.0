@@ -300,7 +300,7 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
       return [];
     }
 
-    return (sampleNotes || []) as NoteWithBook[];
+    return (sampleNotes || []) as unknown as NoteWithBook[];
   }
 
   // 인증된 사용자는 기존 로직 사용
@@ -349,7 +349,7 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
     throw new Error(sanitizeErrorMessage(error));
   }
 
-  return (data || []) as NoteWithBook[];
+  return (data || []) as unknown as NoteWithBook[];
 }
 
 /**
