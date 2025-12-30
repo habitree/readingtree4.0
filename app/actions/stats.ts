@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { NoteWithBook } from "@/types/note";
+import type { User } from "@supabase/supabase-js";
 
 export type TimelineSortBy = "latest" | "oldest" | "book";
 
@@ -10,25 +11,33 @@ export type TimelineSortBy = "latest" | "oldest" | "book";
  * 게스트 사용자의 경우 샘플 데이터 반환
  * @param sortBy 정렬 방식 (latest: 최신순, oldest: 오래된순, book: 책별)
  * @param page 페이지 번호 (기본값: 1)
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
 export async function getTimeline(
   sortBy: TimelineSortBy = "latest",
-  page: number = 1
+  page: number = 1,
+  user?: User | null
 ) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  let authError = null;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchedError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+    authError = fetchedError;
+  }
 
   const ITEMS_PER_PAGE = 20;
   const from = (page - 1) * ITEMS_PER_PAGE;
   const to = from + ITEMS_PER_PAGE - 1;
 
   // 게스트 사용자인 경우 샘플 데이터 반환
-  if (authError || !user) {
+  if (authError || !currentUser) {
     let query = supabase
       .from("notes")
       .select(
@@ -135,18 +144,25 @@ export async function getTimeline(
  * 독서 통계 조회
  * 게스트 사용자의 경우 샘플 데이터 통계 반환
  * 이번 주, 올해 통계 및 인기 책 반환
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function getReadingStats() {
+export async function getReadingStats(user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  let authError = null;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchedError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+    authError = fetchedError;
+  }
 
   // 게스트 사용자인 경우 샘플 데이터 통계 반환
-  if (authError || !user) {
+  if (authError || !currentUser) {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
@@ -224,14 +240,14 @@ export async function getReadingStats() {
   // 이번 주 기록 수 (데이터베이스 함수 활용)
   const { data: thisWeekNotesData, error: weekError } = await supabase.rpc(
     "get_user_notes_count_this_week",
-    { p_user_id: user.id }
+    { p_user_id: currentUser.id }
   );
   const thisWeekNotes = weekError ? 0 : (thisWeekNotesData || 0);
 
   // 올해 완독한 책 수 (데이터베이스 함수 활용)
   const { data: thisYearCompletedData, error: yearError } = await supabase.rpc(
     "get_user_completed_books_count",
-    { p_user_id: user.id, p_year: now.getFullYear() }
+    { p_user_id: currentUser.id, p_year: now.getFullYear() }
   );
   const thisYearCompleted = yearError ? 0 : (thisYearCompletedData || 0);
 
@@ -239,7 +255,7 @@ export async function getReadingStats() {
   const { count: thisYearNotes } = await supabase
     .from("notes")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .gte("created_at", startOfYear.toISOString());
 
   // 가장 많이 기록한 책 (상위 5개)
@@ -256,7 +272,7 @@ export async function getReadingStats() {
       )
     `
     )
-    .eq("user_id", user.id);
+    .eq("user_id", currentUser.id);
 
   // 책별 기록 수 집계
   const bookCounts = new Map<string, { count: number; book: any }>();
@@ -299,18 +315,25 @@ export async function getReadingStats() {
  * 목표 진행률 조회
  * 게스트 사용자의 경우 샘플 목표 데이터 반환
  * 올해 독서 목표 대비 완독한 책 수
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function getGoalProgress() {
+export async function getGoalProgress(user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  let authError = null;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchedError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+    authError = fetchedError;
+  }
 
   // 게스트 사용자인 경우 샘플 목표 데이터 반환
-  if (authError || !user) {
+  if (authError || !currentUser) {
     // 샘플 목표: 12권, 완독: 8권 (예시)
     const sampleGoal = 12;
     const sampleCompleted = 8;
@@ -329,7 +352,7 @@ export async function getGoalProgress() {
   const { data: profile, error: profileError } = await supabase
     .from("users")
     .select("reading_goal")
-    .eq("id", user.id)
+    .eq("id", currentUser.id)
     .single();
 
   // 프로필이 없거나 목표가 설정되지 않은 경우 기본값 반환
@@ -349,7 +372,7 @@ export async function getGoalProgress() {
   const currentYear = new Date().getFullYear();
   const { data: completedData, error: completedError } = await supabase.rpc(
     "get_user_completed_books_count",
-    { p_user_id: user.id, p_year: currentYear }
+    { p_user_id: currentUser.id, p_year: currentYear }
   );
   const completedCount = completedError ? 0 : (completedData || 0);
   const progress = goal > 0 ? Math.min((completedCount / goal) * 100, 100) : 0;
@@ -366,47 +389,59 @@ export async function getGoalProgress() {
  * 월별 기록 통계 조회
  * 게스트 사용자의 경우 샘플 데이터 통계 반환
  * 최근 6개월간의 기록 수
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function getMonthlyStats() {
+export async function getMonthlyStats(user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  let authError = null;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchedError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+    authError = fetchedError;
+  }
 
   const now = new Date();
-  const months: { month: string; count: number }[] = [];
-
-  // 최근 6개월
+  
+  // 6개월 쿼리를 모두 준비
+  const monthQueries: Array<{ month: string; query: any }> = [];
   for (let i = 5; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
 
-    // 게스트 사용자는 샘플 데이터, 인증된 사용자는 자신의 데이터
-    const query = supabase
+    let query = supabase
       .from("notes")
       .select("*", { count: "exact", head: true })
       .gte("created_at", date.toISOString())
       .lt("created_at", nextMonth.toISOString());
 
-    if (authError || !user) {
+    if (authError || !currentUser) {
       // 게스트: 샘플 데이터
-      query.eq("is_sample", true);
+      query = query.eq("is_sample", true);
     } else {
       // 인증된 사용자: 자신의 데이터
-      query.eq("user_id", user.id);
+      query = query.eq("user_id", currentUser.id);
     }
 
-    const { count } = await query;
-
-    months.push({
+    monthQueries.push({
       month: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-      count: count || 0,
+      query,
     });
   }
 
-  return months;
+  // 모든 쿼리를 병렬 실행
+  const results = await Promise.all(
+    monthQueries.map(async ({ month, query }) => {
+      const { count } = await query;
+      return { month, count: count || 0 };
+    })
+  );
+
+  return results;
 }
 

@@ -4,22 +4,28 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { CreateNoteInput, UpdateNoteInput, NoteType } from "@/types/note";
 import { isValidUUID, isValidLength, isValidTags, sanitizeErrorMessage, sanitizeErrorForLogging } from "@/lib/utils/validation";
+import type { User } from "@supabase/supabase-js";
 
 /**
  * 기록 생성
  * @param data 기록 데이터
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function createNote(data: CreateNoteInput) {
+export async function createNote(data: CreateNoteInput, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
   }
 
   // UUID 검증
@@ -48,7 +54,7 @@ export async function createNote(data: CreateNoteInput) {
     .from("user_books")
     .select("id, book_id")
     .eq("id", data.book_id)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .maybeSingle(); // .single() 대신 .maybeSingle() 사용
 
   if (bookCheckError && bookCheckError.code !== "PGRST116") {
@@ -65,7 +71,7 @@ export async function createNote(data: CreateNoteInput) {
   const { data: note, error } = await supabase
     .from("notes")
     .insert({
-      user_id: user.id,
+      user_id: currentUser.id,
       book_id: userBook.book_id,
       type: data.type,
       content: data.content || null,
@@ -93,18 +99,23 @@ export async function createNote(data: CreateNoteInput) {
  * 기록 수정
  * @param noteId 기록 ID
  * @param data 수정할 데이터
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function updateNote(noteId: string, data: UpdateNoteInput) {
+export async function updateNote(noteId: string, data: UpdateNoteInput, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
   }
 
   // 기록 소유 확인
@@ -112,7 +123,7 @@ export async function updateNote(noteId: string, data: UpdateNoteInput) {
     .from("notes")
     .select("id, book_id")
     .eq("id", noteId)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .maybeSingle(); // .single() 대신 .maybeSingle() 사용
 
   if (noteCheckError && noteCheckError.code !== "PGRST116") {
@@ -139,19 +150,10 @@ export async function updateNote(noteId: string, data: UpdateNoteInput) {
     throw new Error(sanitizeErrorMessage(error));
   }
 
-  // user_books.id를 찾아서 revalidatePath에 사용
-  // note.book_id는 books.id이므로, user_books에서 book_id로 조회해야 함
-  const { data: userBook } = await supabase
-    .from("user_books")
-    .select("id")
-    .eq("book_id", note.book_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
+  // revalidatePath: note.book_id를 알고 있으므로 재조회 없이 처리
+  // /books 경로 전체를 갱신하여 해당 book_id를 가진 모든 페이지 갱신
   revalidatePath("/notes");
-  if (userBook) {
-    revalidatePath(`/books/${userBook.id}`);
-  }
+  revalidatePath("/books"); // 책 목록 페이지 갱신
   revalidatePath(`/notes/${noteId}`);
   revalidatePath("/"); // 홈페이지도 갱신
 
@@ -161,18 +163,23 @@ export async function updateNote(noteId: string, data: UpdateNoteInput) {
 /**
  * 기록 삭제
  * @param noteId 기록 ID
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function deleteNote(noteId: string) {
+export async function deleteNote(noteId: string, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
   }
 
   // 기록 소유 확인
@@ -180,7 +187,7 @@ export async function deleteNote(noteId: string) {
     .from("notes")
     .select("id, book_id, image_url")
     .eq("id", noteId)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .maybeSingle(); // .single() 대신 .maybeSingle() 사용
 
   if (noteCheckError && noteCheckError.code !== "PGRST116") {
@@ -233,19 +240,10 @@ export async function deleteNote(noteId: string) {
     throw new Error(sanitizeErrorMessage(error));
   }
 
-  // user_books.id를 찾아서 revalidatePath에 사용
-  // note.book_id는 books.id이므로, user_books에서 book_id로 조회해야 함
-  const { data: userBook } = await supabase
-    .from("user_books")
-    .select("id")
-    .eq("book_id", note.book_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
+  // revalidatePath: note.book_id를 알고 있으므로 재조회 없이 처리
+  // /books 경로 전체를 갱신하여 해당 book_id를 가진 모든 페이지 갱신
   revalidatePath("/notes");
-  if (userBook) {
-    revalidatePath(`/books/${userBook.id}`);
-  }
+  revalidatePath("/books"); // 책 목록 페이지 갱신
   revalidatePath("/"); // 홈페이지도 갱신
 
   return { success: true };
@@ -256,31 +254,33 @@ export async function deleteNote(noteId: string) {
  * 게스트 사용자의 경우 샘플 데이터 반환
  * @param bookId 책 ID (선택)
  * @param type 기록 유형 필터 (선택)
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
+ * @param includeBook books 정보 포함 여부 (기본값: true, 하위 호환성 유지)
  */
-export async function getNotes(bookId?: string, type?: NoteType) {
+export async function getNotes(bookId?: string, type?: NoteType, user?: User | null, includeBook: boolean = true) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  let authError = null;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchedError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+    authError = fetchedError;
+  }
 
   // 게스트 사용자인 경우 샘플 데이터 반환
-  if (authError || !user) {
+  if (authError || !currentUser) {
+    const selectQuery = includeBook
+      ? `*, books (id, title, author, cover_image_url)`
+      : `*`;
+    
     let query = supabase
       .from("notes")
-      .select(
-        `
-        *,
-        books (
-          id,
-          title,
-          author,
-          cover_image_url
-        )
-      `
-      )
+      .select(selectQuery)
       .eq("is_sample", true)
       .order("created_at", { ascending: false })
       .limit(50); // 샘플 데이터는 최대 50개
@@ -304,41 +304,40 @@ export async function getNotes(bookId?: string, type?: NoteType) {
   }
 
   // 인증된 사용자는 기존 로직 사용
+  // bookId 변환과 notes 쿼리 준비를 병렬로 시작
+  const [userBookResult, notesQueryBase] = await Promise.all([
+    // bookId가 user_books.id인 경우, books.id를 조회
+    bookId && isValidUUID(bookId)
+      ? supabase
+          .from("user_books")
+          .select("book_id")
+          .eq("id", bookId)
+          .eq("user_id", currentUser.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    // notes 쿼리 준비 (실제 실행은 나중에)
+    Promise.resolve(
+      supabase
+        .from("notes")
+        .select(
+          includeBook
+            ? `*, books (id, title, author, cover_image_url)`
+            : `*`
+        )
+        .eq("user_id", currentUser.id)
+        .order("page_number", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false })
+    ),
+  ]);
+
+  // userBook 결과에 따라 bookId 설정
   let actualBookId = bookId;
-
-  // bookId가 user_books.id인 경우, books.id를 조회해야 함
-  if (bookId && isValidUUID(bookId)) {
-    const { data: userBook, error: userBookError } = await supabase
-      .from("user_books")
-      .select("book_id")
-      .eq("id", bookId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!userBookError && userBook) {
-      // user_books.id를 받았으므로 books.id로 변환
-      actualBookId = userBook.book_id;
-    }
-    // userBook이 없으면 bookId가 이미 books.id일 수 있으므로 그대로 사용
+  if (userBookResult.data) {
+    actualBookId = userBookResult.data.book_id;
   }
 
-  let query = supabase
-    .from("notes")
-    .select(
-      `
-      *,
-      books (
-        id,
-        title,
-        author,
-        cover_image_url
-      )
-    `
-    )
-    .eq("user_id", user.id)
-    .order("page_number", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
-
+  // notes 쿼리에 필터 적용 및 실행
+  let query = notesQueryBase;
   if (actualBookId) {
     query = query.eq("book_id", actualBookId);
   }
@@ -359,18 +358,23 @@ export async function getNotes(bookId?: string, type?: NoteType) {
 /**
  * 기록 상세 조회
  * @param noteId 기록 ID
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function getNoteDetail(noteId: string) {
+export async function getNoteDetail(noteId: string, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
   }
 
   const { data, error } = await supabase
@@ -387,7 +391,7 @@ export async function getNoteDetail(noteId: string) {
     `
     )
     .eq("id", noteId)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .maybeSingle(); // .single() 대신 .maybeSingle() 사용
 
   if (error && error.code !== "PGRST116") {
@@ -406,7 +410,7 @@ export async function getNoteDetail(noteId: string) {
       .from("user_books")
       .select("id")
       .eq("book_id", data.book_id)
-      .eq("user_id", user.id)
+      .eq("user_id", currentUser.id)
       .maybeSingle();
 
     if (userBook) {

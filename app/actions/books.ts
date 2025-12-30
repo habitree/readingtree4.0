@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { searchBooks, transformNaverBookItem } from "@/lib/api/naver";
 import type { ReadingStatus } from "@/types/book";
 import { isValidUUID, sanitizeErrorForLogging } from "@/lib/utils/validation";
+import type { User } from "@supabase/supabase-js";
 
 export interface AddBookInput {
   isbn?: string | null;
@@ -19,35 +20,43 @@ export interface AddBookInput {
  * 책 추가
  * Books 테이블에 없으면 생성하고, UserBooks에 추가
  * ISBN이 있으면 기존 책을 재사용 (review_issues.md 5번 이슈 참고)
+ * @param bookData 책 데이터
+ * @param status 독서 상태
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
 export async function addBook(
   bookData: AddBookInput,
-  status: ReadingStatus = "reading"
+  status: ReadingStatus = "reading",
+  user?: User | null
 ) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
   }
 
   // 사용자 프로필이 users 테이블에 존재하는지 확인
   const { data: userProfile, error: profileCheckError } = await supabase
     .from("users")
     .select("id")
-    .eq("id", user.id)
+    .eq("id", currentUser.id)
     .maybeSingle();
 
   // 프로필이 없으면 생성 (Foreign Key Constraint 방지)
   if (!userProfile) {
     const { error: insertProfileError } = await supabase.from("users").insert({
-      id: user.id,
-      email: user.email,
+      id: currentUser.id,
+      email: currentUser.email,
       name: user.user_metadata?.name || user.email?.split("@")[0] || "사용자",
       avatar_url: user.user_metadata?.avatar_url || null,
       reading_goal: 12, // 기본값
@@ -122,7 +131,7 @@ export async function addBook(
   const { data: existingUserBook, error: checkError } = await supabase
     .from("user_books")
     .select("id")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .eq("book_id", bookId)
     .maybeSingle(); // .single() 대신 .maybeSingle() 사용
 
@@ -137,7 +146,7 @@ export async function addBook(
 
   // UserBooks에 추가
   const { error: userBookError } = await supabase.from("user_books").insert({
-    user_id: user.id,
+    user_id: currentUser.id,
     book_id: bookId,
     status,
     started_at: new Date().toISOString(),
@@ -157,21 +166,27 @@ export async function addBook(
  * 독서 상태 변경
  * @param userBookId UserBooks 테이블의 ID
  * @param status 새로운 상태
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
 export async function updateBookStatus(
   userBookId: string,
-  status: ReadingStatus
+  status: ReadingStatus,
+  user?: User | null
 ) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
   }
 
   // 사용자의 책인지 확인
@@ -179,7 +194,7 @@ export async function updateBookStatus(
     .from("user_books")
     .select("id")
     .eq("id", userBookId)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .single();
 
   if (!userBook) {
@@ -222,18 +237,25 @@ export async function updateBookStatus(
  * 사용자 책 목록 조회
  * 게스트 사용자의 경우 샘플 데이터 반환
  * @param status 필터링할 상태 (선택)
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function getUserBooks(status?: ReadingStatus) {
+export async function getUserBooks(status?: ReadingStatus, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  let authError = null;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchedError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+    authError = fetchedError;
+  }
 
   // 게스트 사용자인 경우 샘플 데이터 반환
-  if (authError || !user) {
+  if (authError || !currentUser) {
     // 샘플 책 데이터 조회
     let query = supabase
       .from("books")
@@ -336,7 +358,7 @@ export async function getUserBooks(status?: ReadingStatus) {
       )
     `
     )
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .order("created_at", { ascending: false });
 
   if (status) {
@@ -355,18 +377,23 @@ export async function getUserBooks(status?: ReadingStatus) {
 /**
  * 책 상세 조회
  * @param userBookId UserBooks 테이블의 ID
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function getBookDetail(userBookId: string) {
+export async function getBookDetail(userBookId: string, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+  }
 
   // 게스트 사용자가 샘플 책 상세 페이지에 접근 시도
-  if (!user) {
+  if (!currentUser) {
     if (userBookId.startsWith("sample-")) {
       const bookId = userBookId.replace("sample-", "");
       const { data: sampleBook, error: sampleError } = await supabase
@@ -415,7 +442,7 @@ export async function getBookDetail(userBookId: string) {
     }
   }
 
-  console.log("getBookDetail: 책 상세 조회 시작", { userBookId, userId: user.id });
+  console.log("getBookDetail: 책 상세 조회 시작", { userBookId, userId: currentUser.id });
 
   const { data, error } = await supabase
     .from("user_books")
@@ -434,13 +461,13 @@ export async function getBookDetail(userBookId: string) {
     `
     )
     .eq("id", userBookId)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .single();
 
   if (error) {
     console.error("getBookDetail: Supabase 쿼리 오류", {
       userBookId,
-      userId: user.id,
+      userId: currentUser.id,
       error: error.message,
       errorCode: error.code,
       errorDetails: error.details,
@@ -452,7 +479,7 @@ export async function getBookDetail(userBookId: string) {
   if (!data) {
     console.error("getBookDetail: 데이터가 없습니다", {
       userBookId,
-      userId: user.id,
+      userId: currentUser.id,
     });
     throw new Error("책을 찾을 수 없습니다.");
   }
@@ -469,18 +496,23 @@ export async function getBookDetail(userBookId: string) {
 /**
  * 책 삭제
  * @param userBookId UserBooks 테이블의 ID
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function deleteBook(userBookId: string) {
+export async function deleteBook(userBookId: string, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  if (authError || !user) {
-    throw new Error("로그인이 필요합니다.");
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
   }
 
   // UUID 검증
@@ -493,7 +525,7 @@ export async function deleteBook(userBookId: string) {
     .from("user_books")
     .select("id, book_id")
     .eq("id", userBookId)
-    .eq("user_id", user.id)
+    .eq("user_id", currentUser.id)
     .maybeSingle();
 
   if (bookCheckError && bookCheckError.code !== "PGRST116") {
@@ -509,7 +541,7 @@ export async function deleteBook(userBookId: string) {
     .from("notes")
     .select("id, image_url")
     .eq("book_id", userBook.book_id)
-    .eq("user_id", user.id);
+    .eq("user_id", currentUser.id);
 
   if (notesError) {
     console.error("기록 조회 오류:", notesError);
