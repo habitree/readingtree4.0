@@ -107,7 +107,7 @@ export async function getTimeline(
     `,
       { count: "exact" }
     )
-    .eq("user_id", user.id);
+    .eq("user_id", currentUser.id);
 
   // 정렬 적용
   if (sortBy === "latest") {

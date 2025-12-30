@@ -2,7 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { CreateNoteInput, UpdateNoteInput, NoteType } from "@/types/note";
+import type { CreateNoteInput, UpdateNoteInput, NoteType, NoteWithBook } from "@/types/note";
 import { isValidUUID, isValidLength, isValidTags, sanitizeErrorMessage, sanitizeErrorForLogging } from "@/lib/utils/validation";
 import type { User } from "@supabase/supabase-js";
 
@@ -257,7 +257,7 @@ export async function deleteNote(noteId: string, user?: User | null) {
  * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  * @param includeBook books 정보 포함 여부 (기본값: true, 하위 호환성 유지)
  */
-export async function getNotes(bookId?: string, type?: NoteType, user?: User | null, includeBook: boolean = true) {
+export async function getNotes(bookId?: string, type?: NoteType, user?: User | null, includeBook: boolean = true): Promise<NoteWithBook[]> {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
@@ -300,12 +300,16 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
       return [];
     }
 
-    return sampleNotes || [];
+    return (sampleNotes || []) as NoteWithBook[];
   }
 
   // 인증된 사용자는 기존 로직 사용
   // bookId 변환과 notes 쿼리 준비를 병렬로 시작
-  const [userBookResult, notesQueryBase] = await Promise.all([
+  const selectQuery = includeBook
+    ? `*, books (id, title, author, cover_image_url)`
+    : `*`;
+
+  const [userBookResult] = await Promise.all([
     // bookId가 user_books.id인 경우, books.id를 조회
     bookId && isValidUUID(bookId)
       ? supabase
@@ -315,19 +319,6 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
           .eq("user_id", currentUser.id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    // notes 쿼리 준비 (실제 실행은 나중에)
-    Promise.resolve(
-      supabase
-        .from("notes")
-        .select(
-          includeBook
-            ? `*, books (id, title, author, cover_image_url)`
-            : `*`
-        )
-        .eq("user_id", currentUser.id)
-        .order("page_number", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false })
-    ),
   ]);
 
   // userBook 결과에 따라 bookId 설정
@@ -336,8 +327,14 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
     actualBookId = userBookResult.data.book_id;
   }
 
-  // notes 쿼리에 필터 적용 및 실행
-  let query = notesQueryBase;
+  // notes 쿼리 구성 및 실행
+  let query = supabase
+    .from("notes")
+    .select(selectQuery)
+    .eq("user_id", currentUser.id)
+    .order("page_number", { ascending: true, nullsFirst: false })
+    .order("created_at", { ascending: false });
+
   if (actualBookId) {
     query = query.eq("book_id", actualBookId);
   }
@@ -352,7 +349,7 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
     throw new Error(sanitizeErrorMessage(error));
   }
 
-  return data || [];
+  return (data || []) as NoteWithBook[];
 }
 
 /**

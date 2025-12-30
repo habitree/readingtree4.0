@@ -57,8 +57,8 @@ export async function addBook(
     const { error: insertProfileError } = await supabase.from("users").insert({
       id: currentUser.id,
       email: currentUser.email,
-      name: user.user_metadata?.name || user.email?.split("@")[0] || "사용자",
-      avatar_url: user.user_metadata?.avatar_url || null,
+      name: currentUser.user_metadata?.name || currentUser.email?.split("@")[0] || "사용자",
+      avatar_url: currentUser.user_metadata?.avatar_url || null,
       reading_goal: 12, // 기본값
     });
 
