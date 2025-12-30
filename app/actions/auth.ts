@@ -11,7 +11,7 @@ import { getAppUrl } from "@/lib/utils/url";
  * 
  * 규칙: 서버 중심 세션 관리
  * - OAuth 리다이렉트 후 /callback에서 세션이 생성됨 (쿠키 저장)
- * - 세션은 미들웨어에서 자동 갱신됨
+ * - 세션은 미들웨어에서 자동 갱신됨123
  */
 export async function signInWithKakao() {
   const supabase = await createServerSupabaseClient();

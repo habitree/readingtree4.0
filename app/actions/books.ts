@@ -107,7 +107,7 @@ export async function addBook(
       bookId = newBook.id;
     }
   } else {
-    // ISBN이 없으면 새 책 생성
+    // ISBN이 없으면 새 책 생성123
     const { data: newBook, error: insertError } = await supabase
       .from("books")
       .insert({
