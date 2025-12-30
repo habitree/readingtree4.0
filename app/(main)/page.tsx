@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { Suspense } from "react";
+import DashboardContent from "@/components/dashboard/dashboard-content";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 
 /**
  * 홈/대시보드 페이지
@@ -8,12 +8,11 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
  * 
  * 보안 및 기능:
  * - 인증 확인: 미들웨어와 서버 컴포넌트에서 이중 확인
- * - 에러 처리: DashboardContent 컴포넌트 내부에서 처리
- * - 로딩 상태: DashboardContent 클라이언트 컴포넌트에서 내부적으로 관리
+ * - 에러 처리: error.tsx에서 처리
+ * - 로딩 상태: Suspense로 처리
  * - 데이터 없음 처리: 각 섹션에서 적절한 UI 표시
  * 
- * 참고: DashboardContent는 클라이언트 컴포넌트이므로 Suspense 대신
- * 내부 로딩 상태를 사용합니다.
+ * 참고: DashboardContent는 Server Component이므로 Suspense로 로딩 처리합니다.
  */
 export default async function HomePage() {
   // 게스트 사용자도 접근 가능하므로 리다이렉트하지 않음
@@ -28,8 +27,9 @@ export default async function HomePage() {
         </p>
       </div>
 
-      {/* 클라이언트 컴포넌트는 내부에서 로딩 상태를 관리하므로 Suspense 불필요 */}
-      <DashboardContent />
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent />
+      </Suspense>
     </div>
   );
 }
