@@ -374,6 +374,209 @@ export async function getUserBooks(status?: ReadingStatus, user?: User | null) {
   return data || [];
 }
 
+export interface BookWithNotes {
+  id: string; // user_books.id
+  status: ReadingStatus;
+  books: {
+    id: string;
+    title: string;
+    author: string | null;
+    publisher: string | null;
+    isbn: string | null;
+    cover_image_url: string | null;
+  };
+  noteCount: number;
+  latestNote?: {
+    id: string;
+    type: string;
+    content: string | null;
+    created_at: string;
+  };
+}
+
+export interface BookStats {
+  total: number;
+  reading: number;
+  completed: number;
+  paused: number;
+}
+
+/**
+ * 책 목록 조회 (기록 개수 및 최근 기록 포함)
+ * @param status 독서 상태 필터
+ * @param query 검색어 (책 제목, 저자, ISBN)
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
+ */
+export async function getUserBooksWithNotes(
+  status?: ReadingStatus,
+  query?: string,
+  user?: User | null
+): Promise<{
+  books: BookWithNotes[];
+  stats: BookStats;
+}> {
+  const supabase = await createServerSupabaseClient();
+
+  // 현재 사용자 확인
+  let currentUser = user;
+  let authError = null;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchedError,
+    } = await supabase.auth.getUser();
+    currentUser = fetchedUser;
+    authError = fetchedError;
+  }
+
+  // 게스트 사용자인 경우 빈 결과 반환 (통계는 0)
+  if (authError || !currentUser) {
+    return {
+      books: [],
+      stats: {
+        total: 0,
+        reading: 0,
+        completed: 0,
+        paused: 0,
+      },
+    };
+  }
+
+  // 상태별 통계 조회
+  const { data: allUserBooks } = await supabase
+    .from("user_books")
+    .select("status")
+    .eq("user_id", currentUser.id);
+
+  const stats: BookStats = {
+    total: allUserBooks?.length || 0,
+    reading: allUserBooks?.filter((ub) => ub.status === "reading").length || 0,
+    completed: allUserBooks?.filter((ub) => ub.status === "completed").length || 0,
+    paused: allUserBooks?.filter((ub) => ub.status === "paused").length || 0,
+  };
+
+  // 책 목록 조회
+  let booksQuery = supabase
+    .from("user_books")
+    .select(
+      `
+      id,
+      status,
+      books (
+        id,
+        title,
+        author,
+        publisher,
+        isbn,
+        cover_image_url
+      )
+    `
+    )
+    .eq("user_id", currentUser.id)
+    .order("created_at", { ascending: false });
+
+  // 상태 필터 적용
+  if (status) {
+    booksQuery = booksQuery.eq("status", status);
+  }
+
+  // 검색어 필터 적용
+  if (query && query.trim()) {
+    const sanitizedQuery = query.trim();
+    // books 테이블에서 제목, 저자, ISBN으로 검색
+    const { data: matchingBooks } = await supabase
+      .from("books")
+      .select("id")
+      .or(
+        `title.ilike.%${sanitizedQuery}%,author.ilike.%${sanitizedQuery}%,isbn.ilike.%${sanitizedQuery}%`
+      );
+
+    const matchingBookIds = matchingBooks?.map((b) => b.id) || [];
+
+    if (matchingBookIds.length > 0) {
+      booksQuery = booksQuery.in("book_id", matchingBookIds);
+    } else {
+      // 매칭되는 책이 없으면 빈 결과 반환
+      return {
+        books: [],
+        stats,
+      };
+    }
+  }
+
+  const { data: userBooks, error } = await booksQuery;
+
+  if (error) {
+    throw new Error(`책 목록 조회 실패: ${error.message}`);
+  }
+
+  if (!userBooks || userBooks.length === 0) {
+    return {
+      books: [],
+      stats,
+    };
+  }
+
+  // 각 책의 기록 개수 및 최근 기록 조회 (병렬 실행)
+  const booksWithNotes = await Promise.all(
+    userBooks.map(async (userBook: any) => {
+      const bookId = userBook.books?.id;
+      if (!bookId) {
+        return {
+          id: userBook.id,
+          status: userBook.status,
+          books: userBook.books || {},
+          noteCount: 0,
+        };
+      }
+
+      // 기록 개수 및 최근 기록 조회
+      const [countResult, latestNoteResult] = await Promise.all([
+        supabase
+          .from("notes")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", currentUser.id)
+          .eq("book_id", bookId),
+        supabase
+          .from("notes")
+          .select("id, type, content, created_at")
+          .eq("user_id", currentUser.id)
+          .eq("book_id", bookId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      return {
+        id: userBook.id,
+        status: userBook.status as ReadingStatus,
+        books: {
+          id: userBook.books.id,
+          title: userBook.books.title,
+          author: userBook.books.author,
+          publisher: userBook.books.publisher,
+          isbn: userBook.books.isbn,
+          cover_image_url: userBook.books.cover_image_url,
+        },
+        noteCount: countResult.count || 0,
+        latestNote: latestNoteResult.data
+          ? {
+              id: latestNoteResult.data.id,
+              type: latestNoteResult.data.type,
+              content: latestNoteResult.data.content,
+              created_at: latestNoteResult.data.created_at,
+            }
+          : undefined,
+      };
+    })
+  );
+
+  return {
+    books: booksWithNotes,
+    stats,
+  };
+}
+
 /**
  * 책 상세 조회
  * @param userBookId UserBooks 테이블의 ID

@@ -1,0 +1,84 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
+import { Loader2 } from "lucide-react";
+
+interface BookSearchInputProps {
+  className?: string;
+}
+
+/**
+ * 책 검색 입력 컴포넌트
+ * 책 제목, 저자, ISBN으로 검색
+ */
+export function BookSearchInput({ className }: BookSearchInputProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(() => searchParams.get("q") || "");
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // URL 파라미터 변경 시 검색어 업데이트
+  useEffect(() => {
+    const urlQuery = searchParams.get("q") || "";
+    if (urlQuery !== query) {
+      setQuery(urlQuery);
+    }
+  }, [searchParams]);
+
+  // 검색어 변경 시 URL 업데이트 (디바운싱)
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    setIsSearching(true);
+    searchTimeoutRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (query.trim()) {
+        params.set("q", query.trim());
+      } else {
+        params.delete("q");
+      }
+      params.set("page", "1"); // 검색 시 첫 페이지로
+      router.push(`/books?${params.toString()}`, { scroll: false });
+      setIsSearching(false);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [query, router, searchParams]);
+
+  const handleQueryChange = useCallback((value: string) => {
+    setQuery(value);
+  }, []);
+
+  return (
+    <div className={`relative ${className}`}>
+      <Search 
+        className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" 
+        aria-hidden="true"
+      />
+      <Input
+        type="search"
+        placeholder="책 제목, 저자, ISBN으로 검색"
+        value={query}
+        onChange={(e) => handleQueryChange(e.target.value)}
+        className="pl-10 pr-10 min-h-[44px]"
+        aria-label="책 검색"
+      />
+      {isSearching && (
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2" aria-hidden="true">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+}
+
