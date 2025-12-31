@@ -9,13 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 import { BookOpen, LogIn, Users } from "lucide-react";
 import { toast } from "sonner";
-import type { BookWithUserBook } from "@/types/book";
+import type { BookWithUserBook, ReadingStatus } from "@/types/book";
 import type { BookWithNotes } from "@/app/actions/books";
 
 interface BookCardProps {
   book: BookWithUserBook;
   userBookId: string;
-  status: "reading" | "completed" | "paused";
+  status: ReadingStatus;
   groupBooks?: BookWithNotes["groupBooks"];
 }
 
