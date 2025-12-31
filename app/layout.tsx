@@ -37,7 +37,7 @@ export default async function RootLayout({
       <body className={inter.className}>
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
+          defaultTheme="forest"
           enableSystem={false}
           themes={["light", "dark", "forest"]}
         >

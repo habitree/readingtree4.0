@@ -65,38 +65,38 @@
 
   .forest {
     /* Forest Green (#2E6136) - HSL: 130° 36% 28% */
-    --background: 130 25% 96%;
-    --foreground: 130 40% 12%;
-    --card: 130 30% 98%;
-    --card-foreground: 130 40% 12%;
-    --popover: 130 30% 98%;
-    --popover-foreground: 130 40% 12%;
-    /* Primary: Forest Green (#2E6136) */
+    --background: 130 20% 97%;
+    --foreground: 130 35% 15%;
+    --card: 130 25% 99%;
+    --card-foreground: 130 35% 15%;
+    --popover: 130 25% 99%;
+    --popover-foreground: 130 35% 15%;
+    /* Primary: Forest Green (#2E6136) - 자연스러운 숲 녹색 */
     --primary: 130 36% 28%;
-    --primary-foreground: 130 20% 98%;
-    /* Secondary: 연한 Forest Green */
-    --secondary: 130 25% 88%;
-    --secondary-foreground: 130 40% 15%;
-    /* Muted: 더 연한 Forest Green */
-    --muted: 130 20% 92%;
-    --muted-foreground: 130 25% 45%;
-    /* Accent: 보색 계열 (310° - 빨강-보라 계열) */
-    --accent: 310 60% 55%;
-    --accent-foreground: 130 20% 98%;
-    /* Destructive: 보색 계열의 빨강 */
-    --destructive: 310 70% 50%;
-    --destructive-foreground: 130 20% 98%;
-    /* Border & Input: Forest Green 톤 */
-    --border: 130 25% 85%;
-    --input: 130 25% 90%;
+    --primary-foreground: 130 15% 98%;
+    /* Secondary: 연한 Forest Green - 부드러운 녹색 톤 */
+    --secondary: 130 30% 90%;
+    --secondary-foreground: 130 35% 18%;
+    /* Muted: 더 연한 Forest Green - 매우 부드러운 녹색 */
+    --muted: 130 20% 94%;
+    --muted-foreground: 130 25% 40%;
+    /* Accent: 자연스러운 황금색/갈색 계열 - 가을 색상 */
+    --accent: 35 65% 55%;
+    --accent-foreground: 130 15% 98%;
+    /* Destructive: 자연스러운 빨강 - 산딸기/장미 계열 */
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 130 15% 98%;
+    /* Border & Input: Forest Green 톤 - 부드러운 녹색 */
+    --border: 130 25% 88%;
+    --input: 130 20% 92%;
     /* Ring: Primary와 동일 */
     --ring: 130 36% 28%;
-    /* Chart colors: Forest Green 계열 + 보색 계열 */
-    --chart-1: 130 50% 40%;
-    --chart-2: 130 45% 50%;
-    --chart-3: 310 60% 55%;
-    --chart-4: 310 55% 60%;
-    --chart-5: 130 40% 35%;
+    /* Chart colors: 자연스러운 색상 팔레트 - 숲과 자연 색상 */
+    --chart-1: 130 50% 40%; /* Forest Green */
+    --chart-2: 35 65% 55%; /* 황금색/갈색 */
+    --chart-3: 25 70% 50%; /* 오렌지/갈색 */
+    --chart-4: 150 45% 45%; /* 에메랄드 그린 */
+    --chart-5: 45 60% 50%; /* 황금색 */
   }
 }
 

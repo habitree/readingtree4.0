@@ -9,27 +9,39 @@ interface BookStatusBadgeProps {
 
 /**
  * 독서 상태 배지 컴포넌트
+ * UX 원칙 03: 색상을 활용한 시각적 구분 적용
  */
 export function BookStatusBadge({ status, className }: BookStatusBadgeProps) {
   const statusConfig = {
     reading: {
       label: "읽는 중",
-      variant: "default" as const,
+      className: "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20",
     },
     completed: {
       label: "완독",
-      variant: "secondary" as const,
+      className: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
     },
     paused: {
       label: "중단",
-      variant: "outline" as const,
+      className: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+    },
+    not_started: {
+      label: "읽기전",
+      className: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
+    },
+    rereading: {
+      label: "재독",
+      className: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
     },
   };
 
   const config = statusConfig[status];
 
   return (
-    <Badge variant={config.variant} className={cn(className)}>
+    <Badge 
+      variant="outline" 
+      className={cn("border", config.className, className)}
+    >
       {config.label}
     </Badge>
   );

@@ -64,12 +64,20 @@ export async function searchNotes(params: SearchParams, user?: User | null): Pro
           .eq("user_id", currentUser.id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    // 검색어가 있으면 books 테이블에서 title, author로 검색
+    // 검색어가 있으면 사용자가 소유한 책(user_books) 중에서 title, author로 검색
     sanitizedQuery
       ? supabase
-          .from("books")
-          .select("id")
-          .or(`title.ilike.%${sanitizedQuery}%,author.ilike.%${sanitizedQuery}%`)
+          .from("user_books")
+          .select(`
+            book_id,
+            books!inner (
+              id,
+              title,
+              author
+            )
+          `)
+          .eq("user_id", currentUser.id)
+          .or(`books.title.ilike.%${sanitizedQuery}%,books.author.ilike.%${sanitizedQuery}%`)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -79,10 +87,12 @@ export async function searchNotes(params: SearchParams, user?: User | null): Pro
     actualBookId = userBookResult.data.book_id;
   }
 
-  // matchingBookIds 추출
+  // matchingBookIds 추출 (사용자가 소유한 책만)
   let matchingBookIds: string[] = [];
   if (matchingBooksResult.data) {
-    matchingBookIds = matchingBooksResult.data.map((book) => book.id);
+    matchingBookIds = matchingBooksResult.data
+      .map((item: any) => item.book_id || item.books?.id)
+      .filter((id: string | undefined): id is string => !!id);
   }
 
   // notes 쿼리 구성

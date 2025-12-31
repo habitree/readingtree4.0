@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractTextFromImage } from "@/lib/api/gemini";
-import { updateNoteContent } from "@/app/actions/notes";
+import { createOrUpdateTranscription } from "@/app/actions/notes";
 
 /**
  * OCR 실제 처리 API
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
     // OCR 처리 (비동기)
     const extractedText = await extractTextFromImage(imageUrl);
 
-    // Notes 테이블 업데이트
-    await updateNoteContent(noteId, extractedText);
+    // Transcriptions 테이블에 저장
+    await createOrUpdateTranscription(noteId, extractedText);
 
     return NextResponse.json({ success: true, extractedText });
   } catch (error) {

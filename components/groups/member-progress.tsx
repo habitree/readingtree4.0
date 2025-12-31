@@ -22,7 +22,7 @@ export function MemberProgress({ groupId }: MemberProgressProps) {
         id: string;
         name: string;
         avatar_url: string | null;
-      };
+      } | null; // user가 null일 수 있음
       completedBooks: number;
       notesCount: number;
       lastActivity: string | null;
@@ -73,30 +73,39 @@ export function MemberProgress({ groupId }: MemberProgressProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {progress.map((item) => (
-            <div
-              key={item.user.id}
-              className="flex items-center justify-between p-3 rounded-lg border"
-            >
-              <div className="flex items-center gap-3 flex-1">
-                <Avatar>
-                  <AvatarImage src={item.user.avatar_url || undefined} />
-                  <AvatarFallback>{item.user.name[0]}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <div className="font-medium">{item.user.name}</div>
-                  <div className="text-sm text-muted-foreground">
-                    완독: {item.completedBooks}권 · 기록: {item.notesCount}개
+          {progress
+            .filter((item) => item.user) // user가 null인 경우 필터링
+            .map((item) => {
+              if (!item.user) return null; // 타입 가드
+              return (
+              <div
+                key={item.user.id}
+                className="flex items-center justify-between p-3 rounded-lg border"
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <Avatar>
+                    <AvatarImage src={item.user?.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {item.user?.name?.[0] || "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      {item.user?.name || "알 수 없음"}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      완독: {item.completedBooks}권 · 기록: {item.notesCount}개
+                    </div>
                   </div>
                 </div>
+                {item.lastActivity && (
+                  <div className="text-sm text-muted-foreground">
+                    {formatSmartDate(item.lastActivity)}
+                  </div>
+                )}
               </div>
-              {item.lastActivity && (
-                <div className="text-sm text-muted-foreground">
-                  {formatSmartDate(item.lastActivity)}
-                </div>
-              )}
-            </div>
-          ))}
+              );
+            })}
         </div>
       </CardContent>
     </Card>

@@ -12,6 +12,10 @@ import { ShareDialog } from "@/components/share/share-dialog";
 import { FileText, PenTool, Camera, ImageIcon } from "lucide-react";
 import { isValidUUID } from "@/lib/utils/validation";
 import { sanitizeErrorForLogging } from "@/lib/utils/validation";
+import { getNoteTypeLabel } from "@/lib/utils/note";
+import { NoteContentViewer } from "@/components/notes/note-content-viewer";
+import { OCRStatusChecker } from "@/components/notes/ocr-status-checker";
+import type { NoteType } from "@/types/note";
 
 interface NoteDetailPageProps {
   params: {
@@ -62,22 +66,24 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
     memo: ImageIcon,
   };
 
-  const typeLabels = {
-    quote: "필사",
-    transcription: "필사 이미지",
-    photo: "사진",
-    memo: "메모",
-  };
-
+  const hasImage = !!note.image_url;
+  const typeLabel = getNoteTypeLabel(note.type as NoteType, hasImage);
   const Icon = typeIcons[note.type as keyof typeof typeIcons];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {typeLabels[note.type as keyof typeof typeLabels]}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {typeLabel}
+            </h1>
+            <OCRStatusChecker
+              noteId={note.id}
+              noteType={note.type}
+              hasImage={hasImage}
+            />
+          </div>
           <p className="text-muted-foreground">
             {formatSmartDate(note.created_at)}
           </p>
@@ -120,9 +126,11 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
       )}
 
       {note.content && (
-        <div className="prose max-w-none">
-          <p className="whitespace-pre-wrap">{note.content}</p>
-        </div>
+        <NoteContentViewer
+          content={note.content}
+          pageNumber={note.page_number}
+          maxLength={200}
+        />
       )}
 
       {note.tags && note.tags.length > 0 && (

@@ -36,7 +36,7 @@ DO $$
 BEGIN
     -- 독서 상태
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'reading_status') THEN
-        CREATE TYPE reading_status AS ENUM ('reading', 'completed', 'paused');
+        CREATE TYPE reading_status AS ENUM ('reading', 'completed', 'paused', 'not_started', 'rereading');
     END IF;
 
     -- 기록 유형
@@ -223,7 +223,109 @@ CREATE POLICY "Users can delete own notes"
     ON notes FOR DELETE
     USING (auth.uid() = user_id);
 
--- 3.5 Groups (독서모임)
+-- ============================================
+-- 3.5 transcriptions (필사 OCR 데이터)
+-- ============================================
+
+-- OCR 처리 상태 ENUM 타입 생성
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ocr_status') THEN
+        CREATE TYPE ocr_status AS ENUM ('processing', 'completed', 'failed');
+    END IF;
+END $$;
+
+-- Transcriptions 테이블 생성
+CREATE TABLE IF NOT EXISTS transcriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    extracted_text TEXT NOT NULL, -- OCR로 추출된 원본 텍스트
+    quote_content TEXT, -- 책 구절 (사용자가 편집 가능)
+    memo_content TEXT, -- 사용자의 생각 (사용자가 추가 가능)
+    status ocr_status DEFAULT 'processing' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- note_id는 하나의 transcription만 가질 수 있음
+    CONSTRAINT unique_note_transcription UNIQUE (note_id)
+);
+
+-- 인덱스 생성
+CREATE INDEX IF NOT EXISTS idx_transcriptions_note_id ON transcriptions(note_id);
+CREATE INDEX IF NOT EXISTS idx_transcriptions_status ON transcriptions(status);
+CREATE INDEX IF NOT EXISTS idx_transcriptions_created_at ON transcriptions(created_at DESC);
+
+-- RLS 활성화
+ALTER TABLE transcriptions ENABLE ROW LEVEL SECURITY;
+
+-- RLS 정책 생성
+-- SELECT: 자신의 기록에 대한 transcription만 조회 가능
+DROP POLICY IF EXISTS "Users can view own transcriptions" ON transcriptions;
+CREATE POLICY "Users can view own transcriptions"
+    ON transcriptions FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1 FROM notes
+            WHERE notes.id = transcriptions.note_id
+            AND notes.user_id = auth.uid()
+        )
+    );
+
+-- INSERT: 자신의 기록에 대한 transcription만 생성 가능
+DROP POLICY IF EXISTS "Users can insert own transcriptions" ON transcriptions;
+CREATE POLICY "Users can insert own transcriptions"
+    ON transcriptions FOR INSERT
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM notes
+            WHERE notes.id = transcriptions.note_id
+            AND notes.user_id = auth.uid()
+        )
+    );
+
+-- UPDATE: 자신의 기록에 대한 transcription만 수정 가능
+DROP POLICY IF EXISTS "Users can update own transcriptions" ON transcriptions;
+CREATE POLICY "Users can update own transcriptions"
+    ON transcriptions FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM notes
+            WHERE notes.id = transcriptions.note_id
+            AND notes.user_id = auth.uid()
+        )
+    );
+
+-- DELETE: 자신의 기록에 대한 transcription만 삭제 가능
+DROP POLICY IF EXISTS "Users can delete own transcriptions" ON transcriptions;
+CREATE POLICY "Users can delete own transcriptions"
+    ON transcriptions FOR DELETE
+    USING (
+        EXISTS (
+            SELECT 1 FROM notes
+            WHERE notes.id = transcriptions.note_id
+            AND notes.user_id = auth.uid()
+        )
+    );
+
+-- updated_at 자동 업데이트 트리거 함수
+CREATE OR REPLACE FUNCTION update_transcriptions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 트리거 생성
+DROP TRIGGER IF EXISTS update_transcriptions_updated_at_trigger ON transcriptions;
+CREATE TRIGGER update_transcriptions_updated_at_trigger
+    BEFORE UPDATE ON transcriptions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_transcriptions_updated_at();
+
+-- ============================================
+-- 3.6 groups (독서모임)
+-- ============================================
 CREATE TABLE IF NOT EXISTS groups (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(200) NOT NULL,
@@ -265,7 +367,7 @@ CREATE POLICY "Leaders can delete groups"
     ON groups FOR DELETE
     USING (auth.uid() = leader_id);
 
--- 3.6 GroupMembers (모임 멤버)
+-- 3.7 GroupMembers (모임 멤버)
 CREATE TABLE IF NOT EXISTS group_members (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -341,17 +443,12 @@ CREATE POLICY "Anyone can view public groups"
         OR 
         -- 사용자가 리더인 그룹을 볼 수 있음
         leader_id = auth.uid()
-        OR
-        -- 사용자가 멤버인 그룹을 볼 수 있음
-        EXISTS (
-            SELECT 1 FROM group_members
-            WHERE group_id = groups.id
-            AND user_id = auth.uid()
-            AND status = 'approved'
-        )
+        -- 주의: group_members 참조 제거 (무한 재귀 방지)
+        -- 멤버 확인은 group_members 조회 시 별도로 처리
+        -- getGroups 함수에서 group_members를 먼저 조회한 후 group_id로 groups 조회
     );
 
--- 3.7 GroupBooks (모임 책)
+-- 3.8 GroupBooks (모임 책)
 CREATE TABLE IF NOT EXISTS group_books (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -387,6 +484,14 @@ CREATE POLICY "Members can view group books"
             WHERE id = group_books.group_id 
             AND is_public = TRUE
         )
+        OR
+        -- 모임 멤버는 지정도서를 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM group_members
+            WHERE group_id = group_books.group_id
+            AND user_id = auth.uid()
+            AND status = 'approved'
+        )
     );
 
 DROP POLICY IF EXISTS "Leaders can add group books" ON group_books;
@@ -410,7 +515,7 @@ CREATE POLICY "Leaders can remove group books"
         SELECT leader_id FROM groups WHERE id = group_books.group_id
     ));
 
--- 3.8 GroupNotes (모임 내 공유 기록)
+-- 3.9 GroupNotes (모임 내 공유 기록)
 CREATE TABLE IF NOT EXISTS group_notes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -469,6 +574,82 @@ CREATE POLICY "Note owners can unshare from groups"
     USING (auth.uid() IN (
         SELECT user_id FROM notes WHERE id = group_notes.note_id
     ));
+
+-- 3.10 GroupSharedBooks (모임에 공유된 개인 서재)
+CREATE TABLE IF NOT EXISTS group_shared_books (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    user_book_id UUID NOT NULL REFERENCES user_books(id) ON DELETE CASCADE,
+    shared_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(group_id, user_book_id)
+);
+
+-- 인덱스
+CREATE INDEX IF NOT EXISTS idx_group_shared_books_group_id ON group_shared_books(group_id);
+CREATE INDEX IF NOT EXISTS idx_group_shared_books_user_book_id ON group_shared_books(user_book_id);
+
+-- RLS
+ALTER TABLE group_shared_books ENABLE ROW LEVEL SECURITY;
+
+-- 기존 정책 삭제 후 재생성 (idempotent)
+DROP POLICY IF EXISTS "Members can view shared books" ON group_shared_books;
+CREATE POLICY "Members can view shared books"
+    ON group_shared_books FOR SELECT
+    USING (
+        -- 사용자가 리더인 그룹의 공유 서재를 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_shared_books.group_id 
+            AND leader_id = auth.uid()
+        )
+        OR
+        -- 공개 그룹의 공유 서재는 누구나 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM groups 
+            WHERE id = group_shared_books.group_id 
+            AND is_public = TRUE
+        )
+        OR
+        -- 모임 멤버는 공유 서재를 볼 수 있음
+        EXISTS (
+            SELECT 1 FROM group_members
+            WHERE group_id = group_shared_books.group_id
+            AND user_id = auth.uid()
+            AND status = 'approved'
+        )
+    );
+
+DROP POLICY IF EXISTS "Users can share own books" ON group_shared_books;
+CREATE POLICY "Users can share own books"
+    ON group_shared_books FOR INSERT
+    WITH CHECK (
+        -- 자신의 서재만 공유 가능
+        EXISTS (
+            SELECT 1 FROM user_books
+            WHERE id = group_shared_books.user_book_id
+            AND user_id = auth.uid()
+        )
+        AND
+        -- 모임 멤버만 공유 가능
+        EXISTS (
+            SELECT 1 FROM group_members
+            WHERE group_id = group_shared_books.group_id
+            AND user_id = auth.uid()
+            AND status = 'approved'
+        )
+    );
+
+DROP POLICY IF EXISTS "Users can unshare own books" ON group_shared_books;
+CREATE POLICY "Users can unshare own books"
+    ON group_shared_books FOR DELETE
+    USING (
+        -- 자신이 공유한 서재만 해제 가능
+        EXISTS (
+            SELECT 1 FROM user_books
+            WHERE id = group_shared_books.user_book_id
+            AND user_id = auth.uid()
+        )
+    );
 
 -- ============================================
 -- 4. 데이터베이스 함수 생성

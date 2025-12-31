@@ -4,6 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatSmartDate } from "@/lib/utils/date";
+import { getNoteTypeLabel } from "@/lib/utils/note";
+import { NoteContentViewer } from "./note-content-viewer";
+import { OCRStatusBadge } from "./ocr-status-badge";
 import type { NoteWithBook } from "@/types/note";
 import { FileText, Image as ImageIcon, PenTool, Camera } from "lucide-react";
 
@@ -22,20 +25,20 @@ export function NoteCard({ note }: NoteCardProps) {
     memo: ImageIcon,
   };
 
-  const typeLabels = {
-    quote: "필사",
-    transcription: "필사 이미지",
-    photo: "사진",
-    memo: "메모",
-  };
-
+  const hasImage = !!note.image_url;
+  const typeLabel = getNoteTypeLabel(note.type, hasImage);
   const Icon = typeIcons[note.type];
+  
+  // OCR 상태 확인: transcription 타입이고 이미지가 있으면 처리 중/완료 상태 표시
+  // 실제 상태는 OCRStatusChecker에서 확인하므로 여기서는 null로 설정
+  const ocrStatus = note.type === "transcription" && note.image_url ? "processing" : null;
 
   return (
     <Link href={`/notes/${note.id}`}>
       <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
         <CardContent className="p-4">
           <div className="flex gap-4">
+            {/* UX 원칙 05: 깊이감 부여를 위한 이미지 레이어링 */}
             {/* 이미지 또는 아이콘 */}
             {note.image_url ? (
               <div className="relative w-24 h-32 shrink-0 overflow-hidden rounded bg-muted">
@@ -55,18 +58,16 @@ export function NoteCard({ note }: NoteCardProps) {
 
             {/* 내용 */}
             <div className="flex-1 min-w-0 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <Badge variant="secondary">{typeLabels[note.type]}</Badge>
-                {note.page_number && (
-                  <span className="text-xs text-muted-foreground">
-                    {note.page_number}페이지
-                  </span>
-                )}
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <Badge variant="secondary">{typeLabel}</Badge>
+                <OCRStatusBadge status={ocrStatus} />
               </div>
 
-              {note.content && (
-                <p className="text-sm line-clamp-3">{note.content}</p>
-              )}
+              <NoteContentViewer
+                content={note.content}
+                pageNumber={note.page_number}
+                maxLength={100}
+              />
 
               {note.book && (
                 <p className="text-xs text-muted-foreground line-clamp-1">

@@ -108,8 +108,13 @@ export default function NewGroupPage() {
               />
             </div>
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isSubmitting || !formData.name}>
+            <div className="flex flex-col gap-2 pt-4">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || !formData.name}
+                fullWidth
+                size="lg"
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -123,6 +128,7 @@ export default function NewGroupPage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
+                fullWidth
               >
                 취소
               </Button>

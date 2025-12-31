@@ -83,8 +83,20 @@ export async function getTimeline(
 
     const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
 
+    // Supabase 조인 결과가 배열로 반환될 수 있으므로 객체로 변환
+    // Supabase는 `books` 키로 반환하지만 타입은 `book` (단수)로 정의됨
+    const items = (data || []).map((note: any) => {
+      // books가 배열인 경우 첫 번째 요소 사용, 객체인 경우 그대로 사용
+      const book = Array.isArray(note.books) ? note.books[0] : (note.books || note.book);
+      const { books, ...restNote } = note; // books 키 제거
+      return {
+        ...restNote,
+        book: book || null, // book (단수)로 변환
+      };
+    }) as NoteWithBook[];
+
     return {
-      items: (data || []) as NoteWithBook[],
+      items,
       total: count || 0,
       page,
       totalPages,
@@ -131,8 +143,20 @@ export async function getTimeline(
 
   const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
 
+  // Supabase 조인 결과가 배열로 반환될 수 있으므로 객체로 변환
+  // Supabase는 `books` 키로 반환하지만 타입은 `book` (단수)로 정의됨
+  const items = (data || []).map((note: any) => {
+    // books가 배열인 경우 첫 번째 요소 사용, 객체인 경우 그대로 사용
+    const book = Array.isArray(note.books) ? note.books[0] : (note.books || note.book);
+    const { books, ...restNote } = note; // books 키 제거
+    return {
+      ...restNote,
+      book: book || null, // book (단수)로 변환
+    };
+  }) as NoteWithBook[];
+
   return {
-    items: (data || []) as NoteWithBook[],
+    items,
     total: count || 0,
     page,
     totalPages,

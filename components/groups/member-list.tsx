@@ -20,7 +20,7 @@ interface MemberListProps {
       id: string;
       name: string;
       avatar_url: string | null;
-    };
+    } | null; // users가 null일 수 있음
   }>;
   isLeader: boolean;
   groupId: string;
@@ -96,34 +96,49 @@ export function MemberList({ members, isLeader, groupId }: MemberListProps) {
           <CardTitle>구성원 목록</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {members.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center justify-between p-3 rounded-lg border"
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={member.users.avatar_url || undefined} />
-                    <AvatarFallback>
-                      {member.users.name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{member.users.name}</span>
-                      {member.role === "leader" && (
-                        <Badge variant="default" className="text-xs">
-                          <Crown className="mr-1 h-3 w-3" />
-                          리더
-                        </Badge>
-                      )}
+          {members.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">구성원이 없습니다.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {members.map((member) => {
+                // users가 null인 경우에도 표시 (RLS 정책으로 인해 조인 실패 가능)
+                const userName = member.users?.name || `사용자 ${member.user_id.slice(0, 8)}`;
+                const userInitial = member.users?.name?.[0] || "?";
+                
+                return (
+                  <div
+                    key={member.id}
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar>
+                        <AvatarImage src={member.users?.avatar_url || undefined} />
+                        <AvatarFallback>{userInitial}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{userName}</span>
+                          {member.role === "leader" && (
+                            <Badge variant="default" className="text-xs">
+                              <Crown className="mr-1 h-3 w-3" />
+                              리더
+                            </Badge>
+                          )}
+                        </div>
+                        {!member.users && (
+                          <p className="text-xs text-muted-foreground">
+                            프로필 정보를 불러올 수 없습니다
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

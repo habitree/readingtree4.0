@@ -198,8 +198,13 @@ export function ProfileForm({ user }: ProfileFormProps) {
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isSubmitting || isUploading}>
+            <div className="flex flex-col gap-2 pt-4">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || isUploading}
+                fullWidth
+                size="lg"
+              >
                 {isSubmitting || isUploading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

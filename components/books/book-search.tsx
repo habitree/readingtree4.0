@@ -10,6 +10,7 @@ import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 import { addBook } from "@/app/actions/books";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 
 interface SearchResult {
   isbn: string | null;
@@ -22,13 +23,16 @@ interface SearchResult {
 
 interface BookSearchProps {
   onBookAdded?: () => void;
+  onSelectBook?: (book: SearchResult & { bookId?: string }) => void;
+  excludeBookIds?: Set<string>; // 제외할 책 ID 목록 (예: 이미 내 서재에 있는 책)
+  showAlreadyAdded?: boolean; // 이미 추가된 책 표시 여부
 }
 
 /**
  * 책 검색 컴포넌트
  * 네이버 API를 통해 책을 검색하고 추가할 수 있습니다.
  */
-export function BookSearch({ onBookAdded }: BookSearchProps) {
+export function BookSearch({ onBookAdded, onSelectBook, excludeBookIds, showAlreadyAdded = false }: BookSearchProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -157,12 +161,38 @@ export function BookSearch({ onBookAdded }: BookSearchProps) {
   const handleAddBook = async (book: SearchResult) => {
     setIsAdding(book.isbn || book.title);
     try {
-      await addBook(book, "reading");
-      toast.success("책이 추가되었습니다!");
-      setQuery("");
-      setResults([]);
-      onBookAdded?.();
-      router.refresh();
+      // onSelectBook이 있으면 내 서재에 추가하지 않고, books 테이블에만 확인/생성
+      if (onSelectBook) {
+        // books 테이블에 책이 있는지 확인하고, 없으면 생성
+        const response = await fetch("/api/books/ensure", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(book),
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || "책 확인 실패");
+        }
+        
+        const { bookId } = await response.json();
+        setQuery("");
+        setResults([]);
+        
+        onSelectBook({
+          ...book,
+          bookId: bookId,
+        });
+      } else {
+        // 기존 동작: 내 서재에 추가
+        const result = await addBook(book, "reading");
+        toast.success("책이 추가되었습니다!");
+        setQuery("");
+        setResults([]);
+        onBookAdded?.();
+        router.push("/books");
+        router.refresh();
+      }
     } catch (error) {
       console.error("책 추가 오류:", error);
       toast.error(

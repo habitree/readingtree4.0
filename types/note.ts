@@ -29,18 +29,55 @@ export interface NoteWithBook extends Note {
 
 export interface CreateNoteInput {
   book_id: string;
-  type: NoteType;
-  content?: string;
+  type?: NoteType; // 업로드 타입이 있을 때만 필요
+  content?: string; // 기존 content 필드 (하위 호환성)
+  quote_content?: string; // 인상깊은 구절
+  memo_content?: string; // 내 생각
   image_url?: string;
+  upload_type?: "photo" | "transcription"; // 사진 또는 필사
+  page_number?: number;
+  is_public?: boolean; // 기본값: true (공개)
+  tags?: string[];
+}
+
+export interface UpdateNoteInput {
+  content?: string; // 기존 content 필드 (하위 호환성)
+  quote_content?: string; // 인상깊은 구절
+  memo_content?: string; // 내 생각
+  image_url?: string;
+  upload_type?: "photo" | "transcription"; // 사진 또는 필사
   page_number?: number;
   is_public?: boolean;
   tags?: string[];
 }
 
-export interface UpdateNoteInput {
-  content?: string;
-  page_number?: number;
-  is_public?: boolean;
-  tags?: string[];
+/**
+ * 필사 OCR 데이터 타입 정의
+ */
+export type OCRStatus = "processing" | "completed" | "failed";
+
+export interface Transcription {
+  id: string;
+  note_id: string;
+  extracted_text: string; // OCR로 추출된 원본 텍스트
+  quote_content: string | null; // 책 구절 (사용자가 편집 가능)
+  memo_content: string | null; // 사용자의 생각 (사용자가 추가 가능)
+  status: OCRStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateTranscriptionInput {
+  note_id: string;
+  extracted_text: string;
+  quote_content?: string;
+  memo_content?: string;
+  status?: OCRStatus;
+}
+
+export interface UpdateTranscriptionInput {
+  quote_content?: string;
+  memo_content?: string;
+  status?: OCRStatus;
 }
 

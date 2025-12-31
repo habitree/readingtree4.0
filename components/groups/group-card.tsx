@@ -31,15 +31,18 @@ export function GroupCard({ group, memberCount }: GroupCardProps) {
   return (
     <Link href={`/groups/${group.id}`}>
       <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
+        <CardHeader className="pb-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 space-y-2">
               <CardTitle className="line-clamp-1">{group.name}</CardTitle>
-              <CardDescription className="mt-1 line-clamp-2">
+              <CardDescription className="line-clamp-2">
                 {group.description || "설명이 없습니다."}
               </CardDescription>
             </div>
-            <Badge variant={group.is_public ? "default" : "secondary"}>
+            <Badge 
+              variant={group.is_public ? "default" : "secondary"}
+              className="shrink-0"
+            >
               {group.is_public ? (
                 <>
                   <Globe className="mr-1 h-3 w-3" />
@@ -54,11 +57,11 @@ export function GroupCard({ group, memberCount }: GroupCardProps) {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <div className="flex items-center gap-4">
               {memberCount !== undefined && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
                   <span>{memberCount}명</span>
                 </div>

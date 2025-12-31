@@ -108,7 +108,7 @@ export function LoginForm() {
             <Input
               id="password"
               type="password"
-              placeholder="비밀번호를 입력하세요"
+              placeholder="비밀번호"
               disabled={isLoading !== null}
               {...register("password")}
             />
@@ -119,7 +119,7 @@ export function LoginForm() {
 
           <Button
             type="submit"
-            className="w-full"
+            fullWidth
             size="lg"
             disabled={isLoading !== null}
           >

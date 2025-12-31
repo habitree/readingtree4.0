@@ -1,8 +1,7 @@
 "use client";
 
-import { Search, Bell, User } from "lucide-react";
+import { Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,27 +33,8 @@ export function Header() {
           Habitree
         </Link>
 
-        {/* 검색 바 - 데스크톱에서만 표시 */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4">
-          <form action="/search" method="get" className="relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              name="q"
-              placeholder="기록 검색..."
-              className="pl-10"
-            />
-          </form>
-        </div>
-
         {/* 우측 메뉴 */}
-        <div className="flex items-center gap-2">
-          {/* 검색 버튼 - 모바일에서만 표시 */}
-          <Button variant="ghost" size="icon" className="md:hidden" asChild>
-            <Link href="/search">
-              <Search className="h-5 w-5" />
-            </Link>
-          </Button>
+        <div className="flex items-center gap-2 ml-auto">
 
           {/* 테마 선택 */}
           <ThemeSelector />

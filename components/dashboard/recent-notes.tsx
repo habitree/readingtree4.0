@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatSmartDate } from "@/lib/utils/date";
+import { getNoteTypeLabel } from "@/lib/utils/note";
+import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import { FileText, Image, Quote, StickyNote } from "lucide-react";
 import type { NoteWithBook } from "@/types/note";
 
@@ -13,13 +15,6 @@ interface RecentNotesProps {
  * 최근 작성한 기록 목록 표시
  */
 export function RecentNotes({ notes }: RecentNotesProps) {
-  const typeLabels = {
-    quote: "필사",
-    transcription: "필사 이미지",
-    photo: "사진",
-    memo: "메모",
-  };
-
   const typeIcons = {
     quote: Quote,
     transcription: Image,
@@ -32,6 +27,9 @@ export function RecentNotes({ notes }: RecentNotesProps) {
     <div className="space-y-3">
       {notes.map((note) => {
         const Icon = typeIcons[note.type] || FileText;
+        const hasImage = !!note.image_url;
+        const typeLabel = getNoteTypeLabel(note.type, hasImage);
+        
         return (
           <Link
             key={note.id}
@@ -40,14 +38,14 @@ export function RecentNotes({ notes }: RecentNotesProps) {
           >
             <div className="flex items-start gap-4">
               {/* 아이콘: 색상 구분으로 시각적 계층 강화 */}
-              <div className="rounded-lg bg-primary/10 p-2.5 shrink-0 group-hover:bg-primary/15 transition-colors">
+              <div className="rounded-lg bg-primary/10 p-2 shrink-0 group-hover:bg-primary/15 transition-colors">
                 <Icon className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 {/* 타이포그래피 위계: 제목은 굵게, 부가 정보는 작게 */}
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <Badge variant="secondary" className="text-xs font-medium">
-                    {typeLabels[note.type]}
+                    {typeLabel}
                   </Badge>
                   {note.book && (
                     <span className="text-sm font-semibold truncate text-foreground">
@@ -56,11 +54,13 @@ export function RecentNotes({ notes }: RecentNotesProps) {
                   )}
                 </div>
                 {/* 본문: 적절한 줄 길이 (line-clamp-2) */}
-                {note.content && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2 leading-relaxed">
-                    {note.content}
-                  </p>
-                )}
+                <div className="mb-2">
+                  <NoteContentViewer
+                    content={note.content}
+                    pageNumber={note.page_number}
+                    maxLength={100}
+                  />
+                </div>
                 {/* 날짜: 작은 텍스트로 부가 정보 표시 */}
                 <span className="text-xs text-muted-foreground">
                   {formatSmartDate(note.created_at)}

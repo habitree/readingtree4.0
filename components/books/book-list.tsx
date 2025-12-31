@@ -19,6 +19,11 @@ interface BookListProps {
       published_date: string | null;
       cover_image_url: string | null;
     };
+    groupBooks?: Array<{
+      group_id: string;
+      group_name: string;
+      group_leader_id: string;
+    }>;
   }>;
   isLoading?: boolean;
 }
@@ -30,8 +35,8 @@ interface BookListProps {
 export function BookList({ books, isLoading }: BookListProps) {
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, i) => (
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        {Array.from({ length: 12 }).map((_, i) => (
           <div key={i} className="space-y-2">
             <Skeleton className="aspect-[3/4] w-full" />
             <Skeleton className="h-4 w-3/4" />
@@ -67,7 +72,7 @@ export function BookList({ books, isLoading }: BookListProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {books.map((userBook) => {
         // userBook.id 검증
         if (!userBook.id || typeof userBook.id !== 'string' || userBook.id.trim() === '') {
@@ -81,6 +86,7 @@ export function BookList({ books, isLoading }: BookListProps) {
             book={userBook.books as BookWithUserBook}
             userBookId={userBook.id}
             status={userBook.status}
+            groupBooks={userBook.groupBooks}
           />
         );
       })}
