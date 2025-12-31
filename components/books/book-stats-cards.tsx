@@ -1,10 +1,11 @@
 "use client";
 
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BookOpen, BookMarked, CheckCircle2, Pause } from "lucide-react";
+import { BookOpen, BookMarked, CheckCircle2, Pause, BookX, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { BookStats } from "@/app/actions/books";
+import type { ReadingStatus } from "@/types/book";
 
 interface BookStatsCardsProps {
   stats: BookStats;
@@ -28,6 +29,13 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
       status: null,
     },
     {
+      label: "읽기전",
+      value: stats.not_started,
+      icon: BookX,
+      color: "gray",
+      status: "not_started" as const,
+    },
+    {
       label: "읽는중",
       value: stats.reading,
       icon: BookMarked,
@@ -42,6 +50,13 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
       status: "completed" as const,
     },
     {
+      label: "재독",
+      value: stats.rereading,
+      icon: RotateCcw,
+      color: "cyan",
+      status: "rereading" as const,
+    },
+    {
       label: "멈춤",
       value: stats.paused,
       icon: Pause,
@@ -50,7 +65,7 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
     },
   ];
 
-  const handleClick = (status: "reading" | "completed" | "paused" | null) => {
+  const handleClick = (status: ReadingStatus | null) => {
     const params = new URLSearchParams(searchParams.toString());
     if (status) {
       params.set("status", status);
@@ -61,7 +76,7 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
   };
 
   return (
-    <div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-4", className)}>
+    <div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", className)}>
       {statItems.map((item) => {
         const Icon = item.icon;
         const currentStatus = searchParams.get("status");
@@ -74,6 +89,8 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
           green: "border-l-green-500 bg-green-500/5",
           purple: "border-l-purple-500 bg-purple-500/5",
           orange: "border-l-orange-500 bg-orange-500/5",
+          gray: "border-l-gray-500 bg-gray-500/5",
+          cyan: "border-l-cyan-500 bg-cyan-500/5",
         };
 
         const iconColorClasses = {
@@ -81,6 +98,8 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
           green: "text-green-600",
           purple: "text-purple-600",
           orange: "text-orange-600",
+          gray: "text-gray-600",
+          cyan: "text-cyan-600",
         };
 
         const iconBgClasses = {
@@ -88,6 +107,8 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
           green: "bg-green-500/10",
           purple: "bg-purple-500/10",
           orange: "bg-orange-500/10",
+          gray: "bg-gray-500/10",
+          cyan: "bg-cyan-500/10",
         };
 
         return (
@@ -101,7 +122,8 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
               className={cn(
                 "border-l-4 h-full transition-all",
                 colorClasses[item.color as keyof typeof colorClasses],
-                isActive && "ring-2 ring-primary shadow-md"
+                // UX 원칙 07: 선택 색상 단순화 - 핵심 포인트 컬러(primary)만 사용
+                isActive && "ring-2 ring-primary ring-offset-2 shadow-md"
               )}
             >
               <CardHeader className="pb-3">

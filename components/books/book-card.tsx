@@ -5,22 +5,25 @@ import Link from "next/link";
 import Image from "next/image";
 import { BookStatusBadge } from "./book-status-badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
-import { BookOpen, LogIn } from "lucide-react";
+import { BookOpen, LogIn, Users } from "lucide-react";
 import { toast } from "sonner";
 import type { BookWithUserBook } from "@/types/book";
+import type { BookWithNotes } from "@/app/actions/books";
 
 interface BookCardProps {
   book: BookWithUserBook;
   userBookId: string;
   status: "reading" | "completed" | "paused";
+  groupBooks?: BookWithNotes["groupBooks"];
 }
 
 /**
  * 책 카드 컴포넌트
  * 책 목록에서 사용되는 카드 형태의 책 정보 표시
  */
-export function BookCard({ book, userBookId, status }: BookCardProps) {
+export function BookCard({ book, userBookId, status, groupBooks }: BookCardProps) {
   const [imageError, setImageError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const MAX_RETRIES = 2; // 최대 2번 재시도
@@ -89,30 +92,45 @@ export function BookCard({ book, userBookId, status }: BookCardProps) {
                 alt={`${book.title} 표지`}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform"
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                sizes="(max-width: 768px) 33vw, (max-width: 1200px) 25vw, 20vw"
                 onError={handleImageError}
               />
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/50" aria-label="이미지 없음">
-                <BookOpen className="w-12 h-12 text-muted-foreground mb-2" aria-hidden="true" />
+                <BookOpen className="w-8 h-8 text-muted-foreground mb-1" aria-hidden="true" />
                 <span className="text-xs text-muted-foreground">이미지 없음</span>
               </div>
             )}
           </div>
           <div className="p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
-              <h3 className="font-semibold line-clamp-2 flex-1">{book.title}</h3>
-              <BookStatusBadge status={status} className="shrink-0" />
+              <h3 className="font-semibold text-sm line-clamp-2 flex-1 leading-tight">{book.title}</h3>
+              <BookStatusBadge status={status} className="shrink-0 scale-90" />
             </div>
             {book.author && (
-              <p className="text-sm text-muted-foreground line-clamp-1">
+              <p className="text-xs text-muted-foreground line-clamp-1">
                 {book.author}
               </p>
             )}
             {book.publisher && (
-              <p className="text-xs text-muted-foreground line-clamp-1">
+              <p className="text-xs text-muted-foreground line-clamp-1 opacity-75">
                 {book.publisher}
               </p>
+            )}
+            {groupBooks && groupBooks.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {groupBooks.map((gb) => (
+                  <Badge
+                    key={gb.group_id}
+                    variant="secondary"
+                    className="text-xs px-1.5 py-0.5"
+                    title={`${gb.group_name} 지정도서`}
+                  >
+                    <Users className="mr-1 h-2.5 w-2.5" />
+                    {gb.group_name}
+                  </Badge>
+                ))}
+              </div>
             )}
           </div>
         </CardContent>

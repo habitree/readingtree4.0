@@ -48,7 +48,7 @@ export default async function DashboardContent() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-4 flex-1">
                   {/* 아이콘으로 시각적 계층 강화 */}
-                  <div className="rounded-full bg-primary/10 p-2.5 shrink-0 mt-0.5">
+                  <div className="rounded-full bg-primary/10 p-2 shrink-0">
                     <BookOpen className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -77,11 +77,11 @@ export default async function DashboardContent() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 {/* 아이콘으로 시각적 계층 강화 */}
-                <div className="rounded-lg bg-primary/10 p-2.5 shrink-0 mt-1">
+                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
                   <Target className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <CardTitle className="mb-1.5">올해 독서 목표</CardTitle>
+                  <CardTitle className="mb-2">올해 독서 목표</CardTitle>
                   <CardDescription className="text-base">
                     {progress ? (
                       <>
@@ -108,12 +108,12 @@ export default async function DashboardContent() {
                 <Progress value={progress.progress} className="h-3" />
                 {/* 불릿 포인트 스타일로 정보 구조화 */}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary"></span>
                     {progress.progress}% 완료
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground"></span>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground"></span>
                     {progress.remaining}권 남음
                   </span>
                 </div>
@@ -184,11 +184,11 @@ export default async function DashboardContent() {
         <Card>
           <CardHeader>
             <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary/10 p-2.5 shrink-0 mt-1">
+              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
                 <BarChart3 className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <CardTitle className="mb-1.5">월별 기록 통계</CardTitle>
+                <CardTitle className="mb-2">월별 기록 통계</CardTitle>
                 <CardDescription>최근 6개월간 작성한 기록 수</CardDescription>
               </div>
             </div>
@@ -210,11 +210,11 @@ export default async function DashboardContent() {
         <Card>
           <CardHeader>
             <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary/10 p-2.5 shrink-0 mt-1">
+              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <CardTitle className="mb-1.5">최근 기록</CardTitle>
+                <CardTitle className="mb-2">최근 기록</CardTitle>
                 <CardDescription>최근 작성한 기록 5개</CardDescription>
               </div>
             </div>
@@ -236,11 +236,11 @@ export default async function DashboardContent() {
         <Card>
           <CardHeader>
             <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary/10 p-2.5 shrink-0 mt-1">
+              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <CardTitle className="mb-1.5">가장 많이 기록한 책</CardTitle>
+                <CardTitle className="mb-2">가장 많이 기록한 책</CardTitle>
                 <CardDescription>기록 수가 많은 책 Top 5</CardDescription>
               </div>
             </div>

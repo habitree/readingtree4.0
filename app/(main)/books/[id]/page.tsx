@@ -9,6 +9,7 @@ import { getImageUrl } from "@/lib/utils/image";
 import { formatDate } from "@/lib/utils/date";
 import { BookStatusSelector } from "@/components/books/book-status-selector";
 import { BookDeleteButton } from "@/components/books/book-delete-button";
+import { BookInfoEditor } from "@/components/books/book-info-editor";
 import { PenTool } from "lucide-react";
 import type { ReadingStatus } from "@/types/book";
 import { NotesList } from "@/components/notes/notes-list";
@@ -92,6 +93,25 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             <BookStatusBadge status={userBook.status as ReadingStatus} />
           </div>
 
+          {/* 읽는 이유 */}
+          <div className="p-4 rounded-lg bg-muted/50 border-l-4 border-l-primary">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <p className="text-sm font-medium text-muted-foreground">읽는 이유</p>
+              <BookInfoEditor
+                userBookId={userBook.id}
+                currentReadingReason={userBook.reading_reason}
+                currentStartedAt={userBook.started_at}
+              />
+            </div>
+            {userBook.reading_reason ? (
+              <p className="text-sm italic">"{userBook.reading_reason}"</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                읽는 이유를 등록해보세요.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2 text-sm">
             {book.publisher && (
               <div>
@@ -109,12 +129,16 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
                 <span className="font-medium">ISBN:</span> {book.isbn}
               </div>
             )}
-            {userBook.started_at && (
-              <div>
-                <span className="font-medium">시작일:</span>{" "}
-                {formatDate(userBook.started_at)}
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="font-medium">시작일:</span>
+              {userBook.started_at ? (
+                <span>{formatDate(userBook.started_at)}</span>
+              ) : (
+                <span className="text-muted-foreground text-sm">
+                  시작일을 등록해보세요.
+                </span>
+              )}
+            </div>
             {userBook.completed_at && (
               <div>
                 <span className="font-medium">완독일:</span>{" "}

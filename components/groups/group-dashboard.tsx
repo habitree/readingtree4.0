@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MemberList } from "./member-list";
 import { SharedNotesList } from "./shared-notes-list";
-import { MemberProgress } from "./member-progress";
+import { GroupBooksManager } from "./group-books-manager";
+import { SharedBooksManager } from "./shared-books-manager";
 import { joinGroup } from "@/app/actions/groups";
 import { toast } from "sonner";
 import { Users, Lock, Globe, UserPlus, CheckCircle2, Clock } from "lucide-react";
@@ -24,6 +25,8 @@ interface GroupDashboardProps {
       status: string;
     } | null;
     sharedNotes: any[];
+    groupBooks?: any[];
+    sharedBooks?: any[];
     isLeader: boolean;
   };
 }
@@ -93,10 +96,12 @@ export function GroupDashboard({ groupData }: GroupDashboardProps) {
                 <span>리더:</span>
                 <div className="flex items-center gap-1">
                   <Avatar className="h-5 w-5">
-                    <AvatarImage src={leader.avatar_url || undefined} />
-                    <AvatarFallback>{leader.name[0]}</AvatarFallback>
+                    <AvatarImage src={leader?.avatar_url || undefined} />
+                    <AvatarFallback>
+                      {leader?.name?.[0] || "?"}
+                    </AvatarFallback>
                   </Avatar>
-                  <span>{leader.name}</span>
+                  <span>{leader?.name || "알 수 없음"}</span>
                 </div>
               </div>
             )}
@@ -130,12 +135,13 @@ export function GroupDashboard({ groupData }: GroupDashboardProps) {
           <TabsList>
             <TabsTrigger value="overview">개요</TabsTrigger>
             <TabsTrigger value="members">구성원</TabsTrigger>
-            {isLeader && <TabsTrigger value="progress">진행 상황</TabsTrigger>}
+            <TabsTrigger value="books">지정도서</TabsTrigger>
+            <TabsTrigger value="shared-library">공유 서재</TabsTrigger>
             <TabsTrigger value="notes">공유 기록</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader>
                   <CardTitle>구성원</CardTitle>
@@ -155,6 +161,26 @@ export function GroupDashboard({ groupData }: GroupDashboardProps) {
                   <div className="text-3xl font-bold">{sharedNotes.length}개</div>
                 </CardContent>
               </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>지정도서</CardTitle>
+                  <CardDescription>모임 지정도서 수</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{groupData.groupBooks?.length || 0}권</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>공유 서재</CardTitle>
+                  <CardDescription>모임에 공유된 서재 수</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">{groupData.sharedBooks?.length || 0}권</div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 
@@ -162,11 +188,13 @@ export function GroupDashboard({ groupData }: GroupDashboardProps) {
             <MemberList members={members} isLeader={isLeader} groupId={group.id} />
           </TabsContent>
 
-          {isLeader && (
-            <TabsContent value="progress">
-              <MemberProgress groupId={group.id} />
-            </TabsContent>
-          )}
+          <TabsContent value="books">
+            <GroupBooksManager groupId={group.id} isLeader={isLeader} />
+          </TabsContent>
+
+          <TabsContent value="shared-library">
+            <SharedBooksManager groupId={group.id} />
+          </TabsContent>
 
           <TabsContent value="notes">
             <SharedNotesList notes={sharedNotes} />

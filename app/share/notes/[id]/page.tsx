@@ -7,6 +7,8 @@ import { ShareButtons } from "@/components/share/share-buttons";
 import { formatSmartDate } from "@/lib/utils/date";
 import { getImageUrl } from "@/lib/utils/image";
 import { getAppUrl } from "@/lib/utils/url";
+import { getNoteTypeLabel } from "@/lib/utils/note";
+import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import Image from "next/image";
 import type { NoteWithBook } from "@/types/note";
 import { isValidUUID } from "@/lib/utils/validation";
@@ -138,12 +140,8 @@ export default async function ShareNotePage({
   const baseUrl = getAppUrl();
   const cardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=minimal`;
 
-  const typeLabels = {
-    quote: "필사",
-    transcription: "필사 이미지",
-    photo: "사진",
-    memo: "메모",
-  };
+  const hasImage = !!noteWithBook.image_url;
+  const typeLabel = getNoteTypeLabel(noteWithBook.type, hasImage);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -162,16 +160,11 @@ export default async function ShareNotePage({
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {/* 기록 유형 및 페이지 */}
+              {/* 기록 유형 */}
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">
-                  {typeLabels[noteWithBook.type]}
+                  {typeLabel}
                 </Badge>
-                {noteWithBook.page_number && (
-                  <span className="text-sm text-muted-foreground">
-                    {noteWithBook.page_number}페이지
-                  </span>
-                )}
               </div>
 
               {/* 이미지 */}
@@ -189,11 +182,11 @@ export default async function ShareNotePage({
 
               {/* 내용 */}
               {noteWithBook.content && (
-                <div className="prose prose-sm max-w-none">
-                  <p className="text-lg leading-relaxed whitespace-pre-wrap">
-                    {noteWithBook.content}
-                  </p>
-                </div>
+                <NoteContentViewer
+                  content={noteWithBook.content}
+                  pageNumber={noteWithBook.page_number}
+                  maxLength={200}
+                />
               )}
 
               {/* 태그 */}

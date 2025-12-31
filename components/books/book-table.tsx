@@ -4,12 +4,23 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BookStatusBadge } from "./book-status-badge";
 import { BookNotesPreview } from "./book-notes-preview";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
-import { BookOpen, Search, FileText } from "lucide-react";
+import { BookOpen, FileText, Loader2, Users } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { updateBookStatus } from "@/app/actions/books";
+import { toast } from "sonner";
 import type { BookWithNotes } from "@/app/actions/books";
+import type { ReadingStatus } from "@/types/book";
 
 interface BookTableProps {
   books: BookWithNotes[];
@@ -20,8 +31,10 @@ interface BookTableProps {
  * habitree.io/search 페이지의 테이블 형태와 유사한 구조
  */
 export function BookTable({ books }: BookTableProps) {
+  const router = useRouter();
   const [expandedBookId, setExpandedBookId] = useState<string | null>(null);
   const [bookNotes, setBookNotes] = useState<Record<string, any[]>>({});
+  const [updatingStatus, setUpdatingStatus] = useState<Record<string, boolean>>({});
 
   const handleToggleNotes = async (bookId: string, userBookId: string) => {
     if (expandedBookId === userBookId) {
@@ -52,6 +65,22 @@ export function BookTable({ books }: BookTableProps) {
     }
   };
 
+  const handleStatusChange = async (userBookId: string, newStatus: ReadingStatus) => {
+    setUpdatingStatus((prev) => ({ ...prev, [userBookId]: true }));
+    try {
+      await updateBookStatus(userBookId, newStatus);
+      toast.success("상태가 변경되었습니다.");
+      router.refresh();
+    } catch (error) {
+      console.error("상태 변경 오류:", error);
+      toast.error(
+        error instanceof Error ? error.message : "상태 변경에 실패했습니다."
+      );
+    } finally {
+      setUpdatingStatus((prev) => ({ ...prev, [userBookId]: false }));
+    }
+  };
+
   if (books.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -72,8 +101,11 @@ export function BookTable({ books }: BookTableProps) {
               <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[300px]">
                 제목/책소개
               </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-40">
+                상태
+              </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32">
-                링크
+                기록
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-48">
                 책정보
@@ -94,39 +126,47 @@ export function BookTable({ books }: BookTableProps) {
                 >
                   {/* 표지 */}
                   <td className="px-4 py-4">
-                    <div className="relative w-16 h-20 rounded overflow-hidden bg-muted">
-                      {hasValidImage ? (
-                        <Image
-                          src={getImageUrl(book.cover_image_url)}
-                          alt={`${book.title} 표지`}
-                          fill
-                          className="object-cover"
-                          sizes="64px"
-                        />
-                      ) : (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <BookOpen className="w-8 h-8 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
+                    <Link href={`/books/${item.id}`} className="block">
+                      <div className="relative w-16 h-20 rounded overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity">
+                        {hasValidImage ? (
+                          <Image
+                            src={getImageUrl(book.cover_image_url)}
+                            alt={`${book.title} 표지`}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <BookOpen className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    </Link>
                   </td>
 
                   {/* 제목/책소개 */}
                   <td className="px-4 py-4">
                     <div className="space-y-2">
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-start gap-2 flex-wrap">
                         <Link
                           href={`/books/${item.id}`}
                           className="font-semibold hover:text-primary transition-colors line-clamp-1 flex-1"
                         >
                           {book.title}
                         </Link>
-                        <BookStatusBadge status={item.status} />
                       </div>
+
+                      {/* 읽는 이유 */}
+                      {item.reading_reason && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 italic">
+                          "{item.reading_reason}"
+                        </p>
+                      )}
 
                       {/* 책소개 (플레이스홀더) */}
                       {book.publisher && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">
+                        <p className="text-xs text-muted-foreground line-clamp-1 opacity-75">
                           {book.publisher}
                         </p>
                       )}
@@ -138,6 +178,21 @@ export function BookTable({ books }: BookTableProps) {
                             <FileText className="w-3 h-3 mr-1" aria-hidden="true" />
                             {item.noteCount}개 기록
                           </Badge>
+                        )}
+                        {item.groupBooks && item.groupBooks.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {item.groupBooks.map((gb) => (
+                              <Badge
+                                key={gb.group_id}
+                                variant="outline"
+                                className="text-xs px-1.5 py-0.5"
+                                title={`${gb.group_name} 지정도서`}
+                              >
+                                <Users className="mr-1 h-2.5 w-2.5" />
+                                {gb.group_name}
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                         {item.noteCount > 0 && (
                           <Button
@@ -164,22 +219,48 @@ export function BookTable({ books }: BookTableProps) {
                     </div>
                   </td>
 
-                  {/* 링크 */}
+                  {/* 상태 */}
                   <td className="px-4 py-4">
-                    <div className="flex flex-col gap-2">
-                      <Link href={`/books/${item.id}`}>
-                        <Button variant="outline" size="sm" className="w-full min-h-[36px]">
-                          <FileText className="w-4 h-4 mr-2" aria-hidden="true" />
-                          기록
-                        </Button>
-                      </Link>
-                      <Link href={`/books/${item.id}?tab=notes`}>
-                        <Button variant="outline" size="sm" className="w-full min-h-[36px]">
-                          <Search className="w-4 h-4 mr-2" aria-hidden="true" />
-                          기록조회
-                        </Button>
-                      </Link>
+                    <div className="flex items-center gap-2">
+                      {updatingStatus[item.id] ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>변경 중...</span>
+                        </div>
+                      ) : (
+                        <Select
+                          value={item.status}
+                          onValueChange={(value) =>
+                            handleStatusChange(item.id, value as ReadingStatus)
+                          }
+                          disabled={updatingStatus[item.id]}
+                        >
+                          <SelectTrigger className="w-[140px] h-9">
+                            <div className="flex items-center justify-between w-full">
+                              <BookStatusBadge status={item.status} />
+                            </div>
+                            <SelectValue className="sr-only" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="not_started">읽기전</SelectItem>
+                            <SelectItem value="reading">읽는 중</SelectItem>
+                            <SelectItem value="completed">완독</SelectItem>
+                            <SelectItem value="rereading">재독</SelectItem>
+                            <SelectItem value="paused">중단</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
+                  </td>
+
+                  {/* 기록 */}
+                  <td className="px-4 py-4">
+                    <Link href={`/books/${item.id}`}>
+                      <Button variant="outline" size="sm" className="w-full min-h-[36px]">
+                        <FileText className="w-4 h-4 mr-2" aria-hidden="true" />
+                        기록
+                      </Button>
+                    </Link>
                   </td>
 
                   {/* 책정보 */}

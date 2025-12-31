@@ -5,6 +5,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatSmartDate } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
+import { getNoteTypeLabel } from "@/lib/utils/note";
+import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import type { NoteType } from "@/types/note";
 
 interface BookNotesPreviewProps {
@@ -12,6 +14,8 @@ interface BookNotesPreviewProps {
     id: string;
     type: NoteType;
     content: string | null;
+    image_url?: string | null;
+    page_number?: number | null;
     created_at: string;
   }>;
   maxVisible?: number;
@@ -34,35 +38,33 @@ export function BookNotesPreview({
   const visibleNotes = isExpanded ? notes : notes.slice(0, maxVisible);
   const hasMore = notes.length > maxVisible;
 
-  const typeLabels = {
-    quote: "필사",
-    transcription: "필사 이미지",
-    photo: "사진",
-    memo: "메모",
-  };
-
   return (
     <div className="space-y-2">
-      {visibleNotes.map((note) => (
-        <div
-          key={note.id}
-          className="p-3 rounded-lg border bg-muted/50 text-sm"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Badge variant="secondary" className="text-xs">
-              {typeLabels[note.type]}
-            </Badge>
-            <span className="text-xs text-muted-foreground">
-              {formatSmartDate(note.created_at)}
-            </span>
+      {visibleNotes.map((note) => {
+        const hasImage = !!note.image_url;
+        const typeLabel = getNoteTypeLabel(note.type, hasImage);
+        
+        return (
+          <div
+            key={note.id}
+            className="p-3 rounded-lg border bg-muted/50 text-sm"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Badge variant="secondary" className="text-xs">
+                {typeLabel}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                {formatSmartDate(note.created_at)}
+              </span>
+            </div>
+            <NoteContentViewer
+              content={note.content}
+              pageNumber={note.page_number || null}
+              maxLength={100}
+            />
           </div>
-          {note.content && (
-            <p className="text-sm line-clamp-2 text-muted-foreground">
-              {note.content}
-            </p>
-          )}
-        </div>
-      ))}
+        );
+      })}
       {hasMore && (
         <Button
           variant="ghost"

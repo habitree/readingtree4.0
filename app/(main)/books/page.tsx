@@ -21,7 +21,11 @@ export const metadata: Metadata = {
 };
 
 interface BooksPageProps {
-  searchParams: {
+  searchParams: Promise<{
+    status?: string;
+    view?: string;
+    q?: string;
+  }> | {
     status?: string;
     view?: string;
     q?: string;
@@ -34,9 +38,12 @@ interface BooksPageProps {
  * habitree.io/search 페이지 기능 마이그레이션
  */
 export default async function BooksPage({ searchParams }: BooksPageProps) {
-  const status = (searchParams.status as ReadingStatus | undefined) || undefined;
-  const view = searchParams.view || "grid";
-  const query = searchParams.q || undefined;
+  // Next.js 15+ 에서 searchParams는 Promise일 수 있음
+  const resolvedSearchParams = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams));
+  
+  const status = (resolvedSearchParams.status as ReadingStatus | undefined) || undefined;
+  const view = resolvedSearchParams.view || "table"; // 기본값을 테이블로 변경
+  const query = resolvedSearchParams.q || undefined;
   
   // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
   const user = await getCurrentUser();
@@ -106,10 +113,12 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
 
       {/* 책 목록 (그리드 또는 테이블) */}
       <Suspense fallback={<BookList books={[]} isLoading />}>
-        {view === "table" && !isGuest ? (
+        {view === "grid" && !isGuest ? (
+          <BooksListGrid status={status} query={query} user={user} />
+        ) : !isGuest ? (
           <BookTable books={books} />
         ) : (
-          <BooksListGrid status={status} query={query} />
+          <BooksListGrid status={status} query={query} user={user} />
         )}
       </Suspense>
     </div>
@@ -119,11 +128,36 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
 async function BooksListGrid({
   status,
   query,
+  user,
 }: {
   status?: ReadingStatus;
   query?: string;
+  user?: any;
 }) {
-  // 그리드 형태는 기존 getUserBooks 사용 (호환성 유지)
-  const books = await getUserBooks(status);
-  return <BookList books={books as any} />;
+  // 그리드 형태도 검색 기능을 지원하도록 getUserBooksWithNotes 사용
+  // 단, 그리드 형태에서는 기록 정보가 필요 없으므로 간단한 형태로 변환
+  const { books: booksWithNotes } = await getUserBooksWithNotes(status, query, user);
+  
+  // BookList 컴포넌트가 기대하는 형태로 변환
+  // BookList는 { id, status, books: { ... }, groupBooks?: [...] } 형태를 기대함
+  const books = booksWithNotes
+    .filter((item) => item.books && item.books.id) // books 객체가 있는 경우만 필터링
+    .map((item) => ({
+      id: item.id, // user_books.id
+      status: item.status,
+      books: {
+        id: item.books.id,
+        title: item.books.title,
+        author: item.books.author,
+        publisher: item.books.publisher,
+        isbn: item.books.isbn,
+        cover_image_url: item.books.cover_image_url,
+        published_date: item.books.published_date || null,
+        created_at: item.books.created_at || "",
+        updated_at: item.books.updated_at || "",
+      },
+      groupBooks: item.groupBooks || [],
+    }));
+  
+  return <BookList books={books} />;
 }

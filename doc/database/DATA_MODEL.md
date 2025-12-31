@@ -71,12 +71,14 @@ Habitree Reading Hub는 사용자의 독서 활동을 관리하고 공유하는 
 ### 3.1 reading_status (독서 상태)
 
 ```sql
-CREATE TYPE reading_status AS ENUM ('reading', 'completed', 'paused');
+CREATE TYPE reading_status AS ENUM ('reading', 'completed', 'paused', 'not_started', 'rereading');
 ```
 
 - **reading**: 읽는 중
 - **completed**: 완독
 - **paused**: 일시 정지
+- **not_started**: 읽기전 (아직 읽기 시작하지 않은 책)
+- **rereading**: 재독 (다시 읽는 책)
 
 **사용 테이블**: `user_books`
 
@@ -206,6 +208,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 - `status` (reading_status, DEFAULT 'reading'): 독서 상태
 - `started_at` (TIMESTAMP WITH TIME ZONE, DEFAULT NOW()): 시작일
 - `completed_at` (TIMESTAMP WITH TIME ZONE): 완독일
+- `reading_reason` (TEXT): 사용자가 책을 읽는 이유 (선택 사항)
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
 - **UNIQUE 제약**: `(user_id, book_id)` - 한 사용자는 같은 책을 한 번만 추가 가능
 
@@ -268,7 +271,42 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 
 ---
 
-### 4.5 groups (독서모임)
+### 4.5 transcriptions (필사 OCR 데이터)
+
+**목적**: 필사 등록 시 OCR로 변환된 텍스트 데이터를 별도로 관리합니다. 책 구절과 사용자의 생각을 체계적으로 저장하고 관리합니다.
+
+**소유 구조**: 개인 (각 사용자는 자신의 필사 데이터만 소유)
+
+**주요 컬럼**:
+- `id` (UUID, PK): 기본 키
+- `note_id` (UUID, NOT NULL): 기록 ID (`notes(id)` 참조, UNIQUE)
+- `extracted_text` (TEXT, NOT NULL): OCR로 추출된 원본 텍스트
+- `quote_content` (TEXT): 책 구절 (사용자가 편집 가능)
+- `memo_content` (TEXT): 사용자의 생각 (사용자가 추가 가능)
+- `status` (ocr_status, DEFAULT 'processing'): OCR 처리 상태
+  - `processing`: 처리 중
+  - `completed`: 완료
+  - `failed`: 실패
+- `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
+- **UNIQUE 제약**: `(note_id)` - 하나의 기록은 하나의 transcription만 가질 수 있음
+
+**관계 정의**:
+- `note_id` → `notes(id)` (ON DELETE CASCADE)
+
+**인덱스**:
+- `idx_transcriptions_note_id`: 기록별 transcription 조회용
+- `idx_transcriptions_status`: 상태별 필터링용
+- `idx_transcriptions_created_at`: 최신순 정렬용 (DESC)
+
+**RLS 정책 요약**:
+- **SELECT**: 자신의 기록에 대한 transcription만 조회 가능 (`notes.user_id = auth.uid()`)
+- **INSERT**: 자신의 기록에 대한 transcription만 생성 가능 (`notes.user_id = auth.uid()`)
+- **UPDATE**: 자신의 기록에 대한 transcription만 수정 가능 (`notes.user_id = auth.uid()`)
+- **DELETE**: 자신의 기록에 대한 transcription만 삭제 가능 (`notes.user_id = auth.uid()`)
+
+---
+
+### 4.6 groups (독서모임)
 
 **목적**: 독서 그룹 정보를 저장합니다. 리더가 그룹을 생성하고 관리합니다.
 
@@ -300,7 +338,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 
 ---
 
-### 4.6 group_members (모임 멤버)
+### 4.7 group_members (모임 멤버)
 
 **목적**: 그룹 멤버십 정보를 저장합니다. 사용자의 그룹 가입 요청 및 승인 상태를 관리합니다.
 
@@ -332,7 +370,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 
 ---
 
-### 4.7 group_books (모임 책)
+### 4.8 group_books (모임 책)
 
 **목적**: 그룹에서 함께 읽는 책을 관리합니다.
 
@@ -356,10 +394,38 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 - `idx_group_books_book_id`: 책별 그룹 조회용
 
 **RLS 정책 요약**:
-- **SELECT**: 리더가 볼 수 있는 그룹의 책, 공개 그룹의 책 조회 가능
+- **SELECT**: 리더, 멤버, 또는 공개 그룹의 책 조회 가능
 - **INSERT**: 리더만 책 추가 가능
 - **UPDATE**: 리더만 책 정보 수정 가능
 - **DELETE**: 리더만 책 제거 가능
+
+---
+
+### 4.8 group_shared_books (모임에 공유된 개인 서재)
+
+**목적**: 모임 멤버들이 자신의 개인 서재를 모임에 공유합니다.
+
+**소유 구조**: 개인 (사용자가 자신의 서재를 공유)
+
+**주요 컬럼**:
+- `id` (UUID, PK): 기본 키
+- `group_id` (UUID, NOT NULL): 그룹 ID (`groups(id)` 참조)
+- `user_book_id` (UUID, NOT NULL): 사용자 서재 ID (`user_books(id)` 참조)
+- `shared_at` (TIMESTAMP WITH TIME ZONE, DEFAULT NOW()): 공유일
+- **UNIQUE 제약**: `(group_id, user_book_id)` - 한 모임에 같은 서재를 한 번만 공유 가능
+
+**관계 정의**:
+- `group_id` → `groups(id)` (ON DELETE CASCADE)
+- `user_book_id` → `user_books(id)` (ON DELETE CASCADE)
+
+**인덱스**:
+- `idx_group_shared_books_group_id`: 그룹별 공유 서재 조회용
+- `idx_group_shared_books_user_book_id`: 서재별 그룹 조회용
+
+**RLS 정책 요약**:
+- **SELECT**: 리더, 멤버, 또는 공개 그룹의 공유 서재 조회 가능
+- **INSERT**: 자신의 서재만 공유 가능, 모임 멤버만 공유 가능
+- **DELETE**: 자신이 공유한 서재만 공유 해제 가능
 
 ---
 
@@ -411,6 +477,8 @@ groups (독서모임)
 group_members ←→ users (N:M)
     ↓ (1:N)
 group_books ←→ books (N:M)
+    ↓ (1:N)
+group_shared_books ←→ user_books (N:M)
 ```
 
 ### 5.2 관계 설명
@@ -422,13 +490,15 @@ group_books ←→ books (N:M)
 5. **books ↔ notes**: 1:N 관계, 한 책에는 여러 기록이 있을 수 있음
 6. **users ↔ groups**: N:M 관계 (group_members를 통해), 한 사용자는 여러 그룹에 가입 가능
 7. **groups ↔ books**: N:M 관계 (group_books를 통해), 한 그룹은 여러 책을 읽을 수 있음
-8. **notes ↔ groups**: N:M 관계 (group_notes를 통해), 한 기록은 여러 그룹에 공유 가능
+8. **user_books ↔ groups**: N:M 관계 (group_shared_books를 통해), 한 사용자 서재는 여러 그룹에 공유 가능
+9. **notes ↔ groups**: N:M 관계 (group_notes를 통해), 한 기록은 여러 그룹에 공유 가능
 
 ### 5.3 CASCADE 규칙
 
 - **users 삭제 시**: `user_books`, `notes`, `groups` (리더인 경우), `group_members` CASCADE 삭제
 - **books 삭제 시**: `user_books`, `notes`, `group_books` CASCADE 삭제
-- **groups 삭제 시**: `group_members`, `group_books`, `group_notes` CASCADE 삭제
+- **groups 삭제 시**: `group_members`, `group_books`, `group_notes`, `group_shared_books` CASCADE 삭제
+- **user_books 삭제 시**: `group_shared_books` CASCADE 삭제
 - **notes 삭제 시**: `group_notes` CASCADE 삭제
 
 ---
@@ -458,7 +528,7 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
 
 ### 6.4 그룹 접근 규칙
 
-**그룹 데이터** (`groups`, `group_members`, `group_books`, `group_notes`):
+**그룹 데이터** (`groups`, `group_members`, `group_books`, `group_notes`, `group_shared_books`):
 - **공개 그룹** (`is_public = TRUE`): 모든 사용자가 조회 가능
 - **비공개 그룹**: 리더 및 승인된 멤버만 조회 가능
 - **리더 권한**: 그룹 생성, 수정, 삭제, 멤버 관리, 책 추가
@@ -505,6 +575,25 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
   - `group_notes`
 - **마이그레이션 파일**: `migration-202512282221__rls__add_missing_policies.sql`
 - **목적**: DB/RLS 규칙 완전 준수 (모든 테이블에 SELECT/INSERT/UPDATE/DELETE 정책 완비)
+
+### 2025-12-31 (지정도서 및 공유 서재 기능 추가)
+
+- **변경 내용**: 독서모임의 지정도서 및 공유 서재 기능 추가
+  - `group_books` 테이블 SELECT 정책 수정: 멤버도 지정도서 조회 가능
+  - `group_shared_books` 테이블 생성: 개인 서재를 모임에 공유하는 기능
+    - `id`, `group_id`, `user_book_id`, `shared_at` 컬럼
+    - UNIQUE 제약: `(group_id, user_book_id)`
+  - RLS 정책 설정:
+    - SELECT: 리더, 멤버, 또는 공개 그룹의 공유 서재 조회 가능
+    - INSERT: 자신의 서재만 공유 가능, 모임 멤버만 공유 가능
+    - DELETE: 자신이 공유한 서재만 공유 해제 가능
+- **영향받는 테이블**:
+  - `group_books` (RLS 정책 수정)
+  - `group_shared_books` (신규)
+- **마이그레이션 파일**:
+  - `migration-202512311633__group_shared_books__create_table.sql`
+  - `migration-202512311634__group_books__allow_member_view.sql`
+- **목적**: 독서모임에서 지정도서와 개인 서재 공유 기능 통합 제공
 
 ### 2025-12-28 (약관 동의 기능 추가)
 

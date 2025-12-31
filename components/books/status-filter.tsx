@@ -44,6 +44,8 @@ export function StatusFilter({ currentStatus }: StatusFilterProps) {
         <SelectItem value="reading">읽는 중</SelectItem>
         <SelectItem value="completed">완독</SelectItem>
         <SelectItem value="paused">중단</SelectItem>
+        <SelectItem value="not_started">읽기전</SelectItem>
+        <SelectItem value="rereading">재독</SelectItem>
       </SelectContent>
     </Select>
   );

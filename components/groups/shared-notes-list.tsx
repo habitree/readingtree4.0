@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatSmartDate } from "@/lib/utils/date";
+import { getNoteTypeLabel } from "@/lib/utils/note";
+import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import type { NoteWithBook } from "@/types/note";
 
 interface SharedNotesListProps {
@@ -17,13 +19,6 @@ interface SharedNotesListProps {
  * 모임에 공유된 기록 표시
  */
 export function SharedNotesList({ notes }: SharedNotesListProps) {
-  const typeLabels = {
-    quote: "필사",
-    transcription: "필사 이미지",
-    photo: "사진",
-    memo: "메모",
-  };
-
   if (notes.length === 0) {
     return (
       <Card>
@@ -40,6 +35,9 @@ export function SharedNotesList({ notes }: SharedNotesListProps) {
     <div className="space-y-3">
       {notes.map((item) => {
         const note = item.notes;
+        const hasImage = !!note.image_url;
+        const typeLabel = getNoteTypeLabel(note.type, hasImage);
+        
         return (
           <Link key={item.id} href={`/notes/${note.id}`}>
             <Card className="hover:shadow-md transition-shadow cursor-pointer">
@@ -48,7 +46,7 @@ export function SharedNotesList({ notes }: SharedNotesListProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="secondary" className="text-xs">
-                        {typeLabels[note.type]}
+                        {typeLabel}
                       </Badge>
                       {note.book && (
                         <span className="text-sm font-medium truncate">
@@ -56,11 +54,13 @@ export function SharedNotesList({ notes }: SharedNotesListProps) {
                         </span>
                       )}
                     </div>
-                    {note.content && (
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                        {note.content}
-                      </p>
-                    )}
+                    <div className="mb-2">
+                      <NoteContentViewer
+                        content={note.content}
+                        pageNumber={note.page_number}
+                        maxLength={100}
+                      />
+                    </div>
                     <span className="text-xs text-muted-foreground">
                       공유일: {formatSmartDate(item.shared_at)}
                     </span>

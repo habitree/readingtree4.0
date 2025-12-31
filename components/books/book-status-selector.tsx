@@ -50,8 +50,10 @@ export function BookStatusSelector({
   };
 
   const statusOptions: Array<{ value: ReadingStatus; label: string }> = [
+    { value: "not_started", label: "읽기전" },
     { value: "reading", label: "읽는 중" },
     { value: "completed", label: "완독" },
+    { value: "rereading", label: "재독" },
     { value: "paused", label: "중단" },
   ];
 

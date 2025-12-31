@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   Library,
-  PenTool,
   Search,
   Clock,
   Users,
@@ -33,7 +32,6 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   { icon: Home, label: "홈", href: "/" },
   { icon: Library, label: "내 서재", href: "/books" },
-  { icon: PenTool, label: "기록 작성", href: "/notes/new" },
   { icon: Search, label: "검색", href: "/search" },
   { icon: Clock, label: "타임라인", href: "/timeline" },
   { icon: Users, label: "독서모임", href: "/groups" },

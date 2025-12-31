@@ -2,7 +2,7 @@
  * 책 관련 타입 정의
  */
 
-export type ReadingStatus = "reading" | "completed" | "paused";
+export type ReadingStatus = "reading" | "completed" | "paused" | "not_started" | "rereading";
 
 export interface Book {
   id: string;
@@ -23,6 +23,7 @@ export interface UserBook {
   status: ReadingStatus;
   started_at: string;
   completed_at: string | null;
+  reading_reason: string | null;
   created_at: string;
   updated_at: string;
 }

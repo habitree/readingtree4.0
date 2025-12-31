@@ -205,11 +205,11 @@ export function NoteForm({ bookId, initialType = "quote" }: NoteFormProps) {
             {...register("content")}
             placeholder={
               type === "quote"
-                ? "인상 깊은 문장을 입력하세요..."
-                : "생각이나 감상을 기록하세요..."
+                ? "인상 깊은 문장"
+                : "생각이나 감상"
             }
             rows={8}
-            className="resize-none"
+            className="resize-none max-w-2xl"
           />
           {errors.content && (
             <p className="text-sm text-destructive">{errors.content.message}</p>
@@ -311,8 +311,13 @@ export function NoteForm({ bookId, initialType = "quote" }: NoteFormProps) {
       </div>
 
       {/* 제출 버튼 */}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isSubmitting || uploading}>
+      <div className="flex flex-col gap-2 pt-4">
+        <Button 
+          type="submit" 
+          disabled={isSubmitting || uploading}
+          fullWidth
+          size="lg"
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -327,6 +332,7 @@ export function NoteForm({ bookId, initialType = "quote" }: NoteFormProps) {
           variant="outline"
           onClick={() => router.back()}
           disabled={isSubmitting || uploading}
+          fullWidth
         >
           취소
         </Button>

@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { NoteForm } from "@/components/notes/note-form";
+import { NoteFormNew } from "@/components/notes/note-form-new";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/app/actions/auth";
@@ -67,7 +67,7 @@ export default async function NewNotePage({ searchParams }: NewNotePageProps) {
         </p>
       </div>
 
-      <NoteForm bookId={bookId} />
+      <NoteFormNew bookId={bookId} />
     </div>
   );
 }

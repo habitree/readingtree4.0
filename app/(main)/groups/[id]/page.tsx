@@ -7,9 +7,9 @@ import { isValidUUID } from "@/lib/utils/validation";
 import { sanitizeErrorForLogging } from "@/lib/utils/validation";
 
 interface GroupDetailPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 /**
@@ -17,19 +17,22 @@ interface GroupDetailPageProps {
  * US-036: 모임 대시보드
  */
 export default async function GroupDetailPage({ params }: GroupDetailPageProps) {
+  // Next.js 15+ 에서 params는 Promise일 수 있음
+  const resolvedParams = await params;
+  
   // params.id 검증
-  if (!params?.id || typeof params.id !== 'string') {
+  if (!resolvedParams?.id || typeof resolvedParams.id !== 'string') {
     notFound();
   }
 
   // UUID 검증
-  if (!isValidUUID(params.id)) {
+  if (!isValidUUID(resolvedParams.id)) {
     notFound();
   }
 
   let groupData;
   try {
-    groupData = await getGroupDetail(params.id);
+    groupData = await getGroupDetail(resolvedParams.id);
   } catch (error) {
     const safeError = sanitizeErrorForLogging(error);
     console.error("모임 상세 조회 오류:", safeError);

@@ -1,0 +1,63 @@
+-- ============================================
+-- 마이그레이션: groups RLS 정책 - 멤버 접근 허용 (무한 재귀 방지)
+-- 날짜: 2025-12-31 16:14
+-- 작성자: 시스템
+-- ============================================
+-- 
+-- 변경 사항:
+-- 1. groups 테이블의 SELECT 정책에 멤버 접근 허용 추가
+--    - 무한 재귀 방지를 위해 group_members를 직접 참조하지 않음
+--    - 대신 EXISTS 서브쿼리를 사용하여 멤버십 확인
+--    - 하지만 이것도 무한 재귀를 일으킬 수 있으므로 주의 필요
+--
+-- 영향받는 테이블:
+-- - groups
+--
+-- 참고:
+-- - 무한 재귀 방지: group_members 정책이 groups를 참조하므로
+--   groups 정책에서 group_members를 참조하면 순환 참조 발생
+-- - 해결 방법: 서버 액션에서 멤버십을 먼저 확인한 후 그룹 조회
+-- ============================================
+
+-- 주의: 이 마이그레이션은 무한 재귀를 일으킬 수 있으므로 실행하지 않음
+-- 대신 getGroupDetail/getGroups 함수에서 멤버십 확인 후 그룹 조회
+
+-- 현재 RLS 정책 (무한 재귀 방지):
+-- CREATE POLICY "Anyone can view public groups"
+--     ON groups FOR SELECT
+--     USING (
+--         is_public = TRUE 
+--         OR 
+--         leader_id = auth.uid()
+--     );
+
+-- 멤버 접근을 허용하려면 다음 정책을 사용할 수 있지만,
+-- group_members를 참조하면 무한 재귀 발생 가능:
+-- CREATE POLICY "Anyone can view public groups"
+--     ON groups FOR SELECT
+--     USING (
+--         is_public = TRUE 
+--         OR 
+--         leader_id = auth.uid()
+--         OR
+--         EXISTS (
+--             SELECT 1 FROM group_members
+--             WHERE group_id = groups.id
+--             AND user_id = auth.uid()
+--             AND status = 'approved'
+--         )
+--     );
+
+-- 해결 방법: 서버 액션에서 처리
+-- getGroupDetail/getGroups 함수에서:
+-- 1. 먼저 group_members에서 멤버십 확인
+-- 2. 멤버인 경우 그룹 조회 시도
+-- 3. 조회 실패 시 에러 메시지 개선
+
+-- ============================================
+-- 실제 해결 방법: RLS 정책은 유지하고 서버 액션에서 처리
+-- ============================================
+-- 이 마이그레이션 파일은 참고용이며 실행하지 않음
+-- 실제 해결은 app/actions/groups.ts의 getGroupDetail/getGroups 함수에서 처리
+-- ============================================
+

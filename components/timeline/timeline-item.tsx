@@ -2,10 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getImageUrl } from "@/lib/utils/image";
+import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 import { formatSmartDate } from "@/lib/utils/date";
+import { getNoteTypeLabel } from "@/lib/utils/note";
+import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import type { NoteWithBook } from "@/types/note";
-import { FileText, PenTool, Camera, ImageIcon } from "lucide-react";
+import { FileText, PenTool, Camera, ImageIcon, BookOpen } from "lucide-react";
 
 interface TimelineItemProps {
   note: NoteWithBook;
@@ -23,63 +25,115 @@ export function TimelineItem({ note }: TimelineItemProps) {
     memo: ImageIcon,
   };
 
-  const typeLabels = {
-    quote: "필사",
-    transcription: "필사 이미지",
-    photo: "사진",
-    memo: "메모",
-  };
-
+  const hasImage = !!note.image_url;
+  const typeLabel = getNoteTypeLabel(note.type, hasImage);
   const Icon = typeIcons[note.type];
+
+  // books가 배열인 경우 첫 번째 요소 사용, 객체인 경우 그대로 사용
+  // Supabase 조인 결과가 `books` 키로 올 수 있으므로 처리
+  const bookData = (note as any).books || note.book;
+  const book = Array.isArray(bookData) ? bookData[0] : bookData;
+  const bookCoverImage = book?.cover_image_url;
+  const hasBookCover = bookCoverImage && isValidImageUrl(bookCoverImage);
+  
+  // 디버깅: 책 정보 확인 (개발 환경에서만)
+  if (process.env.NODE_ENV === 'development') {
+    if (!book) {
+      console.log('TimelineItem: 책 정보 없음', { 
+        noteId: note.id, 
+        book: note.book,
+        books: (note as any).books,
+        bookData 
+      });
+    } else {
+      console.log('TimelineItem: 책 정보 있음', { 
+        noteId: note.id, 
+        bookTitle: book.title,
+        bookCoverImage: book.cover_image_url 
+      });
+    }
+  }
 
   return (
     <Link href={`/notes/${note.id}`}>
-      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
         <CardContent className="p-4">
           <div className="flex gap-4">
-            {/* 이미지 또는 아이콘 */}
-            {note.image_url ? (
-              <div className="relative w-20 h-28 shrink-0 overflow-hidden rounded bg-muted">
-                <Image
-                  src={getImageUrl(note.image_url)}
-                  alt={note.type}
-                  fill
-                  className="object-cover"
-                  sizes="80px"
-                />
-              </div>
-            ) : (
-              <div className="w-20 h-28 shrink-0 flex items-center justify-center rounded bg-muted">
-                <Icon className="h-6 w-6 text-muted-foreground" />
-              </div>
-            )}
+            {/* 책 표지 이미지와 기록 이미지 겹치기 - UX 원칙 05: 깊이감 부여 */}
+            <div className="relative shrink-0">
+              {/* 책 표지 이미지 - 배경 레이어 */}
+              {book ? (
+                <div className="relative w-20 h-28 overflow-hidden rounded-lg bg-muted border shadow-md">
+                  {hasBookCover ? (
+                    <Image
+                      src={getImageUrl(bookCoverImage!)}
+                      alt={book.title || "책 표지"}
+                      fill
+                      className="object-cover"
+                      sizes="80px"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <BookOpen className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative w-20 h-28 overflow-hidden rounded-lg bg-muted border shadow-md flex items-center justify-center">
+                  <BookOpen className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+              
+              {/* 기록 이미지 또는 아이콘 - 전면 레이어 (오프셋으로 겹치기) */}
+              {note.image_url ? (
+                <div className="absolute -bottom-2 -right-2 w-16 h-20 overflow-hidden rounded-lg bg-muted border-2 border-background shadow-lg">
+                  <Image
+                    src={getImageUrl(note.image_url)}
+                    alt={note.type}
+                    fill
+                    className="object-cover"
+                    sizes="64px"
+                  />
+                </div>
+              ) : (
+                <div className="absolute -bottom-2 -right-2 w-16 h-20 flex items-center justify-center rounded-lg bg-muted border-2 border-background shadow-lg">
+                  <Icon className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )}
+            </div>
 
             {/* 내용 */}
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-start justify-between gap-2">
-                <Badge variant="secondary">{typeLabels[note.type]}</Badge>
+                <Badge variant="secondary">{typeLabel}</Badge>
                 <span className="text-xs text-muted-foreground">
                   {formatSmartDate(note.created_at)}
                 </span>
               </div>
 
-              {note.book && (
-                <p className="text-sm font-medium line-clamp-1">
-                  {note.book.title}
-                </p>
+              {/* 책 정보 - 더 명확하게 표시 */}
+              {book ? (
+                <div className="space-y-1 pb-1 border-b">
+                  <p className="text-base font-bold line-clamp-1 text-foreground">
+                    {book.title || "제목 없음"}
+                  </p>
+                  {book.author && (
+                    <p className="text-sm text-muted-foreground line-clamp-1">
+                      {book.author}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="pb-1 border-b">
+                  <p className="text-sm text-muted-foreground italic">책 정보 없음</p>
+                </div>
               )}
 
-              {note.content && (
-                <p className="text-sm line-clamp-2 text-muted-foreground">
-                  {note.content}
-                </p>
-              )}
-
-              {note.page_number && (
-                <span className="text-xs text-muted-foreground">
-                  {note.page_number}페이지
-                </span>
-              )}
+              <NoteContentViewer
+                content={note.content}
+                pageNumber={note.page_number}
+                maxLength={100}
+              />
 
               {note.tags && note.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1">

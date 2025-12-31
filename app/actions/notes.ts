@@ -2,7 +2,13 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { CreateNoteInput, UpdateNoteInput, NoteType, NoteWithBook } from "@/types/note";
+import type {
+  CreateNoteInput,
+  UpdateNoteInput,
+  NoteType,
+  NoteWithBook,
+  Transcription,
+} from "@/types/note";
 import { isValidUUID, isValidLength, isValidTags, sanitizeErrorMessage, sanitizeErrorForLogging } from "@/lib/utils/validation";
 import type { User } from "@supabase/supabase-js";
 
@@ -34,8 +40,27 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
   }
 
   // 입력 검증
+  // quote_content와 memo_content 검증
+  if (data.quote_content && !isValidLength(data.quote_content, 1, 5000)) {
+    throw new Error("인상깊은 구절은 1자 이상 5,000자 이하여야 합니다.");
+  }
+  if (data.memo_content && !isValidLength(data.memo_content, 1, 10000)) {
+    throw new Error("내 생각은 1자 이상 10,000자 이하여야 합니다.");
+  }
+  
+  // 기존 content 필드 검증 (하위 호환성)
   if (data.content && !isValidLength(data.content, 1, 10000)) {
     throw new Error("내용은 1자 이상 10,000자 이하여야 합니다.");
+  }
+  
+  // 최소 하나의 값이 있어야 함
+  const hasQuote = data.quote_content && data.quote_content.trim().length > 0;
+  const hasMemo = data.memo_content && data.memo_content.trim().length > 0;
+  const hasContent = data.content && data.content.trim().length > 0;
+  const hasImage = data.image_url && data.image_url.trim().length > 0;
+  
+  if (!hasQuote && !hasMemo && !hasContent && !hasImage) {
+    throw new Error("인상깊은 구절, 내 생각, 내용, 또는 이미지 중 최소 하나는 입력해주세요.");
   }
 
   if (data.tags && !isValidTags(data.tags, 10, 50)) {
@@ -66,6 +91,25 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
     throw new Error("권한이 없습니다. 해당 책을 소유하고 있지 않습니다.");
   }
 
+  // content 구성: quote_content와 memo_content를 JSON으로 저장
+  let content: string | null = null;
+  if (data.quote_content || data.memo_content) {
+    const contentData: { quote?: string; memo?: string } = {};
+    if (data.quote_content && data.quote_content.trim().length > 0) {
+      contentData.quote = data.quote_content.trim();
+    }
+    if (data.memo_content && data.memo_content.trim().length > 0) {
+      contentData.memo = data.memo_content.trim();
+    }
+    content = JSON.stringify(contentData);
+  } else if (data.content) {
+    // 기존 content 필드 사용 (하위 호환성)
+    content = data.content;
+  }
+
+  // type 결정: 업로드 타입이 있으면 해당 타입, 없으면 memo
+  const noteType = data.type || (data.image_url ? (data.upload_type === "photo" ? "photo" : "transcription") : "memo");
+
   // 기록 생성
   // notes.book_id는 books.id를 참조하므로 userBook.book_id를 사용
   const { data: note, error } = await supabase
@@ -73,11 +117,11 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
     .insert({
       user_id: currentUser.id,
       book_id: userBook.book_id,
-      type: data.type,
-      content: data.content || null,
+      type: noteType,
+      content: content,
       image_url: data.image_url || null,
       page_number: data.page_number || null,
-      is_public: data.is_public ?? false,
+      is_public: data.is_public ?? true, // 기본값: 공개
       tags: data.tags || null,
     })
     .select()
@@ -135,15 +179,89 @@ export async function updateNote(noteId: string, data: UpdateNoteInput, user?: U
     throw new Error("권한이 없습니다. 해당 기록을 수정할 권한이 없습니다.");
   }
 
+  // content 구성: quote_content와 memo_content를 JSON으로 저장
+  let content: string | null | undefined = undefined;
+  if (data.quote_content !== undefined || data.memo_content !== undefined) {
+    // 기존 content를 파싱하여 기존 값 유지
+    const { data: existingNote } = await supabase
+      .from("notes")
+      .select("content")
+      .eq("id", noteId)
+      .single();
+    
+    let existingQuote: string | undefined;
+    let existingMemo: string | undefined;
+    
+    if (existingNote?.content) {
+      try {
+        const parsed = JSON.parse(existingNote.content);
+        if (typeof parsed === "object" && parsed !== null) {
+          existingQuote = parsed.quote;
+          existingMemo = parsed.memo;
+        }
+      } catch {
+        // JSON이 아니면 기존 content를 memo로 처리
+        existingMemo = existingNote.content;
+      }
+    }
+    
+    const contentData: { quote?: string; memo?: string } = {};
+    if (data.quote_content !== undefined) {
+      contentData.quote = data.quote_content.trim().length > 0 ? data.quote_content.trim() : undefined;
+    } else if (existingQuote) {
+      contentData.quote = existingQuote;
+    }
+    
+    if (data.memo_content !== undefined) {
+      contentData.memo = data.memo_content.trim().length > 0 ? data.memo_content.trim() : undefined;
+    } else if (existingMemo) {
+      contentData.memo = existingMemo;
+    }
+    
+    // quote와 memo가 모두 없으면 null, 하나라도 있으면 JSON
+    if (!contentData.quote && !contentData.memo) {
+      content = null;
+    } else {
+      content = JSON.stringify(contentData);
+    }
+  } else if (data.content !== undefined) {
+    // 기존 content 필드 사용 (하위 호환성)
+    content = data.content;
+  }
+
+  // type 결정: 업로드 타입이 있으면 해당 타입, 없으면 기존 타입 유지
+  let noteType: NoteType | undefined = undefined;
+  if (data.image_url !== undefined || data.upload_type !== undefined) {
+    if (data.image_url) {
+      noteType = data.upload_type === "photo" ? "photo" : "transcription";
+    } else {
+      // 이미지가 제거되면 memo로 변경
+      noteType = "memo";
+    }
+  }
+
   // 기록 수정
+  const updateData: any = {
+    page_number: data.page_number !== undefined ? data.page_number : undefined,
+    is_public: data.is_public !== undefined ? data.is_public : undefined,
+    tags: data.tags !== undefined ? data.tags : undefined,
+  };
+  
+  if (content !== undefined) {
+    updateData.content = content;
+  }
+  
+  if (noteType !== undefined) {
+    updateData.type = noteType;
+  }
+  
+  if (data.image_url !== undefined) {
+    updateData.image_url = data.image_url;
+  }
+
   const { error } = await supabase
     .from("notes")
-    .update({
-      content: data.content !== undefined ? data.content : undefined,
-      page_number: data.page_number !== undefined ? data.page_number : undefined,
-      is_public: data.is_public !== undefined ? data.is_public : undefined,
-      tags: data.tags !== undefined ? data.tags : undefined,
-    })
+    .update(updateData)
     .eq("id", noteId);
 
   if (error) {
@@ -488,11 +606,185 @@ export async function getPublicNote(noteId: string, userId?: string) {
 }
 
 /**
- * 기록 내용 업데이트 (OCR 결과 저장용)
- * @param noteId 기록 ID
- * @param content 업데이트할 내용
+ * 사용자별 태그 목록 조회
+ * 사용자가 사용한 모든 태그를 중복 제거하여 반환
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
+ * @returns 태그 배열 (정렬된 순서)
  */
-export async function updateNoteContent(noteId: string, content: string) {
+export async function getUserTags(user?: User | null): Promise<string[]> {
+  const supabase = await createServerSupabaseClient();
+
+  // 현재 사용자 확인
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
+  }
+
+  // 사용자의 모든 기록에서 태그 조회
+  const { data: notes, error } = await supabase
+    .from("notes")
+    .select("tags")
+    .eq("user_id", currentUser.id)
+    .not("tags", "is", null);
+
+  if (error) {
+    console.error("태그 조회 오류:", sanitizeErrorForLogging(error));
+    return [];
+  }
+
+  // 모든 태그를 하나의 배열로 합치고 중복 제거
+  const allTags = new Set<string>();
+  if (notes) {
+    notes.forEach((note) => {
+      if (note.tags && Array.isArray(note.tags)) {
+        note.tags.forEach((tag) => {
+          if (tag && typeof tag === "string" && tag.trim()) {
+            allTags.add(tag.trim());
+          }
+        });
+      }
+    });
+  }
+
+  // 알파벳/한글 순으로 정렬
+  return Array.from(allTags).sort((a, b) => a.localeCompare(b, "ko"));
+}
+
+/**
+ * 태그 사용 횟수 조회
+ * 특정 태그가 몇 개의 기록에 사용되었는지 반환
+ * @param tag 태그명
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
+ * @returns 사용 횟수
+ */
+export async function getTagUsageCount(tag: string, user?: User | null): Promise<number> {
+  const supabase = await createServerSupabaseClient();
+
+  // 현재 사용자 확인
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
+  }
+
+  // 해당 태그를 가진 기록 수 조회
+  const { data: notes, error } = await supabase
+    .from("notes")
+    .select("id")
+    .eq("user_id", currentUser.id)
+    .contains("tags", [tag]);
+
+  if (error) {
+    console.error("태그 사용 횟수 조회 오류:", sanitizeErrorForLogging(error));
+    return 0;
+  }
+
+  return notes?.length || 0;
+}
+
+/**
+ * 태그 완전 삭제
+ * 해당 태그를 가진 모든 기록에서 태그를 제거
+ * @param tag 삭제할 태그명
+ * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
+ */
+export async function deleteTag(tag: string, user?: User | null) {
+  const supabase = await createServerSupabaseClient();
+
+  // 현재 사용자 확인
+  let currentUser = user;
+  if (!currentUser) {
+    const {
+      data: { user: fetchedUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !fetchedUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+    currentUser = fetchedUser;
+  }
+
+  // 해당 태그를 가진 모든 기록 조회
+  const { data: notes, error: fetchError } = await supabase
+    .from("notes")
+    .select("id, tags")
+    .eq("user_id", currentUser.id)
+    .contains("tags", [tag]);
+
+  if (fetchError) {
+    throw new Error(`태그 조회 실패: ${sanitizeErrorMessage(fetchError)}`);
+  }
+
+  if (!notes || notes.length === 0) {
+    return { success: true, updatedCount: 0 };
+  }
+
+  // 각 기록에서 태그 제거
+  let updatedCount = 0;
+  let errorCount = 0;
+  
+  for (const note of notes) {
+    if (note.tags && Array.isArray(note.tags)) {
+      // 태그 배열에서 해당 태그 제거
+      const updatedTags = note.tags.filter((t) => t !== tag);
+      
+      // 태그가 모두 제거되면 null로 설정, 아니면 업데이트된 배열 사용
+      const tagsToUpdate = updatedTags.length > 0 ? updatedTags : null;
+      
+      const { error: updateError } = await supabase
+        .from("notes")
+        .update({ tags: tagsToUpdate })
+        .eq("id", note.id);
+
+      if (updateError) {
+        console.error(`기록 ${note.id} 태그 업데이트 오류:`, sanitizeErrorForLogging(updateError));
+        errorCount++;
+        continue;
+      }
+      
+      updatedCount++;
+    }
+  }
+  
+  // 일부 기록에서 오류가 발생한 경우 경고
+  if (errorCount > 0) {
+    console.warn(`${errorCount}개의 기록에서 태그 삭제 중 오류가 발생했습니다.`);
+  }
+
+  // 캐시 갱신
+  revalidatePath("/notes");
+  revalidatePath("/books");
+  revalidatePath("/search");
+  revalidatePath("/");
+
+  return { success: true, updatedCount };
+}
+
+/**
+ * 필사 OCR 데이터 생성 또는 업데이트
+ * @param noteId 기록 ID
+ * @param extractedText OCR로 추출된 텍스트
+ */
+export async function createOrUpdateTranscription(
+  noteId: string,
+  extractedText: string
+) {
   const supabase = await createServerSupabaseClient();
 
   // 기록 존재 확인 (RLS 정책으로 인해 권한 확인도 함께 수행)
@@ -510,16 +802,128 @@ export async function updateNoteContent(noteId: string, content: string) {
     throw new Error("기록을 찾을 수 없습니다.");
   }
 
-  // Notes 테이블 업데이트
-  const { error: updateError } = await supabase
-    .from("notes")
-    .update({ content })
-    .eq("id", noteId);
+  // 기존 transcription 확인
+  const { data: existingTranscription } = await supabase
+    .from("transcriptions")
+    .select("id")
+    .eq("note_id", noteId)
+    .maybeSingle();
 
-  if (updateError) {
-    throw new Error(`기록 업데이트 실패: ${updateError.message}`);
+  if (existingTranscription) {
+    // 기존 transcription 업데이트
+    const { error: updateError } = await supabase
+      .from("transcriptions")
+      .update({
+        extracted_text: extractedText.trim(),
+        quote_content: extractedText.trim(), // 기본값으로 추출된 텍스트를 구절로 설정
+        status: "completed",
+      })
+      .eq("id", existingTranscription.id);
+
+    if (updateError) {
+      throw new Error(`필사 데이터 업데이트 실패: ${updateError.message}`);
+    }
+  } else {
+    // 새 transcription 생성
+    const { error: insertError } = await supabase
+      .from("transcriptions")
+      .insert({
+        note_id: noteId,
+        extracted_text: extractedText.trim(),
+        quote_content: extractedText.trim(), // 기본값으로 추출된 텍스트를 구절로 설정
+        status: "completed",
+      });
+
+    if (insertError) {
+      throw new Error(`필사 데이터 생성 실패: ${insertError.message}`);
+    }
   }
 
+  // 캐시 무효화
+  revalidatePath("/notes");
+  revalidatePath("/books");
+
   return { success: true };
+}
+
+/**
+ * 필사 OCR 데이터 조회
+ * @param noteId 기록 ID
+ */
+export async function getTranscription(noteId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data, error } = await supabase
+    .from("transcriptions")
+    .select("*")
+    .eq("note_id", noteId)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") {
+    throw new Error(`필사 데이터 조회 실패: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * 필사 OCR 데이터 업데이트 (구절/생각 수정)
+ * @param noteId 기록 ID
+ * @param quoteContent 책 구절
+ * @param memoContent 사용자의 생각
+ */
+export async function updateTranscription(
+  noteId: string,
+  quoteContent?: string,
+  memoContent?: string
+) {
+  const supabase = await createServerSupabaseClient();
+
+  // 기록 존재 및 소유 확인
+  const { data: note, error: noteError } = await supabase
+    .from("notes")
+    .select("id, user_id")
+    .eq("id", noteId)
+    .maybeSingle();
+
+  if (noteError && noteError.code !== "PGRST116") {
+    throw new Error(`기록 조회 실패: ${noteError.message}`);
+  }
+
+  if (!note) {
+    throw new Error("기록을 찾을 수 없습니다.");
+  }
+
+  // transcription 업데이트
+  const updateData: { quote_content?: string | null; memo_content?: string | null } = {};
+  if (quoteContent !== undefined) {
+    updateData.quote_content = quoteContent.trim() || null;
+  }
+  if (memoContent !== undefined) {
+    updateData.memo_content = memoContent.trim() || null;
+  }
+
+  const { error: updateError } = await supabase
+    .from("transcriptions")
+    .update(updateData)
+    .eq("note_id", noteId);
+
+  if (updateError) {
+    throw new Error(`필사 데이터 업데이트 실패: ${updateError.message}`);
+  }
+
+  // 캐시 무효화
+  revalidatePath("/notes");
+  revalidatePath("/books");
+
+  return { success: true };
+}
+
+/**
+ * 기록 내용 업데이트 (OCR 결과 저장용) - 하위 호환성 유지
+ * @deprecated createOrUpdateTranscription을 사용하세요
+ */
+export async function updateNoteContent(noteId: string, extractedText: string) {
+  return createOrUpdateTranscription(noteId, extractedText);
 }
 
