@@ -4,18 +4,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getNoteDetail, deleteNote } from "@/app/actions/notes";
+import { getNoteDetail, deleteNote, getTranscription } from "@/app/actions/notes";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatDate, formatSmartDate } from "@/lib/utils/date";
-import { NoteActions } from "@/components/notes/note-actions";
 import { ShareDialog } from "@/components/share/share-dialog";
-import { FileText, PenTool, Camera, ImageIcon } from "lucide-react";
+import { NoteDeleteButton } from "@/components/notes/note-delete-button";
+import { FileText, PenTool, Camera, ImageIcon, Edit, Trash2 } from "lucide-react";
 import { isValidUUID } from "@/lib/utils/validation";
 import { sanitizeErrorForLogging } from "@/lib/utils/validation";
 import { getNoteTypeLabel } from "@/lib/utils/note";
 import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import { OCRStatusChecker } from "@/components/notes/ocr-status-checker";
 import type { NoteType } from "@/types/note";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface NoteDetailPageProps {
   params: {
@@ -70,6 +71,16 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
   const typeLabel = getNoteTypeLabel(note.type as NoteType, hasImage);
   const Icon = typeIcons[note.type as keyof typeof typeIcons];
 
+  // 필사 데이터 조회 (transcription 타입이고 이미지가 있는 경우)
+  let transcription = null;
+  if (note.type === "transcription" && hasImage) {
+    try {
+      transcription = await getTranscription(note.id);
+    } catch (error) {
+      console.error("필사 데이터 조회 오류:", error);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -90,7 +101,12 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
         </div>
         <div className="flex items-center gap-2">
           <ShareDialog note={note as any} />
-          <NoteActions noteId={note.id} />
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/notes/${note.id}/edit`}>
+              <Edit className="h-4 w-4" />
+            </Link>
+          </Button>
+          <NoteDeleteButton noteId={note.id} />
         </div>
       </div>
 
@@ -113,19 +129,89 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
         </div>
       )}
 
-      {note.image_url && (
-        <div className="relative aspect-[3/4] w-full max-w-md mx-auto overflow-hidden rounded-lg bg-muted">
-          <Image
-            src={getImageUrl(note.image_url)}
-            alt={note.type}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
-          />
+      {/* 필사 이미지와 내용을 함께 표시 (transcription 타입인 경우) */}
+      {note.type === "transcription" && note.image_url ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-6">
+          {/* 필사 이미지 - 유연한 크기 조정 */}
+          <div className="flex items-start justify-center lg:justify-start">
+            <div className="relative w-full max-w-xs aspect-[3/4] overflow-hidden rounded-lg bg-muted shadow-md">
+              <Image
+                src={getImageUrl(note.image_url)}
+                alt="필사 이미지"
+                fill
+                className="object-contain"
+                sizes="(max-width: 1024px) 100vw, 33vw"
+              />
+            </div>
+          </div>
+
+          {/* 필사 내용 - OCR이 완료된 경우 */}
+          <div className="flex-1">
+            {transcription && transcription.status === "completed" ? (
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="text-lg">필사 내용</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {transcription.extracted_text ? (
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2 text-muted-foreground">OCR로 추출된 텍스트</h4>
+                        <p className="text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md max-h-64 overflow-y-auto">
+                          {transcription.extracted_text}
+                        </p>
+                      </div>
+                      {transcription.quote_content && (
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2 text-muted-foreground">인상깊은 구절</h4>
+                          <p className="text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md max-h-48 overflow-y-auto">
+                            {transcription.quote_content}
+                          </p>
+                        </div>
+                      )}
+                      {transcription.memo_content && (
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2 text-muted-foreground">내 생각</h4>
+                          <p className="text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md max-h-48 overflow-y-auto">
+                            {transcription.memo_content}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">추출된 텍스트가 없습니다.</p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="text-lg">필사 내용</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">OCR 처리가 진행 중입니다...</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
+      ) : (
+        /* 일반 이미지 (transcription이 아닌 경우) */
+        note.image_url && (
+          <div className="relative aspect-[3/4] w-full max-w-md mx-auto overflow-hidden rounded-lg bg-muted">
+            <Image
+              src={getImageUrl(note.image_url)}
+              alt={note.type}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          </div>
+        )
       )}
 
-      {note.content && (
+      {/* 일반 기록 내용 표시 (필사가 아닌 경우) */}
+      {note.content && note.type !== "transcription" && (
         <NoteContentViewer
           content={note.content}
           pageNumber={note.page_number}

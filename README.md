@@ -51,8 +51,15 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 NAVER_CLIENT_ID=your_naver_client_id
 NAVER_CLIENT_SECRET=your_naver_client_secret
 
-# Gemini API
-GEMINI_API_KEY=your_gemini_api_key
+# Google Vision API (OCR)
+# 방법 1: API 키 사용
+GOOGLE_VISION_API_KEY=your_vision_api_key
+
+# 방법 2: 서비스 계정 JSON 파일 경로 사용
+# GOOGLE_APPLICATION_CREDENTIALS=./path/to/service-account-key.json
+
+# 방법 3: 서비스 계정 JSON 문자열 사용 (Vercel 등에서 권장)
+# GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key":"..."}
 
 # Kakao
 NEXT_PUBLIC_KAKAO_APP_KEY=your_kakao_app_key

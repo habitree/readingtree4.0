@@ -7,22 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { X, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { X } from "lucide-react";
 import type { NoteType } from "@/types/note";
 import { getUserBooks } from "@/app/actions/books";
-import { getUserTags, deleteTag, getTagUsageCount } from "@/app/actions/notes";
+import { getUserTags } from "@/app/actions/notes";
 
 interface SearchFiltersProps {
   onBooksLoaded?: (books: Array<{ id: string; books: { title: string } }>) => void;
@@ -106,46 +94,6 @@ export function SearchFilters({ onBooksLoaded }: SearchFiltersProps) {
     router.push(`/search?${params.toString()}`);
   };
 
-  // 태그 완전 삭제
-  const handleDeleteTag = async (tag: string) => {
-    try {
-      // 태그 사용 횟수 확인
-      const usageCount = await getTagUsageCount(tag);
-      
-      if (usageCount === 0) {
-        toast.info("이미 사용되지 않는 태그입니다.");
-        // 태그 목록 새로고침 (이미 삭제된 경우)
-        const tags = await getUserTags();
-        setUserTags(tags);
-        return;
-      }
-
-      // 태그 삭제
-      const result = await deleteTag(tag);
-      
-      if (result.success) {
-        if (result.updatedCount > 0) {
-          toast.success(`태그 "${tag}"가 ${result.updatedCount}개의 기록에서 삭제되었습니다.`);
-        } else {
-          toast.info(`태그 "${tag}"가 삭제되었습니다. (사용된 기록이 없습니다.)`);
-        }
-        
-        // 태그 목록 새로고침
-        const tags = await getUserTags();
-        setUserTags(tags);
-        
-        // 선택된 태그에서도 제거
-        if (selectedTags.includes(tag)) {
-          toggleTag(tag);
-        }
-      }
-    } catch (error) {
-      console.error("태그 삭제 오류:", error);
-      toast.error(
-        error instanceof Error ? error.message : "태그 삭제에 실패했습니다."
-      );
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -218,16 +166,32 @@ export function SearchFilters({ onBooksLoaded }: SearchFiltersProps) {
       {/* 유형 필터 */}
       <div className="space-y-2">
         <Label>기록 유형</Label>
-        <Select value={types || "all"} onValueChange={(value) => updateFilter("types", value === "all" ? "" : value)}>
+        <Select 
+          value={
+            // types에 quote나 transcription이 포함되어 있으면 "transcription"으로 표시
+            !types || types === "all" 
+              ? "all" 
+              : types.includes("quote") || types.includes("transcription")
+              ? "transcription"
+              : types
+          }
+          onValueChange={(value) => {
+            // "필사" 선택 시 quote와 transcription 둘 다 검색하도록 처리
+            if (value === "transcription") {
+              updateFilter("types", "quote,transcription");
+            } else {
+              updateFilter("types", value === "all" ? "" : value);
+            }
+          }}
+        >
           <SelectTrigger>
             <SelectValue placeholder="전체" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">전체</SelectItem>
-            <SelectItem value="quote">필사</SelectItem>
-            <SelectItem value="transcription">필사 이미지</SelectItem>
+            <SelectItem value="transcription">필사</SelectItem>
             <SelectItem value="photo">사진</SelectItem>
-            <SelectItem value="memo">메모</SelectItem>
+            <SelectItem value="memo">기록</SelectItem>
           </SelectContent>
         </Select>
         {types && (
@@ -252,64 +216,18 @@ export function SearchFilters({ onBooksLoaded }: SearchFiltersProps) {
               {userTags.map((tag, index) => {
                 const isSelected = selectedTags.includes(tag);
                 return (
-                  <div key={index} className="relative group">
-                    <Badge
-                      variant={isSelected ? "default" : "outline"}
-                      className={`cursor-pointer transition-colors pr-6 ${
-                        isSelected
-                          ? "bg-primary text-primary-foreground hover:bg-primary/80"
-                          : "hover:bg-accent"
-                      }`}
-                      onClick={(e) => {
-                        // 삭제 버튼 클릭이 아닐 때만 태그 토글
-                        const target = e.target as HTMLElement;
-                        if (!target.closest('button[aria-label*="완전 삭제"]')) {
-                          toggleTag(tag);
-                        }
-                      }}
-                    >
-                      {tag}
-                    </Badge>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // preventDefault 제거 - AlertDialog 트리거를 위해 필요
-                          }}
-                          className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-destructive/80 shadow-sm z-10"
-                          aria-label={`${tag} 태그 완전 삭제`}
-                          title="클릭하여 완전 삭제"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>태그 삭제 확인</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            태그 "{tag}"를 삭제하시겠습니까?
-                            <br />
-                            이 태그가 달린 모든 기록에서 태그가 제거됩니다.
-                            <br />
-                            <span className="text-destructive font-semibold">
-                              이 작업은 되돌릴 수 없습니다.
-                            </span>
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>취소</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDeleteTag(tag)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            삭제
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                  <Badge
+                    key={index}
+                    variant={isSelected ? "default" : "outline"}
+                    className={`cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground hover:bg-primary/80"
+                        : "hover:bg-accent"
+                    }`}
+                    onClick={() => toggleTag(tag)}
+                  >
+                    {tag}
+                  </Badge>
                 );
               })}
             </div>
