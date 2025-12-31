@@ -27,7 +27,7 @@ export function OCRStatusChecker({
     pollInterval: 3000,
     onComplete: () => {
       toast.success("OCR 처리가 완료되었습니다!", {
-        description: "인상깊은 구절에 텍스트가 자동으로 저장되었습니다.",
+        description: "필사 테이블에 텍스트가 저장되었습니다. 기록 상세 페이지에서 확인하세요.",
         duration: 5000,
       });
       // 페이지 새로고침하여 최신 데이터 표시

@@ -53,7 +53,8 @@ GitHub 저장소의 **Settings → Secrets and variables → Actions**에서 다
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase Service Role Key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
 | `NAVER_CLIENT_ID` | 네이버 API Client ID | `your_naver_client_id` |
 | `NAVER_CLIENT_SECRET` | 네이버 API Client Secret | `your_naver_client_secret` |
-| `GEMINI_API_KEY` | Gemini API Key | `your_gemini_api_key` |
+| `GOOGLE_VISION_API_KEY` | Google Vision API Key | `your_vision_api_key` |
+| `GOOGLE_SERVICE_ACCOUNT_JSON` | Google Service Account JSON (선택) | `{"type":"service_account",...}` |
 | `KAKAO_APP_KEY` | 카카오 앱 키 | `your_kakao_app_key` |
 | `NEXT_PUBLIC_APP_URL` | 앱 URL (프로덕션) | `https://readingtree2-0.vercel.app` |
 

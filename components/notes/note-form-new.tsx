@@ -220,9 +220,15 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
             // transcription 타입이면 OCR 처리 요청
             if (noteType === "transcription" && result.noteId) {
               try {
+                console.log("[OCR Client] OCR 요청 시작:", {
+                  noteId: result.noteId,
+                  imageUrl: imageUrl?.substring(0, 100) + "...",
+                  noteType,
+                });
+
                 // OCR 처리 시작 알림
                 toast.info("필사 이미지에서 텍스트를 추출하는 중입니다...", {
-                  description: "OCR 처리가 완료되면 자동으로 인상깊은 구절에 저장됩니다.",
+                  description: "OCR 처리가 완료되면 필사 테이블에 자동으로 저장됩니다.",
                   duration: 5000,
                 });
 
@@ -237,21 +243,49 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
                   }),
                 });
 
+                console.log("[OCR Client] OCR 응답 수신:", {
+                  status: ocrResponse.status,
+                  statusText: ocrResponse.statusText,
+                  ok: ocrResponse.ok,
+                });
+
                 if (ocrResponse.ok) {
+                  const responseData = await ocrResponse.json().catch(() => ({}));
+                  console.log("[OCR Client] OCR 요청 성공:", responseData);
+                  
                   // OCR 요청 성공 (비동기 처리 시작)
                   toast.success("OCR 처리가 시작되었습니다.", {
                     description: "처리가 완료되면 자동으로 업데이트됩니다.",
                     duration: 3000,
                   });
                 } else {
+                  const errorData = await ocrResponse.json().catch(() => ({}));
+                  console.error("[OCR Client] OCR 요청 실패:", {
+                    status: ocrResponse.status,
+                    statusText: ocrResponse.statusText,
+                    error: errorData,
+                  });
+                  
                   toast.warning("OCR 처리 요청에 실패했습니다.", {
-                    description: "나중에 다시 시도해주세요.",
+                    description: errorData.error || "나중에 다시 시도해주세요.",
                   });
                 }
               } catch (error) {
-                console.error("OCR 요청 오류:", error);
-                toast.error("OCR 처리 요청 중 오류가 발생했습니다.");
+                console.error("[OCR Client] OCR 요청 오류:", {
+                  error: error instanceof Error ? error.message : String(error),
+                  stack: error instanceof Error ? error.stack : undefined,
+                  noteId: result.noteId,
+                });
+                toast.error("OCR 처리 요청 중 오류가 발생했습니다.", {
+                  description: error instanceof Error ? error.message : "알 수 없는 오류",
+                });
               }
+            } else {
+              console.log("[OCR Client] OCR 요청 건너뜀:", {
+                noteType,
+                hasNoteId: !!result.noteId,
+                reason: noteType !== "transcription" ? "타입이 transcription이 아님" : "noteId가 없음",
+              });
             }
           }
         }
@@ -364,7 +398,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          필사등록 시 이미지에서 텍스트를 자동으로 추출하여 인상깊은 구절에 저장됩니다.
+          필사등록 시 이미지에서 텍스트를 자동으로 추출하여 필사 테이블에 저장됩니다.
         </p>
         <input
           ref={transcriptionInputRef}

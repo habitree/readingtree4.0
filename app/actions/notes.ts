@@ -777,6 +777,72 @@ export async function deleteTag(tag: string, user?: User | null) {
 }
 
 /**
+ * 필사 OCR 데이터 초기 생성 (처리 시작 시점)
+ * @param noteId 기록 ID
+ */
+export async function createTranscriptionInitial(noteId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  // 기록 존재 확인 (RLS 정책으로 인해 권한 확인도 함께 수행)
+  const { data: note, error: noteError } = await supabase
+    .from("notes")
+    .select("id")
+    .eq("id", noteId)
+    .maybeSingle();
+
+  if (noteError && noteError.code !== "PGRST116") {
+    throw new Error(`기록 조회 실패: ${noteError.message}`);
+  }
+
+  if (!note) {
+    throw new Error("기록을 찾을 수 없습니다.");
+  }
+
+  // 기존 transcription 확인
+  const { data: existingTranscription } = await supabase
+    .from("transcriptions")
+    .select("id, status")
+    .eq("note_id", noteId)
+    .maybeSingle();
+
+  if (existingTranscription) {
+    // 이미 존재하면 상태만 업데이트 (처리 중으로 변경)
+    if (existingTranscription.status !== "processing") {
+      const { error: updateError } = await supabase
+        .from("transcriptions")
+        .update({
+          status: "processing",
+        })
+        .eq("id", existingTranscription.id);
+
+      if (updateError) {
+        throw new Error(`필사 데이터 상태 업데이트 실패: ${updateError.message}`);
+      }
+    }
+    return { success: true, transcriptionId: existingTranscription.id };
+  }
+
+  // 새 transcription 생성 (처리 중 상태)
+  const { data: newTranscription, error: insertError } = await supabase
+    .from("transcriptions")
+    .insert({
+      note_id: noteId,
+      extracted_text: "", // 아직 추출되지 않음
+      quote_content: null,
+      memo_content: null,
+      status: "processing",
+    })
+    .select("id")
+    .single();
+
+  if (insertError) {
+    throw new Error(`필사 데이터 생성 실패: ${insertError.message}`);
+  }
+
+  return { success: true, transcriptionId: newTranscription.id };
+}
+
+/**
  * 필사 OCR 데이터 생성 또는 업데이트
  * @param noteId 기록 ID
  * @param extractedText OCR로 추출된 텍스트
@@ -811,32 +877,97 @@ export async function createOrUpdateTranscription(
 
   if (existingTranscription) {
     // 기존 transcription 업데이트
+    // OCR 결과는 extracted_text에만 저장하고, quote_content는 null로 유지 (사용자가 나중에 편집 가능)
     const { error: updateError } = await supabase
       .from("transcriptions")
       .update({
         extracted_text: extractedText.trim(),
-        quote_content: extractedText.trim(), // 기본값으로 추출된 텍스트를 구절로 설정
+        quote_content: null, // OCR 결과는 extracted_text에만 저장
+        memo_content: null, // 사용자가 나중에 추가 가능
         status: "completed",
       })
       .eq("id", existingTranscription.id);
 
     if (updateError) {
+      console.error("[createOrUpdateTranscription] 업데이트 오류:", updateError);
       throw new Error(`필사 데이터 업데이트 실패: ${updateError.message}`);
     }
+    
+    console.log("[createOrUpdateTranscription] Transcription 업데이트 완료:", {
+      transcriptionId: existingTranscription.id,
+      noteId,
+      status: "completed",
+      extractedTextLength: extractedText.trim().length,
+    });
   } else {
     // 새 transcription 생성
-    const { error: insertError } = await supabase
+    // OCR 결과는 extracted_text에만 저장하고, quote_content는 null로 유지
+    const { data: newTranscription, error: insertError } = await supabase
       .from("transcriptions")
       .insert({
         note_id: noteId,
         extracted_text: extractedText.trim(),
-        quote_content: extractedText.trim(), // 기본값으로 추출된 텍스트를 구절로 설정
+        quote_content: null, // OCR 결과는 extracted_text에만 저장
+        memo_content: null, // 사용자가 나중에 추가 가능
         status: "completed",
-      });
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
+      console.error("[createOrUpdateTranscription] 생성 오류:", insertError);
       throw new Error(`필사 데이터 생성 실패: ${insertError.message}`);
     }
+    
+    console.log("[createOrUpdateTranscription] Transcription 생성 완료:", {
+      transcriptionId: newTranscription.id,
+      noteId,
+      status: "completed",
+      extractedTextLength: extractedText.trim().length,
+    });
+  }
+
+  // 캐시 무효화
+  revalidatePath("/notes");
+  revalidatePath("/books");
+
+  return { success: true };
+}
+
+/**
+ * 필사 OCR 데이터 상태 업데이트
+ * @param noteId 기록 ID
+ * @param status 상태 (processing | completed | failed)
+ */
+export async function updateTranscriptionStatus(
+  noteId: string,
+  status: "processing" | "completed" | "failed"
+) {
+  const supabase = await createServerSupabaseClient();
+
+  // 기록 존재 확인
+  const { data: note, error: noteError } = await supabase
+    .from("notes")
+    .select("id")
+    .eq("id", noteId)
+    .maybeSingle();
+
+  if (noteError && noteError.code !== "PGRST116") {
+    throw new Error(`기록 조회 실패: ${noteError.message}`);
+  }
+
+  if (!note) {
+    throw new Error("기록을 찾을 수 없습니다.");
+  }
+
+  // transcription 업데이트
+  const { error: updateError } = await supabase
+    .from("transcriptions")
+    .update({ status })
+    .eq("note_id", noteId);
+
+  if (updateError) {
+    throw new Error(`필사 데이터 상태 업데이트 실패: ${updateError.message}`);
   }
 
   // 캐시 무효화

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { verifyNoteOwnership } from "@/app/actions/notes";
+import { verifyNoteOwnership, createTranscriptionInitial } from "@/app/actions/notes";
 
 /**
  * OCR 처리 요청 API
@@ -8,8 +8,11 @@ import { verifyNoteOwnership } from "@/app/actions/notes";
  * 실제 OCR 처리는 /api/ocr/process에서 수행됩니다.
  */
 export async function POST(request: NextRequest) {
+  console.log("[OCR] 요청 수신 시작");
+  
   try {
     const supabase = await createServerSupabaseClient();
+    console.log("[OCR] Supabase 클라이언트 생성 완료");
 
     // 인증 확인
     const {
@@ -17,13 +20,31 @@ export async function POST(request: NextRequest) {
       error: authError,
     } = await supabase.auth.getUser();
 
+    console.log("[OCR] 인증 확인:", {
+      hasUser: !!user,
+      userId: user?.id,
+      authError: authError?.message,
+    });
+
     if (authError || !user) {
+      console.error("[OCR] 인증 실패:", {
+        authError: authError?.message,
+        hasUser: !!user,
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { noteId, imageUrl } = await request.json();
+    const body = await request.json();
+    const { noteId, imageUrl } = body;
+    
+    console.log("[OCR] 요청 본문 파싱 완료:", {
+      noteId,
+      hasImageUrl: !!imageUrl,
+      imageUrlPreview: imageUrl?.substring(0, 100) + "...",
+    });
 
     if (!noteId || !imageUrl) {
+      console.error("[OCR] 파라미터 누락:", { noteId, hasImageUrl: !!imageUrl });
       return NextResponse.json(
         { error: "noteId와 imageUrl이 필요합니다." },
         { status: 400 }
@@ -31,7 +52,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 기록 소유 확인
+    console.log("[OCR] 기록 소유 확인 시작:", { noteId, userId: user.id });
     const hasOwnership = await verifyNoteOwnership(noteId, user.id);
+    console.log("[OCR] 기록 소유 확인 결과:", { hasOwnership });
 
     if (!hasOwnership) {
       return NextResponse.json(
@@ -40,31 +63,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // OCR 처리 시작 전 transcription 초기 상태 생성
+    try {
+      await createTranscriptionInitial(noteId);
+      console.log(`[OCR] Transcription 초기 상태 생성 완료: noteId=${noteId}`);
+    } catch (error) {
+      console.error("[OCR] Transcription 초기 상태 생성 실패:", error);
+      // 초기 상태 생성 실패해도 OCR 처리는 계속 진행 (이미 존재할 수 있음)
+    }
+
     // 백그라운드에서 OCR 처리 시작
     // 실제 프로덕션에서는 Queue 시스템(Vercel Queue, Supabase Edge Functions 등)을 사용
     // 여기서는 fetch로 비동기 처리하되, 실제로는 Queue 시스템으로 변경 가능
+    // 내부 API 호출 시 쿠키를 전달하여 인증 정보 유지
+    const cookies = request.headers.get("cookie");
     fetch(`${request.nextUrl.origin}/api/ocr/process`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // 내부 API 호출이므로 인증 헤더는 필요 없음 (서버 간 통신)
+        ...(cookies && { Cookie: cookies }), // 쿠키 전달 (인증 정보 유지)
       },
       body: JSON.stringify({ noteId, imageUrl }),
     })
-      .then((response) => {
+      .then(async (response) => {
         if (!response.ok) {
-          console.error("OCR 처리 요청 실패:", response.status, response.statusText);
+          const errorText = await response.text().catch(() => "");
+          console.error("[OCR] 처리 요청 실패:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorText,
+            noteId,
+          });
+        } else {
+          console.log(`[OCR] 처리 요청 성공: noteId=${noteId}`);
         }
       })
       .catch((error) => {
-        console.error("OCR 처리 요청 오류:", error);
+        console.error("[OCR] 처리 요청 오류:", {
+          error: error instanceof Error ? error.message : String(error),
+          noteId,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         // 실패해도 사용자에게는 즉시 응답 반환 (비동기 처리이므로)
       });
 
     // 즉시 응답 반환
     return NextResponse.json({ success: true, noteId });
   } catch (error) {
-    console.error("OCR 요청 API 오류:", error);
+    console.error("[OCR] 요청 API 오류:", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
       {
         error:

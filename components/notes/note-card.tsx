@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +9,7 @@ import { formatSmartDate } from "@/lib/utils/date";
 import { getNoteTypeLabel } from "@/lib/utils/note";
 import { NoteContentViewer } from "./note-content-viewer";
 import { OCRStatusBadge } from "./ocr-status-badge";
+import { useOCRStatus } from "@/hooks/use-ocr-status";
 import type { NoteWithBook } from "@/types/note";
 import { FileText, Image as ImageIcon, PenTool, Camera } from "lucide-react";
 
@@ -29,9 +32,12 @@ export function NoteCard({ note }: NoteCardProps) {
   const typeLabel = getNoteTypeLabel(note.type, hasImage);
   const Icon = typeIcons[note.type];
   
-  // OCR 상태 확인: transcription 타입이고 이미지가 있으면 처리 중/완료 상태 표시
-  // 실제 상태는 OCRStatusChecker에서 확인하므로 여기서는 null로 설정
-  const ocrStatus = note.type === "transcription" && note.image_url ? "processing" : null;
+  // OCR 상태 확인: transcription 타입이고 이미지가 있는 경우 실제 상태 확인
+  const { status: ocrStatus } = useOCRStatus({
+    noteId: note.id,
+    enabled: note.type === "transcription" && hasImage,
+    pollInterval: 3000,
+  });
 
   return (
     <Link href={`/notes/${note.id}`}>

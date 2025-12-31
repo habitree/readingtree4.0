@@ -43,14 +43,25 @@ NAVER_CLIENT_SECRET=your_naver_client_secret
 - `lib/api/naver.ts` - 책 검색 API
 - `app/api/books/search/route.ts` - API Route
 
-### Google Gemini API
+### Google Vision API (OCR)
 ```env
-GEMINI_API_KEY=your_gemini_api_key
+# 방법 1: API 키 사용
+GOOGLE_VISION_API_KEY=your_vision_api_key
+
+# 방법 2: 서비스 계정 JSON 파일 경로 사용
+GOOGLE_APPLICATION_CREDENTIALS=./path/to/service-account-key.json
+
+# 방법 3: 서비스 계정 JSON 문자열 사용 (Vercel 등에서 권장)
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key":"..."}
 ```
 
 **사용 위치:**
-- `lib/api/gemini.ts` - OCR 텍스트 추출
+- `lib/api/vision.ts` - OCR 텍스트 추출
 - `app/api/ocr/process/route.ts` - OCR 처리 API
+
+**참고:**
+- 위 세 가지 방법 중 하나만 설정하면 됩니다
+- 프로덕션 환경에서는 서비스 계정 방식(방법 2 또는 3)을 권장합니다
 
 ### Kakao JavaScript SDK
 ```env
