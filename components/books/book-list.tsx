@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Plus, BookOpen } from "lucide-react";
 import Link from "next/link";
 import type { BookWithUserBook } from "@/types/book";
-import type { UserBook } from "@/types/book";
+import type { UserBook, ReadingStatus } from "@/types/book";
 
 interface BookListProps {
   books: Array<{
     id: string;
-    status: "reading" | "completed" | "paused";
+    status: ReadingStatus;
     books: {
       id: string;
       isbn: string | null;
