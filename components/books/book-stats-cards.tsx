@@ -76,7 +76,7 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
   };
 
   return (
-    <div className={cn("grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", className)}>
+    <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4", className)}>
       {statItems.map((item) => {
         const Icon = item.icon;
         const currentStatus = searchParams.get("status");

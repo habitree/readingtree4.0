@@ -64,37 +64,37 @@ export function TimelineItem({ note }: TimelineItemProps) {
             <div className={cn("relative shrink-0", hasImage && "mb-4 mr-4")}>
               {/* 책 표지 이미지 - 배경 레이어 (조금 더 뒤쪽 느낌) */}
               {book ? (
-                <div className="relative w-24 h-32 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-[1.02]">
+                <div className="relative w-20 h-28 sm:w-24 sm:h-32 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-[1.02]">
                   {hasBookCover ? (
                     <Image
                       src={getImageUrl(bookCoverImage!)}
                       alt={book.title || "책 표지"}
                       fill
                       className="object-cover"
-                      sizes="96px"
+                      sizes="(max-width: 640px) 80px, 96px"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <BookOpen className="h-10 w-10 text-slate-300" />
+                      <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 text-slate-300" />
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="relative w-24 h-32 overflow-hidden rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center">
-                  <BookOpen className="h-10 w-10 text-slate-300" />
+                <div className="relative w-20 h-28 sm:w-24 sm:h-32 overflow-hidden rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center">
+                  <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 text-slate-300" />
                 </div>
               )}
 
               {/* 기록 이미지가 있는 경우에만 전면 레이어 표시 (사용자 가이드 반영: 동일한 규격감으로 과감하게 겹치기) */}
               {note.image_url && (
-                <div className="absolute top-6 left-6 w-24 h-32 z-10 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1">
+                <div className="absolute top-4 left-4 sm:top-6 sm:left-6 w-20 h-28 sm:w-24 sm:h-32 z-10 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1">
                   <div className="relative w-full h-full overflow-hidden rounded-lg bg-white dark:bg-slate-900 border-2 border-white dark:border-slate-800 shadow-[10px_10px_25px_-10px_rgba(0,0,0,0.3)]">
                     <Image
                       src={getImageUrl(note.image_url)}
                       alt={note.type}
                       fill
                       className="object-cover"
-                      sizes="96px"
+                      sizes="(max-width: 640px) 80px, 96px"
                     />
                   </div>
                 </div>

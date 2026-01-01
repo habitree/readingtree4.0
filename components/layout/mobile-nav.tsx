@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Library, Search, User } from "lucide-react";
+import { Home, Library, Search, User, Clock } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 
@@ -17,11 +17,12 @@ interface MobileNavItem {
 
 /**
  * 모바일 네비게이션 아이템 목록
- * 주요 5개 메뉴만 표시
+ * 주요 5개 메뉴 표시 (사용자 요청에 따른 핵심 메뉴 확장)
  */
 const mobileNavItems: MobileNavItem[] = [
   { icon: Home, label: "홈", href: "/" },
   { icon: Library, label: "서재", href: "/books" },
+  { icon: Clock, label: "타임라인", href: "/timeline" },
   { icon: Search, label: "검색", href: "/search" },
   { icon: User, label: "프로필", href: "/profile" },
 ];
@@ -34,8 +35,8 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background lg:hidden"
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-lg lg:hidden"
       aria-label="모바일 네비게이션"
     >
       <div className="flex items-center justify-around h-14 sm:h-16 safe-area-inset-bottom" role="list">
@@ -44,9 +45,9 @@ export function MobileNav() {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (
-            <Link 
-              key={item.href} 
-              href={item.href} 
+            <Link
+              key={item.href}
+              href={item.href}
               className="flex-1 min-h-[44px]"
               aria-label={item.label}
               aria-current={isActive ? "page" : undefined}

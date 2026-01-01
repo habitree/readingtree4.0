@@ -15,7 +15,7 @@ export function HeroSection() {
                         Reading Asset Management
                     </div>
 
-                    <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold text-charcoal-900 leading-[1.1] tracking-tight break-keep">
+                    <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif font-bold text-charcoal-900 leading-[1.1] tracking-tight break-keep">
                         사라지는 독서를<br />
                         <span className="relative inline-block text-forest-800">
                             자산

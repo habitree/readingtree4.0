@@ -95,19 +95,19 @@ export function BookTable({ books }: BookTableProps) {
         <table className="w-full">
           <thead className="bg-muted/50">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-24">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-20 sm:w-24">
                 표지
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[300px]">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[200px] sm:min-w-[300px]">
                 제목/책소개
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-40">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32 sm:w-40">
                 상태
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32">
+              <th className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32">
                 기록
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-48">
+              <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-48">
                 책정보
               </th>
             </tr>
@@ -127,18 +127,18 @@ export function BookTable({ books }: BookTableProps) {
                   {/* 표지 */}
                   <td className="px-4 py-4">
                     <Link href={`/books/${item.id}`} className="block">
-                      <div className="relative w-16 h-20 rounded overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity">
+                      <div className="relative w-12 h-16 sm:w-16 sm:h-20 rounded overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity mx-auto">
                         {hasValidImage ? (
                           <Image
                             src={getImageUrl(book.cover_image_url)}
                             alt={`${book.title} 표지`}
                             fill
                             className="object-cover"
-                            sizes="64px"
+                            sizes="(max-width: 640px) 48px, 64px"
                           />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <BookOpen className="w-8 h-8 text-muted-foreground" />
+                            <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
                           </div>
                         )}
                       </div>
@@ -253,8 +253,8 @@ export function BookTable({ books }: BookTableProps) {
                     </div>
                   </td>
 
-                  {/* 기록 */}
-                  <td className="px-4 py-4">
+                  {/* 기록 (모바일에서 숨김) */}
+                  <td className="hidden md:table-cell px-4 py-4">
                     <Link href={`/books/${item.id}`}>
                       <Button variant="outline" size="sm" className="w-full min-h-[36px]">
                         <FileText className="w-4 h-4 mr-2" aria-hidden="true" />
@@ -263,8 +263,8 @@ export function BookTable({ books }: BookTableProps) {
                     </Link>
                   </td>
 
-                  {/* 책정보 */}
-                  <td className="px-4 py-4">
+                  {/* 책정보 (태블릿 이하에서 숨김) */}
+                  <td className="hidden lg:table-cell px-4 py-4">
                     <div className="space-y-1 text-sm">
                       {book.author && (
                         <div>

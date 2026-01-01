@@ -66,9 +66,9 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-6">
+      <div className="flex flex-col sm:flex-row gap-6">
         {/* 책 표지 */}
-        <div className="relative w-48 h-64 shrink-0 overflow-hidden rounded-lg bg-muted">
+        <div className="relative w-48 h-64 shrink-0 overflow-hidden rounded-lg bg-muted mx-auto sm:mx-0">
           <Image
             src={getImageUrl(book.cover_image_url)}
             alt={book.title}
@@ -81,9 +81,9 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
         </div>
 
         {/* 책 정보 */}
-        <div className="flex-1 space-y-4">
+        <div className="flex-1 space-y-4 text-center sm:text-left">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{book.title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{book.title}</h1>
             {book.author && (
               <p className="text-lg text-muted-foreground mt-2">
                 {book.author}
@@ -91,7 +91,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center sm:justify-start gap-2">
             <BookStatusBadge status={userBook.status as ReadingStatus} />
           </div>
 
@@ -149,7 +149,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             )}
           </div>
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
             <BookStatusSelector
               currentStatus={userBook.status as ReadingStatus}
               userBookId={userBook.id}
