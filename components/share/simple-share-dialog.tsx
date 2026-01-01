@@ -14,6 +14,7 @@ import { Share2, Check, Image as ImageIcon, Download, Link as LinkIcon } from "l
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getImageUrl } from "@/lib/utils/image";
+import { isClipboardSupported, isMobile, downloadImage } from "@/lib/utils/device";
 import { ShareNoteCard } from "./share-note-card";
 import type { NoteWithBook } from "@/types/note";
 
@@ -93,10 +94,14 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
       const html2canvasModule = await import("html2canvas");
       const html2canvas = html2canvasModule.default as any;
 
+      // 모바일에서는 scale을 낮춰서 성능 개선
+      const isMobileDevice = isMobile();
+      const scale = isMobileDevice ? 1.5 : 2;
+
       // 캡처 전용 옵션 설정 (잘림 방지 및 고화질)
       // html2canvas 타입 정의가 완전하지 않아 any로 타입 단언
       const options: any = {
-        scale: 2, // 고해상도 (레티나 대응)
+        scale: scale, // 모바일에서는 낮은 해상도로 성능 개선
         useCORS: true,
         allowTaint: true,
         width: element.offsetWidth,
@@ -106,6 +111,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
         scrollX: -window.scrollX,
         scrollY: -window.scrollY,
         backgroundColor: null, // CSS 배경색 사용
+        logging: false, // 모바일에서 로깅 비활성화로 성능 개선
       };
 
       const canvas = await html2canvas(element, options);
@@ -118,18 +124,53 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           return;
         }
 
+        // Clipboard API 지원 여부 확인
+        const clipboardSupported = isClipboardSupported();
+
         try {
-          const item = new ClipboardItem({ [blob.type]: blob });
-          await navigator.clipboard.write([item]);
-          setCardCopied(true);
-          toast.success("카드 이미지가 클립보드에 복사되었습니다.");
+          if (clipboardSupported) {
+            // Clipboard API 사용 (데스크톱 및 지원되는 모바일)
+            const item = new ClipboardItem({ [blob.type]: blob });
+            await navigator.clipboard.write([item]);
+            setCardCopied(true);
+            toast.success("카드 이미지가 클립보드에 복사되었습니다.");
+          } else {
+            // 모바일 fallback: 다운로드
+            const filename = `habitree-card-${note.id}-${Date.now()}.png`;
+            downloadImage(blob, filename);
+            setCardCopied(true);
+            toast.success("카드 이미지가 다운로드되었습니다.");
+
+            // 모바일에서는 다운로드 후에도 클립보드 복사 시도 (일부 브라우저에서 작동할 수 있음)
+            try {
+              // iOS Safari 등에서도 작동할 수 있는 대체 방법 시도
+              const item = new ClipboardItem({ [blob.type]: blob });
+              await navigator.clipboard.write([item]);
+            } catch (fallbackError) {
+              // 실패해도 무시 (다운로드는 이미 성공)
+              console.log("클립보드 복사 실패 (다운로드는 성공):", fallbackError);
+            }
+          }
 
           setTimeout(() => {
             setCardCopied(false);
           }, 2000);
         } catch (error) {
-          console.error("이미지 복사 실패:", error);
-          toast.error("이미지 복사에 실패했습니다.");
+          console.error("이미지 복사/다운로드 실패:", error);
+          
+          // 에러 발생 시 다운로드로 fallback
+          try {
+            const filename = `habitree-card-${note.id}-${Date.now()}.png`;
+            downloadImage(blob, filename);
+            toast.success("카드 이미지가 다운로드되었습니다.");
+            setCardCopied(true);
+            setTimeout(() => {
+              setCardCopied(false);
+            }, 2000);
+          } catch (downloadError) {
+            console.error("다운로드도 실패:", downloadError);
+            toast.error("이미지 복사에 실패했습니다. 브라우저를 확인해주세요.");
+          }
         }
       }, "image/png");
     } catch (error) {
@@ -182,18 +223,52 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           return;
         }
 
+        // Clipboard API 지원 여부 확인
+        const clipboardSupported = isClipboardSupported();
+
         try {
-          const item = new ClipboardItem({ [blob.type]: blob });
-          await navigator.clipboard.write([item]);
-          setPhotoCopied(true);
-          toast.success("원본 이미지가 클립보드에 복사되었습니다.");
+          if (clipboardSupported) {
+            // Clipboard API 사용 (데스크톱 및 지원되는 모바일)
+            const item = new ClipboardItem({ [blob.type]: blob });
+            await navigator.clipboard.write([item]);
+            setPhotoCopied(true);
+            toast.success("원본 이미지가 클립보드에 복사되었습니다.");
+          } else {
+            // 모바일 fallback: 다운로드
+            const filename = `habitree-image-${note.id}-${Date.now()}.png`;
+            downloadImage(blob, filename);
+            setPhotoCopied(true);
+            toast.success("원본 이미지가 다운로드되었습니다.");
+
+            // 모바일에서는 다운로드 후에도 클립보드 복사 시도 (일부 브라우저에서 작동할 수 있음)
+            try {
+              const item = new ClipboardItem({ [blob.type]: blob });
+              await navigator.clipboard.write([item]);
+            } catch (fallbackError) {
+              // 실패해도 무시 (다운로드는 이미 성공)
+              console.log("클립보드 복사 실패 (다운로드는 성공):", fallbackError);
+            }
+          }
 
           setTimeout(() => {
             setPhotoCopied(false);
           }, 2000);
         } catch (error) {
-          console.error("이미지 복사 실패:", error);
-          toast.error("이미지 복사에 실패했습니다.");
+          console.error("이미지 복사/다운로드 실패:", error);
+          
+          // 에러 발생 시 다운로드로 fallback
+          try {
+            const filename = `habitree-image-${note.id}-${Date.now()}.png`;
+            downloadImage(blob, filename);
+            toast.success("원본 이미지가 다운로드되었습니다.");
+            setPhotoCopied(true);
+            setTimeout(() => {
+              setPhotoCopied(false);
+            }, 2000);
+          } catch (downloadError) {
+            console.error("다운로드도 실패:", downloadError);
+            toast.error("이미지 복사에 실패했습니다. 브라우저를 확인해주세요.");
+          }
         }
       }, "image/png");
     } catch (error) {
