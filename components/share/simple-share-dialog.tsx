@@ -90,7 +90,6 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
 
       // html2canvas 동적 import 및 타입 우회
       // html2canvas 타입 정의가 불완전하여 any로 타입 단언
-      // @ts-expect-error - html2canvas 모듈 타입 정의가 불완전함
       const html2canvasModule = await import("html2canvas");
       const html2canvas = html2canvasModule.default as any;
 
@@ -108,7 +107,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
         scrollY: -window.scrollY,
         backgroundColor: null, // CSS 배경색 사용
       };
-      
+
       const canvas = await html2canvas(element, options);
 
       canvas.toBlob(async (blob: Blob | null) => {
