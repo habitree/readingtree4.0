@@ -27,9 +27,9 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
+      <div className="container flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4">
         {/* 로고 - 모바일에서만 표시 */}
-        <Link href="/" className="lg:hidden font-bold text-lg">
+        <Link href="/" className="lg:hidden font-bold text-base sm:text-lg">
           Habitree
         </Link>
 
@@ -40,8 +40,8 @@ export function Header() {
           <ThemeSelector />
 
           {/* 알림 */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
+            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
             {/* TODO: 알림 배지 표시 */}
           </Button>
 
@@ -49,8 +49,8 @@ export function Header() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10">
+                <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full">
+                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
                     <AvatarImage src={userAvatar || undefined} alt={userName} />
                     <AvatarFallback>
                       {userName.charAt(0).toUpperCase()}

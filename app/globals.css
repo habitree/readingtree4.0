@@ -163,5 +163,38 @@
   .spacing-lg { @apply gap-6; }   /* 24px */
   .spacing-xl { @apply gap-8; }   /* 32px */
   .spacing-2xl { @apply gap-12; } /* 48px */
+
+  /* 모바일 최적화 */
+  /* 터치 타겟 최소 크기 (44x44px 권장) */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 터치 동작 최적화 */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Safe Area 지원 (iPhone X 이상) */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* 모바일 스크롤 최적화 */
+  @media (max-width: 768px) {
+    html {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    body {
+      overscroll-behavior-y: contain;
+    }
+  }
 }
 
