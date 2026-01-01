@@ -59,19 +59,40 @@ export async function generateMetadata({
     };
   }
 
-  const bookTitle = (note.books as any)?.title || "제목 없음";
-  const bookAuthor = (note.books as any)?.author || "";
+  const book = note.books as any;
+  const bookTitle = book?.title || "제목 없음";
+  const bookAuthor = book?.author || "";
   const content = note.content || "";
   const baseUrl = getAppUrl();
   const shareUrl = `${baseUrl}/share/notes/${note.id}`;
   const cardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=minimal`;
 
+  // 내용 요약 생성 (quote/memo 구분)
+  let description = content.substring(0, 160);
+  try {
+    const parsed = JSON.parse(content);
+    if (typeof parsed === "object" && parsed !== null) {
+      const parts: string[] = [];
+      if (parsed.quote) {
+        parts.push(`인상깊은 구절: ${parsed.quote.substring(0, 80)}`);
+      }
+      if (parsed.memo) {
+        parts.push(`내 생각: ${parsed.memo.substring(0, 80)}`);
+      }
+      if (parts.length > 0) {
+        description = parts.join(" | ");
+      }
+    }
+  } catch {
+    // JSON 파싱 실패 시 원본 사용
+  }
+
   return {
     title: `${bookTitle} - 독서 기록`,
-    description: content.substring(0, 160),
+    description: description,
     openGraph: {
       title: `${bookTitle} - 독서 기록`,
-      description: content.substring(0, 160),
+      description: description,
       type: "article",
       url: shareUrl,
       images: [
@@ -79,16 +100,25 @@ export async function generateMetadata({
           url: cardNewsUrl,
           width: 1080,
           height: 1080,
-          alt: bookTitle,
+          alt: `${bookTitle} - ${bookAuthor || ""}`,
         },
       ],
       siteName: "Habitree Reading Hub",
+      // 스레드 최적화를 위한 추가 메타 태그
+      locale: "ko_KR",
     },
     twitter: {
       card: "summary_large_image",
       title: `${bookTitle} - 독서 기록`,
-      description: content.substring(0, 160),
+      description: description,
       images: [cardNewsUrl],
+      // 스레드도 Twitter Card 형식을 지원
+    },
+    // 스레드 최적화를 위한 추가 메타 태그
+    other: {
+      "og:image:width": "1080",
+      "og:image:height": "1080",
+      "og:image:type": "image/png",
     },
   };
 }

@@ -12,6 +12,45 @@ const config: Config = {
       colors: {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        forest: {
+          50: "#f2fcf5",
+          100: "#e1f8e8",
+          200: "#c3eed4",
+          300: "#94deb8",
+          400: "#5ec496",
+          500: "#36a678",
+          600: "#24855e",
+          700: "#1d6b4d",
+          800: "#1a553f",
+          900: "#164635",
+          950: "#0b271e",
+        },
+        paper: {
+          50: "#FDFBF7", // Creamy White
+          100: "#F8F4EE",
+          200: "#F0E9DD",
+          300: "#E2D7C5",
+          400: "#D1C0A8",
+          500: "#BFA586", // Kraft Paper Like
+          600: "#A88B6B",
+          700: "#8C7152",
+          800: "#735C45",
+          900: "#5E4B39",
+          950: "#34291F",
+        },
+        charcoal: {
+          50: "#F5F7FA",
+          100: "#E4E7EB",
+          200: "#CBD2D9",
+          300: "#9AA5B1",
+          400: "#7B8794",
+          500: "#616E7C",
+          600: "#52606D",
+          700: "#3E4C59",
+          800: "#323F4B",
+          900: "#1F2933", // Deep Blueish Gray
+          950: "#12171d",
+        },
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
@@ -88,10 +127,24 @@ const config: Config = {
         'wider': '0.02em',
         'widest': '0.05em', // 대문자용
       },
+      animation: {
+        "fade-in-up": "fadeInUp 0.8s ease-out forwards",
+        "spin-slow": "spin 8s linear infinite",
+        "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+      },
+      keyframes: {
+        fadeInUp: {
+          "0%": { opacity: "0", transform: "translateY(20px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+    },
+    fontFamily: {
+      sans: ["var(--font-inter)", "sans-serif"],
+      serif: ["var(--font-noto-serif-kr)", "serif"],
     },
   },
   plugins: [],
 };
 
 export default config;
-
