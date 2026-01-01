@@ -102,32 +102,32 @@ export function BookCard({ book, userBookId, status, groupBooks }: BookCardProps
               </div>
             )}
           </div>
-          <div className="p-4 space-y-2">
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="font-semibold text-sm line-clamp-2 flex-1 leading-tight">{book.title}</h3>
-              <BookStatusBadge status={status} className="shrink-0 scale-90" />
+          <div className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
+            <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+              <h3 className="font-semibold text-xs sm:text-sm line-clamp-2 flex-1 leading-tight">{book.title}</h3>
+              <BookStatusBadge status={status} className="shrink-0 scale-75 sm:scale-90" />
             </div>
             {book.author && (
-              <p className="text-xs text-muted-foreground line-clamp-1">
+              <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1">
                 {book.author}
               </p>
             )}
             {book.publisher && (
-              <p className="text-xs text-muted-foreground line-clamp-1 opacity-75">
+              <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-1 opacity-75">
                 {book.publisher}
               </p>
             )}
             {groupBooks && groupBooks.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-1 sm:gap-2 mt-1.5 sm:mt-2">
                 {groupBooks.map((gb) => (
                   <Badge
                     key={gb.group_id}
                     variant="secondary"
-                    className="text-xs px-1.5 py-0.5"
+                    className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5"
                     title={`${gb.group_name} 지정도서`}
                   >
-                    <Users className="mr-1 h-2.5 w-2.5" />
-                    {gb.group_name}
+                    <Users className="mr-0.5 sm:mr-1 h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                    <span className="line-clamp-1">{gb.group_name}</span>
                   </Badge>
                 ))}
               </div>
