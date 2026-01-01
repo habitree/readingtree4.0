@@ -21,7 +21,7 @@ export function isValidImageUrl(url: string | null | undefined): boolean {
  */
 export function convertToHttps(url: string): string {
   if (!url) return url;
-  
+
   try {
     const urlObj = new URL(url);
     // HTTP인 경우 HTTPS로 변환
@@ -45,18 +45,25 @@ export function getImageUrl(
   url: string | null | undefined,
   fallback?: string
 ): string {
-  // 유효한 URL이 있으면 HTTPS로 변환하여 반환
-  if (isValidImageUrl(url) && url) {
+  // 빈 값 처리
+  if (!url) {
+    if (fallback && (isValidImageUrl(fallback) || fallback.startsWith("/"))) {
+      return fallback.startsWith("/") ? fallback : convertToHttps(fallback);
+    }
+    return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3C/svg%3E";
+  }
+
+  // 절대 경로 URL인 경우 HTTPS 변환
+  if (isValidImageUrl(url)) {
     return convertToHttps(url);
   }
-  
-  // fallback이 제공되면 HTTPS로 변환하여 사용
-  if (fallback && isValidImageUrl(fallback)) {
-    return convertToHttps(fallback);
+
+  // 상대 경로(/로 시작)인 경우 그대로 반환
+  if (url.startsWith("/")) {
+    return url;
   }
-  
-  // 기본 fallback: 투명한 1x1 픽셀 SVG (로딩 중 깨진 이미지 아이콘 방지)
-  // 실제로는 각 컴포넌트에서 placeholder를 표시하는 것이 더 나음
+
+  // 기본 fallback
   return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3C/svg%3E";
 }
 

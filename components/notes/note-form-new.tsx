@@ -140,11 +140,44 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
   };
 
   const handleTranscriptionClick = () => {
-    transcriptionInputRef.current?.click();
+    console.log("필사등록 버튼 클릭됨", {
+      ref: transcriptionInputRef.current,
+      refExists: !!transcriptionInputRef.current,
+    });
+    
+    if (!transcriptionInputRef.current) {
+      console.error("transcriptionInputRef가 null입니다.");
+      toast.error("파일 입력 요소를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+    
+    // 브라우저 보안 정책으로 인해 setTimeout을 사용하여 다음 이벤트 루프에서 실행
+    setTimeout(() => {
+      try {
+        if (transcriptionInputRef.current) {
+          // input 요소가 실제로 DOM에 있는지 확인
+          if (transcriptionInputRef.current.isConnected) {
+            transcriptionInputRef.current.click();
+            console.log("파일 선택 다이얼로그 열기 시도 완료");
+          } else {
+            console.error("input 요소가 DOM에 연결되지 않았습니다.");
+            toast.error("파일 입력 요소를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+          }
+        }
+      } catch (error) {
+        console.error("파일 선택 다이얼로그 열기 실패:", error);
+        toast.error("파일 선택에 실패했습니다.");
+      }
+    }, 0);
   };
 
   const handlePhotoClick = () => {
-    photoInputRef.current?.click();
+    // 브라우저 보안 정책으로 인해 setTimeout을 사용하여 다음 이벤트 루프에서 실행
+    setTimeout(() => {
+      if (photoInputRef.current && photoInputRef.current.isConnected) {
+        photoInputRef.current.click();
+      }
+    }, 0);
   };
 
   const removeImage = (index: number) => {
@@ -376,31 +409,32 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
       <div className="space-y-2">
         <Label>이미지 등록 (선택)</Label>
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleTranscriptionClick}
-            disabled={uploading}
-            className="flex-1"
-          >
-            <PenTool className="mr-2 h-4 w-4" />
-            필사등록
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handlePhotoClick}
-            disabled={uploading}
-            className="flex-1"
-          >
-            <Camera className="mr-2 h-4 w-4" />
-            이미지등록
-          </Button>
+          <label htmlFor="transcription-input" className="flex-1 cursor-pointer">
+            <div
+              className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full ${
+                uploading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              <PenTool className="mr-2 h-4 w-4" />
+              필사등록
+            </div>
+          </label>
+          <label htmlFor="photo-input" className="flex-1 cursor-pointer">
+            <div
+              className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full ${
+                uploading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            >
+              <Camera className="mr-2 h-4 w-4" />
+              이미지등록
+            </div>
+          </label>
         </div>
         <p className="text-xs text-muted-foreground">
           필사등록 시 이미지에서 텍스트를 자동으로 추출하여 필사 테이블에 저장됩니다.
         </p>
         <input
+          id="transcription-input"
           ref={transcriptionInputRef}
           type="file"
           accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
@@ -408,6 +442,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
           className="hidden"
         />
         <input
+          id="photo-input"
           ref={photoInputRef}
           type="file"
           accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
