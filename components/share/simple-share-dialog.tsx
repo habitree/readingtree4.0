@@ -86,12 +86,13 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
       // 상태 반영을 위해 잠깐 대기
       await new Promise((resolve) => setTimeout(resolve, 300));
 
+      // @ts-ignore - html2canvas 타입 정의 이슈
       const html2canvas = (await import("html2canvas")).default;
       const element = cardRef.current;
 
       // 캡처 전용 옵션 설정 (잘림 방지 및 고화질)
+      // @ts-ignore - html2canvas 옵션 타입 정의 이슈
       const canvas = await html2canvas(element, {
-        backgroundColor: "#ffffff",
         scale: 2, // 고해상도 (레티나 대응)
         useCORS: true,
         allowTaint: true,
@@ -101,6 +102,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
         y: 0,
         scrollX: -window.scrollX,
         scrollY: -window.scrollY,
+        backgroundColor: null, // CSS 배경색 사용
       });
 
       canvas.toBlob(async (blob: Blob | null) => {
