@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Metadata } from "next";
+import { Metadata, Viewport } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,8 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             fill
             className="object-cover"
             sizes="192px"
+            loading="eager"
+            priority={true}
           />
         </div>
 
@@ -219,5 +221,12 @@ export async function generateMetadata({
       title: "책 상세 | Habitree Reading Hub",
     };
   }
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+  };
 }
 

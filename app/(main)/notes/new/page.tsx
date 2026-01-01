@@ -2,7 +2,6 @@ import { Metadata } from "next";
 import { NoteFormNew } from "@/components/notes/note-form-new";
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/app/actions/auth";
 import { isValidUUID } from "@/lib/utils/validation";
 
 export const metadata: Metadata = {
@@ -21,40 +20,44 @@ interface NewNotePageProps {
 /**
  * 기록 작성 페이지
  * US-010~US-015: 기록 작성 기능
+ * 
+ * 성능 최적화:
+ * - Supabase 클라이언트 재사용 (중복 생성 방지)
+ * - 사용자 정보와 책 소유 확인 병렬 처리
+ * - 검증 단계 최적화
  */
 export default async function NewNotePage({ searchParams }: NewNotePageProps) {
   // Next.js 15+ 에서 searchParams는 Promise일 수 있음
   const resolvedSearchParams = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams));
   const bookId = resolvedSearchParams.bookId;
 
-  // bookId 검증
-  if (!bookId || typeof bookId !== 'string') {
+  // bookId 검증 (한 번에 처리)
+  if (!bookId || typeof bookId !== 'string' || !isValidUUID(bookId)) {
     redirect("/books");
   }
 
-  // UUID 검증
-  if (!isValidUUID(bookId)) {
-    redirect("/books");
-  }
+  // Supabase 클라이언트 생성 (한 번만)
+  const supabase = await createServerSupabaseClient();
 
-  // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
-  const user = await getCurrentUser();
+  // 사용자 정보와 책 소유 확인을 병렬로 처리
+  const [userResult, userBookResult] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from("user_books")
+      .select("id, user_id")
+      .eq("id", bookId)
+      .maybeSingle(),
+  ]);
 
-  // 로그인 확인
-  if (!user) {
+  // 사용자 확인
+  const user = userResult.data?.user;
+  if (!user || userResult.error) {
     redirect("/login");
   }
 
   // 책 소유 확인
-  const supabase = await createServerSupabaseClient();
-  const { data: userBook, error: bookError } = await supabase
-    .from("user_books")
-    .select("id")
-    .eq("id", bookId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (bookError || !userBook) {
+  const userBook = userBookResult.data;
+  if (!userBook || userBookResult.error || userBook.user_id !== user.id) {
     redirect("/books");
   }
 
