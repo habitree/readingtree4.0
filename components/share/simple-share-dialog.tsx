@@ -89,7 +89,8 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
       const element = cardRef.current;
 
       // html2canvas 동적 import 및 타입 우회
-      // @ts-expect-error - html2canvas 타입 정의가 불완전함
+      // html2canvas 타입 정의가 불완전하여 any로 타입 단언
+      // @ts-expect-error - html2canvas 모듈 타입 정의가 불완전함
       const html2canvasModule = await import("html2canvas");
       const html2canvas = html2canvasModule.default as any;
 
