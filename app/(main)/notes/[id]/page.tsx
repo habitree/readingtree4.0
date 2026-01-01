@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Metadata } from "next";
+import { Metadata, Viewport } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { getNoteDetail, deleteNote, getTranscription } from "@/app/actions/notes";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatDate, formatSmartDate } from "@/lib/utils/date";
-import { ShareDialog } from "@/components/share/share-dialog";
+import { SimpleShareDialog } from "@/components/share/simple-share-dialog";
 import { NoteDeleteButton } from "@/components/notes/note-delete-button";
 import { FileText, PenTool, Camera, ImageIcon, Edit, Trash2 } from "lucide-react";
 import { isValidUUID } from "@/lib/utils/validation";
@@ -100,7 +100,7 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ShareDialog note={note as any} />
+          <SimpleShareDialog note={note as any} />
           <Button variant="outline" size="sm" asChild>
             <Link href={`/notes/${note.id}/edit`}>
               <Edit className="h-4 w-4" />
@@ -274,5 +274,12 @@ export async function generateMetadata({
       title: "기록 상세 | Habitree Reading Hub",
     };
   }
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+  };
 }
 

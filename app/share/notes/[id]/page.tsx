@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShareButtons } from "@/components/share/share-buttons";
 import { formatSmartDate } from "@/lib/utils/date";
 import { getImageUrl } from "@/lib/utils/image";
 import { getAppUrl } from "@/lib/utils/url";
@@ -65,8 +64,6 @@ export async function generateMetadata({
   const content = note.content || "";
   const baseUrl = getAppUrl();
   const shareUrl = `${baseUrl}/share/notes/${note.id}`;
-  const cardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=minimal`;
-
   // 내용 요약 생성 (quote/memo 구분)
   let description = content.substring(0, 160);
   try {
@@ -95,30 +92,25 @@ export async function generateMetadata({
       description: description,
       type: "article",
       url: shareUrl,
-      images: [
-        {
-          url: cardNewsUrl,
-          width: 1080,
-          height: 1080,
-          alt: `${bookTitle} - ${bookAuthor || ""}`,
-        },
-      ],
+      images: book?.cover_image_url
+        ? [
+            {
+              url: book.cover_image_url,
+              width: 400,
+              height: 600,
+              alt: `${bookTitle} - ${bookAuthor || ""}`,
+            },
+          ]
+        : [],
       siteName: "Habitree Reading Hub",
       // 스레드 최적화를 위한 추가 메타 태그
       locale: "ko_KR",
     },
     twitter: {
-      card: "summary_large_image",
+      card: "summary",
       title: `${bookTitle} - 독서 기록`,
       description: description,
-      images: [cardNewsUrl],
-      // 스레드도 Twitter Card 형식을 지원
-    },
-    // 스레드 최적화를 위한 추가 메타 태그
-    other: {
-      "og:image:width": "1080",
-      "og:image:height": "1080",
-      "og:image:type": "image/png",
+      images: book?.cover_image_url ? [book.cover_image_url] : [],
     },
   };
 }
@@ -167,8 +159,6 @@ export default async function ShareNotePage({
   const noteWithBook = note as NoteWithBook;
   const bookTitle = noteWithBook.book?.title || "제목 없음";
   const bookAuthor = noteWithBook.book?.author || "";
-  const baseUrl = getAppUrl();
-  const cardNewsUrl = `${baseUrl}/api/share/card?noteId=${note.id}&templateId=minimal`;
 
   const hasImage = !!noteWithBook.image_url;
   const typeLabel = getNoteTypeLabel(noteWithBook.type, hasImage);
@@ -235,10 +225,6 @@ export default async function ShareNotePage({
                 {formatSmartDate(noteWithBook.created_at)}
               </p>
 
-              {/* 공유 버튼 */}
-              <div className="pt-4 border-t">
-                <ShareButtons note={noteWithBook} cardNewsUrl={cardNewsUrl} />
-              </div>
             </div>
           </CardContent>
         </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { signInWithKakao, signInWithGoogle, signOut as serverSignOut } from "@/app/actions/auth";
 import type { User } from "@supabase/supabase-js";
@@ -21,30 +21,40 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /**
  * 인증 Context Provider
- * 서버에서 받은 초기 사용자 정보를 사용하고, 실시간 업데이트는 서버 세션과 동기화합니다.
+ * 성능 최적화: 루트 레이아웃에서 중복 세션 조회를 제거하고, onAuthStateChange로 세션 동기화
  * 
  * 규칙: 서버 중심 세션 관리
- * - 초기 사용자 정보는 서버에서 받은 것을 사용
- * - onAuthStateChange는 서버 세션과 동기화 확인용으로만 사용
+ * - 미들웨어에서 이미 세션을 갱신하므로, onAuthStateChange로 세션 정보를 읽음
+ * - 초기 사용자 정보는 서버에서 받은 것을 사용 (없으면 null)
  * - 로그인/로그아웃은 서버 액션으로만 처리
  */
 export function AuthProvider({ children, initialUser }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(false); // 서버에서 이미 받았으므로 false
-  const supabase = createClient();
-
+  const [isLoading, setIsLoading] = useState(!initialUser); // 초기 사용자 정보가 없으면 로딩 상태
+  
+  // Supabase 클라이언트를 메모이제이션하여 HMR 시 재생성 방지
+  const supabase = useMemo(() => createClient(), []);
+  
+  // initialUser 변경 추적을 위한 ref
+  const initialUserRef = useRef(initialUser);
+  
+  // initialUser가 변경된 경우에만 상태 업데이트
   useEffect(() => {
-    // 초기 사용자 정보 설정 (서버에서 받은 정보 우선)
-    setUser(initialUser);
-    setIsLoading(false);
+    if (initialUserRef.current !== initialUser) {
+      initialUserRef.current = initialUser;
+      setUser(initialUser);
+      setIsLoading(!initialUser);
+    }
+  }, [initialUser]);
 
-    // 인증 상태 변경 감지 (서버 세션과 동기화 확인용)
-    // 실제 사용자 정보는 서버 세션이 기준이므로, 클라이언트는 표시만 담당
+  // 인증 상태 변경 감지 (서버 세션과 동기화)
+  // HMR 시 재구독을 방지하기 위해 supabase를 의존성에서 제거하고 ref 사용
+  useEffect(() => {
+    // 미들웨어에서 이미 세션을 갱신했으므로, onAuthStateChange가 즉시 세션 정보를 제공
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      // 서버 세션과 동기화 확인
-      // 로그아웃 시 클라이언트 상태도 업데이트
+      // 서버 세션과 동기화
       if (session?.user) {
         setUser(session.user);
       } else {
@@ -56,7 +66,8 @@ export function AuthProvider({ children, initialUser }: AuthProviderProps) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, initialUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // supabase는 메모이제이션되어 있으므로 의존성에서 제거
 
   const signIn = async (provider: "kakao" | "google") => {
     // 서버 액션 호출

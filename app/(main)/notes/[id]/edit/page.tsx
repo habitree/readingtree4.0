@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { Metadata } from "next";
+import { Metadata, Viewport } from "next";
 import { getNoteDetail, updateNote } from "@/app/actions/notes";
 import { NoteEditForm } from "@/components/notes/note-edit-form";
 import { isValidUUID } from "@/lib/utils/validation";
@@ -65,5 +65,12 @@ export default async function NoteEditPage({ params }: NoteEditPageProps) {
       <NoteEditForm note={note} />
     </div>
   );
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+  };
 }
 

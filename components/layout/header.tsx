@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, User } from "lucide-react";
+import { Bell, User, Trees } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,10 +26,11 @@ export function Header() {
   const userAvatar = user?.user_metadata?.avatar_url || null;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4">
         {/* 로고 - 모바일에서만 표시 */}
-        <Link href="/" className="lg:hidden font-bold text-base sm:text-lg">
+        <Link href="/" className="lg:hidden flex items-center gap-2 font-bold text-base sm:text-lg">
+          <Trees className="w-6 h-6 text-forest-600" />
           Habitree
         </Link>
 

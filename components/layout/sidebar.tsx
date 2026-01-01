@@ -9,6 +9,7 @@ import {
   Clock,
   Users,
   User,
+  Trees,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -46,22 +47,27 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside 
-      className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:bg-background"
+    <aside
+      className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:border-r lg:bg-background lg:z-50"
       aria-label="주요 네비게이션"
     >
       <div className="flex flex-col flex-1 pt-6 pb-4 overflow-y-auto">
-        <div className="flex items-center flex-shrink-0 px-6 mb-8">
-          <h1 className="text-xl font-bold">Habitree Reading Hub</h1>
-        </div>
+        <Link 
+          href="/" 
+          className="flex items-center flex-shrink-0 px-6 mb-8 gap-2 hover:opacity-80 transition-opacity"
+          aria-label="홈으로 이동"
+        >
+          <Trees className="w-8 h-8 text-forest-600" />
+          <h1 className="text-xl font-bold">Habitree</h1>
+        </Link>
         <nav className="flex-1 px-3 space-y-1" aria-label="메인 메뉴">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
-              <Link 
-                key={item.href} 
+              <Link
+                key={item.href}
                 href={item.href}
                 aria-label={item.label}
                 aria-current={isActive ? "page" : undefined}
