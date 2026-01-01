@@ -31,7 +31,7 @@ export function NoteCard({ note }: NoteCardProps) {
   const hasImage = !!note.image_url;
   const typeLabel = getNoteTypeLabel(note.type, hasImage);
   const Icon = typeIcons[note.type];
-  
+
   // OCR 상태 확인: transcription 타입이고 이미지가 있는 경우 실제 상태 확인
   const { status: ocrStatus } = useOCRStatus({
     noteId: note.id,
@@ -47,18 +47,18 @@ export function NoteCard({ note }: NoteCardProps) {
             {/* UX 원칙 05: 깊이감 부여를 위한 이미지 레이어링 */}
             {/* 이미지 또는 아이콘 */}
             {note.image_url ? (
-              <div className="relative w-24 h-32 shrink-0 overflow-hidden rounded bg-muted">
+              <div className="relative w-20 h-28 sm:w-24 sm:h-32 shrink-0 overflow-hidden rounded bg-muted">
                 <Image
                   src={getImageUrl(note.image_url)}
                   alt={note.type}
                   fill
                   className="object-cover"
-                  sizes="96px"
+                  sizes="(max-width: 640px) 80px, 96px"
                 />
               </div>
             ) : (
-              <div className="w-24 h-32 shrink-0 flex items-center justify-center rounded bg-muted">
-                <Icon className="h-8 w-8 text-muted-foreground" />
+              <div className="w-20 h-28 sm:w-24 sm:h-32 shrink-0 flex items-center justify-center rounded bg-muted">
+                <Icon className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
               </div>
             )}
 

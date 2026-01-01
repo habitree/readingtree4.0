@@ -8,7 +8,9 @@ import { SearchFilters } from "@/components/search/search-filters";
 import { SearchResults } from "@/components/search/search-results";
 import { Pagination } from "@/components/search/pagination";
 import { useSearch } from "@/hooks/use-search";
-import { Loader2 } from "lucide-react";
+import { Loader2, Filter, ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * 검색 페이지
@@ -29,6 +31,7 @@ export default function SearchPage() {
     parseInt(searchParams.get("page") || "1", 10)
   );
   const [totalPages, setTotalPages] = useState(0);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // URL 파라미터에서 필터 값 추출 (의존성 최적화)
   const bookId = searchParams.get("bookId");
@@ -88,7 +91,7 @@ export default function SearchPage() {
       const hasDateFilter = !!startDate || !!endDate;
       const hasTagFilter = !!tags;
       const hasTypeFilter = !!types;
-      
+
       // 초기 마운트 시 검색 실행 (URL에 검색어나 필터가 있는 경우)
       if (hasQuery || hasBookFilter || hasDateFilter || hasTagFilter || hasTypeFilter) {
         // URL 파라미터를 직접 사용하여 검색 실행
@@ -114,7 +117,7 @@ export default function SearchPage() {
             setTotalPages(0);
           });
       }
-      
+
       isInitialMount.current = false;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -164,28 +167,46 @@ export default function SearchPage() {
         </p>
       </div>
 
-      {/* 검색 입력 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="검색어"
-          value={query}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          className="pl-10"
-        />
-        {isLoading && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        {/* 검색 입력 */}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="검색어"
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            className="pl-10"
+          />
+          {isLoading && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </div>
+
+        {/* 모바일 필터 토글 버튼 */}
+        <Button
+          variant="outline"
+          className="lg:hidden flex items-center justify-between w-full sm:w-auto"
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+        >
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4" />
+            <span>필터</span>
           </div>
-        )}
+          {isFilterOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-4">
-        {/* 필터 사이드바 */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-20">
-            <h2 className="text-lg font-semibold mb-4">필터</h2>
+        {/* 필터 사이드바 - 모바일에서는 조건부 표시 */}
+        <div className={cn(
+          "lg:col-span-1",
+          !isFilterOpen && "hidden lg:block transition-all"
+        )}>
+          <div className="sticky top-20 bg-background/95 backdrop-blur p-4 rounded-lg border lg:border-none lg:p-0">
+            <h2 className="text-lg font-semibold mb-4 hidden lg:block">필터</h2>
             <SearchFilters />
           </div>
         </div>

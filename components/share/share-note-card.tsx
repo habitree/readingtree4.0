@@ -109,9 +109,9 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
             <CardContent className="p-0">
                 <div className="flex flex-col md:flex-row min-h-[560px]">
                     {/* 좌측 섹션: 이미지 또는 책 표지 (폭 480px 고정) */}
-                    <div className="w-full md:w-[480px] bg-slate-50 dark:bg-slate-900/50 p-10 flex flex-col border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800">
+                    <div className="w-full md:w-[480px] bg-slate-50 dark:bg-slate-900/50 p-6 md:p-10 flex flex-col border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800">
                         {/* 상단: 책 정보 요약 (항상 표시) */}
-                        <div className="flex items-start gap-5 mb-10">
+                        <div className="flex items-start gap-4 md:gap-5 mb-6 md:mb-10">
                             <ImageLightbox src={book?.cover_image_url || "/placeholder-book.png"} alt={book?.title || "Book"}>
                                 <div className="relative w-20 h-28 shrink-0 shadow-lg rounded-sm overflow-hidden border border-white dark:border-slate-700 bg-white">
                                     <Image
@@ -184,7 +184,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                     </div>
 
                     {/* 우측 섹션: 기록 내용 */}
-                    <div className="flex-1 p-10 md:p-14 flex flex-col relative bg-white dark:bg-slate-950">
+                    <div className="flex-1 p-6 md:p-14 flex flex-col relative bg-white dark:bg-slate-950">
                         <div className="absolute top-0 right-0 w-48 h-48 bg-slate-50 dark:bg-slate-900/80 rounded-bl-[120px] -z-0" />
 
                         <div className="relative z-10 flex-1 flex flex-col">
@@ -198,7 +198,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                 </div>
                             </div>
 
-                            <div className="flex-1 flex flex-col justify-center space-y-12">
+                            <div className="flex-1 flex flex-col justify-center space-y-8 md:space-y-12">
                                 {hasQuote && (
                                     <div className="relative group/quote">
                                         <Quote className="absolute -top-5 -left-5 w-12 h-12 text-forest-50 dark:text-forest-900/20 -z-10 transition-colors group-hover/quote:text-forest-100" />

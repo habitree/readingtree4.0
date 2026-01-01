@@ -211,16 +211,16 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-5xl max-h-[98vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
-        <div className="bg-white dark:bg-slate-950 rounded-[2.5rem] overflow-hidden flex flex-col h-full shadow-2xl border border-slate-200 dark:border-slate-800">
-          <DialogHeader className="p-8 pb-4">
-            <DialogTitle className="text-2xl font-black italic tracking-tighter text-forest-600">Share Your Insight</DialogTitle>
+        <div className="bg-white dark:bg-slate-950 rounded-t-[2.5rem] sm:rounded-[2.5rem] overflow-hidden flex flex-col h-full shadow-2xl border border-slate-200 dark:border-slate-800">
+          <DialogHeader className="p-6 sm:p-8 pb-4">
+            <DialogTitle className="text-xl sm:text-2xl font-black italic tracking-tighter text-forest-600">Share Your Insight</DialogTitle>
             <DialogDescription className="text-sm font-bold text-slate-400">
               세련된 Habitree 리딩 카드로 당신의 독서 순간을 공유해보세요.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-8 pt-4">
-            <div className="mb-10 group bg-slate-50 dark:bg-slate-900/50 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-4">
+            <div className="mb-6 sm:mb-10 group bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800">
               {/* 중복 UI 제거하고 ShareNoteCard 재사용 (표준 규격 적용) */}
               <div ref={cardRef} className="rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 bg-white">
                 <ShareNoteCard note={note} hideActions={isCapturing} />
