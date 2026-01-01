@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Share2, Instagram, MessageCircle, Link as LinkIcon, Copy, Check } from "lucide-react";
+import { Share2, Instagram, MessageCircle, Link as LinkIcon, Copy, Check, AtSign } from "lucide-react";
 import { toast } from "sonner";
 import type { NoteWithBook } from "@/types/note";
 
@@ -13,7 +13,7 @@ interface ShareButtonsProps {
 
 /**
  * 공유 버튼 컴포넌트
- * 인스타그램, 카카오톡, 링크 복사 기능 제공
+ * 인스타그램, 카카오톡, 스레드, 링크 복사 기능 제공
  */
 export function ShareButtons({ note, cardNewsUrl }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
@@ -125,6 +125,39 @@ export function ShareButtons({ note, cardNewsUrl }: ShareButtonsProps) {
     }
   };
 
+  const handleThreadsShare = async () => {
+    try {
+      // 스레드는 링크 공유와 이미지 다운로드 둘 다 지원
+      // 먼저 이미지 다운로드 옵션 제공
+      if (cardNewsUrl) {
+        const response = await fetch(cardNewsUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `card-news-${note.id}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        toast.success("이미지가 다운로드되었습니다. 스레드에 업로드하거나 링크를 공유하세요.", {
+          action: {
+            label: "링크 복사",
+            onClick: handleCopyLink,
+          },
+        });
+      } else {
+        // 카드뉴스가 없으면 링크만 복사
+        handleCopyLink();
+        toast.info("스레드에 공유하려면 링크를 복사하거나 이미지를 다운로드하세요.");
+      }
+    } catch (error) {
+      console.error("스레드 공유 오류:", error);
+      toast.error("이미지 다운로드에 실패했습니다.");
+    }
+  };
+
   return (
     <div className="flex flex-wrap gap-2">
       {/* Web Share API (모바일) */}
@@ -148,6 +181,12 @@ export function ShareButtons({ note, cardNewsUrl }: ShareButtonsProps) {
           카카오톡
         </Button>
       )}
+
+      {/* 스레드 공유 */}
+      <Button variant="outline" size="sm" onClick={handleThreadsShare}>
+        <AtSign className="mr-2 h-4 w-4" />
+        스레드
+      </Button>
 
       {/* 링크 복사 */}
       <Button variant="outline" size="sm" onClick={handleCopyLink}>

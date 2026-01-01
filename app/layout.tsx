@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { getCurrentUser } from "@/app/actions/auth";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const notoSerifKr = Noto_Serif_KR({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "900"],
+  variable: "--font-noto-serif-kr"
+});
 
 export const metadata: Metadata = {
   title: "Habitree Reading Hub",
@@ -40,7 +45,7 @@ export default async function RootLayout({
 
   return (
     <html lang="ko" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${notoSerifKr.variable} font-sans`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="forest"

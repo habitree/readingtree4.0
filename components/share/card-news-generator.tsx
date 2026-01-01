@@ -4,15 +4,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Download, ImageIcon } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 import { CARD_NEWS_TEMPLATES, type CardNewsTemplate } from "@/lib/templates/card-news-templates";
 import type { NoteWithBook } from "@/types/note";
 import { toast } from "sonner";
 
 interface CardNewsGeneratorProps {
   note: NoteWithBook;
-  onCardNewsGenerated?: (templateId: string) => void;
+  onCardNewsGenerated?: (templateId: string, shareType?: string) => void;
 }
+
+type ShareType = "text" | "image";
 
 /**
  * 카드뉴스 생성 컴포넌트
@@ -22,12 +24,20 @@ export function CardNewsGenerator({ note, onCardNewsGenerated }: CardNewsGenerat
   const [selectedTemplate, setSelectedTemplate] = useState<CardNewsTemplate>(
     CARD_NEWS_TEMPLATES[0]
   );
+  const [shareType, setShareType] = useState<ShareType>("text");
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // 필사/사진이 있는지 확인
+  const hasImage = !!note.image_url;
+  const isTranscription = note.type === "transcription";
+  const isPhoto = note.type === "photo";
+  const canUseImageShare = hasImage && (isTranscription || isPhoto);
 
   const handleDownload = async () => {
     setIsGenerating(true);
     try {
-      const imageUrl = `/api/share/card?noteId=${note.id}&templateId=${selectedTemplate.id}`;
+      const shareTypeParam = canUseImageShare && shareType === "image" ? "&shareType=image" : "";
+      const imageUrl = `/api/share/card?noteId=${note.id}&templateId=${selectedTemplate.id}${shareTypeParam}`;
       
       // 이미지 다운로드
       const response = await fetch(imageUrl);
@@ -49,7 +59,7 @@ export function CardNewsGenerator({ note, onCardNewsGenerated }: CardNewsGenerat
       
       // 카드뉴스 생성 완료 콜백 호출
       if (onCardNewsGenerated) {
-        onCardNewsGenerated(selectedTemplate.id);
+        onCardNewsGenerated(selectedTemplate.id, canUseImageShare && shareType === "image" ? "image" : undefined);
       }
     } catch (error) {
       console.error("카드뉴스 다운로드 오류:", error);
@@ -59,7 +69,27 @@ export function CardNewsGenerator({ note, onCardNewsGenerated }: CardNewsGenerat
     }
   };
 
-  const previewUrl = `/api/share/card?noteId=${note.id}&templateId=${selectedTemplate.id}`;
+  const shareTypeParam = canUseImageShare && shareType === "image" ? "&shareType=image" : "";
+  const previewUrl = `/api/share/card?noteId=${note.id}&templateId=${selectedTemplate.id}${shareTypeParam}`;
+
+  const handleTemplateChange = (value: string) => {
+    const template = CARD_NEWS_TEMPLATES.find((t) => t.id === value);
+    if (template) {
+      setSelectedTemplate(template);
+      // 템플릿 변경 시 카드뉴스 URL 업데이트
+      if (onCardNewsGenerated) {
+        onCardNewsGenerated(template.id, canUseImageShare && shareType === "image" ? "image" : undefined);
+      }
+    }
+  };
+
+  const handleShareTypeChange = (newShareType: ShareType) => {
+    setShareType(newShareType);
+    // 공유 타입 변경 시 카드뉴스 URL 업데이트
+    if (onCardNewsGenerated) {
+      onCardNewsGenerated(selectedTemplate.id, newShareType === "image" ? "image" : undefined);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -70,21 +100,37 @@ export function CardNewsGenerator({ note, onCardNewsGenerated }: CardNewsGenerat
         </p>
       </div>
 
+      {/* 필사/사진 선택 (필사나 사진이 있는 경우) */}
+      {canUseImageShare && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">공유 형식 선택</label>
+          <div className="flex gap-2">
+            <Button
+              variant={shareType === "text" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleShareTypeChange("text")}
+              className="flex-1"
+            >
+              텍스트만
+            </Button>
+            <Button
+              variant={shareType === "image" ? "default" : "outline"}
+              size="sm"
+              onClick={() => handleShareTypeChange("image")}
+              className="flex-1"
+            >
+              이미지 중심
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 템플릿 선택 */}
       <div className="space-y-2">
         <label className="text-sm font-medium">템플릿 선택</label>
         <Select
           value={selectedTemplate.id}
-          onValueChange={(value) => {
-            const template = CARD_NEWS_TEMPLATES.find((t) => t.id === value);
-            if (template) {
-              setSelectedTemplate(template);
-              // 템플릿 변경 시 카드뉴스 URL 업데이트
-              if (onCardNewsGenerated) {
-                onCardNewsGenerated(template.id);
-              }
-            }
-          }}
+          onValueChange={handleTemplateChange}
         >
           <SelectTrigger>
             <SelectValue />
