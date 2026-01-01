@@ -1,16 +1,15 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { formatSmartDate } from "@/lib/utils/date";
 import { getImageUrl } from "@/lib/utils/image";
 import { getAppUrl } from "@/lib/utils/url";
-import { getNoteTypeLabel } from "@/lib/utils/note";
-import { NoteContentViewer } from "@/components/notes/note-content-viewer";
-import Image from "next/image";
-import type { NoteWithBook } from "@/types/note";
+import { parseNoteContentFields } from "@/lib/utils/note";
 import { isValidUUID } from "@/lib/utils/validation";
+import { ShareNoteCard } from "@/components/share/share-note-card";
+import type { NoteWithBook } from "@/types/note";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, Home } from "lucide-react";
 
 /**
  * 공유 페이지 메타데이터 생성
@@ -20,69 +19,36 @@ export async function generateMetadata({
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  // params.id 검증
-  if (!params?.id || typeof params.id !== 'string') {
-    return {
-      title: "기록을 찾을 수 없습니다",
-    };
-  }
+  const resolvedParams = await params;
+  const noteId = resolvedParams.id;
 
-  // UUID 검증
-  if (!isValidUUID(params.id)) {
-    return {
-      title: "기록을 찾을 수 없습니다",
-    };
+  // params.id 검증
+  if (!noteId || typeof noteId !== 'string' || !isValidUUID(noteId)) {
+    return { title: "기록을 찾을 수 없습니다" };
   }
 
   const supabase = await createServerSupabaseClient();
   const { data: note } = await supabase
     .from("notes")
-    .select(
-      `
-      *,
-      books (
-        id,
-        title,
-        author,
-        cover_image_url
-      )
-    `
-    )
-    .eq("id", params.id)
+    .select(`*, books (id, title, author, cover_image_url)`)
+    .eq("id", noteId)
     .eq("is_public", true)
     .single();
 
   if (!note) {
-    return {
-      title: "기록을 찾을 수 없습니다",
-    };
+    return { title: "기록을 찾을 수 없습니다" };
   }
 
   const book = note.books as any;
   const bookTitle = book?.title || "제목 없음";
-  const bookAuthor = book?.author || "";
-  const content = note.content || "";
+  const { quote, memo } = parseNoteContentFields(note.content);
+
   const baseUrl = getAppUrl();
   const shareUrl = `${baseUrl}/share/notes/${note.id}`;
-  // 내용 요약 생성 (quote/memo 구분)
-  let description = content.substring(0, 160);
-  try {
-    const parsed = JSON.parse(content);
-    if (typeof parsed === "object" && parsed !== null) {
-      const parts: string[] = [];
-      if (parsed.quote) {
-        parts.push(`인상깊은 구절: ${parsed.quote.substring(0, 80)}`);
-      }
-      if (parsed.memo) {
-        parts.push(`내 생각: ${parsed.memo.substring(0, 80)}`);
-      }
-      if (parts.length > 0) {
-        description = parts.join(" | ");
-      }
-    }
-  } catch {
-    // JSON 파싱 실패 시 원본 사용
-  }
+
+  // OG 설명 구성 (인상깊은 구절 우선, 없으면 생각)
+  let description = quote || memo || "기록 내용을 확인해보세요.";
+  if (description.length > 100) description = description.substring(0, 97) + "...";
 
   return {
     title: `${bookTitle} - 독서 기록`,
@@ -94,20 +60,19 @@ export async function generateMetadata({
       url: shareUrl,
       images: book?.cover_image_url
         ? [
-            {
-              url: book.cover_image_url,
-              width: 400,
-              height: 600,
-              alt: `${bookTitle} - ${bookAuthor || ""}`,
-            },
-          ]
+          {
+            url: book.cover_image_url,
+            width: 1200,
+            height: 630,
+            alt: `${bookTitle} - ${book.author || ""}`,
+          },
+        ]
         : [],
-      siteName: "Habitree Reading Hub",
-      // 스레드 최적화를 위한 추가 메타 태그
+      siteName: "ReadingTree",
       locale: "ko_KR",
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: `${bookTitle} - 독서 기록`,
       description: description,
       images: book?.cover_image_url ? [book.cover_image_url] : [],
@@ -117,38 +82,26 @@ export async function generateMetadata({
 
 /**
  * 공유 페이지
- * 공개 기록 조회 및 Open Graph 메타 태그 제공
+ * 공개 기록 조회 및 심미적인 카드 뷰 제공
  */
 export default async function ShareNotePage({
   params,
 }: {
   params: { id: string };
 }) {
-  // params.id 검증
-  if (!params?.id || typeof params.id !== 'string') {
-    notFound();
-  }
+  const resolvedParams = await params;
+  const noteId = resolvedParams.id;
 
-  // UUID 검증
-  if (!isValidUUID(params.id)) {
+  // params.id 및 UUID 검증
+  if (!noteId || typeof noteId !== 'string' || !isValidUUID(noteId)) {
     notFound();
   }
 
   const supabase = await createServerSupabaseClient();
   const { data: note, error } = await supabase
     .from("notes")
-    .select(
-      `
-      *,
-      books (
-        id,
-        title,
-        author,
-        cover_image_url
-      )
-    `
-    )
-    .eq("id", params.id)
+    .select(`*, books (id, title, author, cover_image_url)`)
+    .eq("id", noteId)
     .eq("is_public", true)
     .single();
 
@@ -157,79 +110,64 @@ export default async function ShareNotePage({
   }
 
   const noteWithBook = note as NoteWithBook;
-  const bookTitle = noteWithBook.book?.title || "제목 없음";
-  const bookAuthor = noteWithBook.book?.author || "";
-
-  const hasImage = !!noteWithBook.image_url;
-  const typeLabel = getNoteTypeLabel(noteWithBook.type, hasImage);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="space-y-6">
-        {/* 헤더 */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">
-            {bookTitle}
-          </h1>
-          {bookAuthor && (
-            <p className="text-lg text-muted-foreground">{bookAuthor}</p>
-          )}
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 selection:bg-primary/20">
+      <div className="container mx-auto px-4 py-12 md:py-20 max-w-5xl">
+        {/* 상단 액션 바 */}
+        <div className="flex items-center justify-between mb-10">
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-primary">
+            <Link href="/">
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              메인으로
+            </Link>
+          </Button>
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              Public Shared Note
+            </div>
+          </div>
         </div>
 
-        {/* 기록 카드 */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {/* 기록 유형 */}
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {typeLabel}
-                </Badge>
-              </div>
+        {/* 메인 카드 */}
+        <div className="relative group">
+          {/* 장식적 배경 요소 */}
+          <div className="absolute -inset-4 bg-gradient-to-r from-primary/10 via-transparent to-primary/10 rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-100 transition duration-1000" />
 
-              {/* 이미지 */}
-              {noteWithBook.image_url && (
-                <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
-                  <Image
-                    src={getImageUrl(noteWithBook.image_url)}
-                    alt={noteWithBook.type}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                </div>
-              )}
+          <ShareNoteCard
+            note={noteWithBook}
+            isPublicView={true}
+            className="relative z-10"
+          />
+        </div>
 
-              {/* 내용 */}
-              {noteWithBook.content && (
-                <NoteContentViewer
-                  content={noteWithBook.content}
-                  pageNumber={noteWithBook.page_number}
-                  maxLength={200}
-                />
-              )}
-
-              {/* 태그 */}
-              {noteWithBook.tags && noteWithBook.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {(noteWithBook.tags as string[]).map((tag, index) => (
-                    <Badge key={index} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-
-              {/* 날짜 */}
-              <p className="text-sm text-muted-foreground">
-                {formatSmartDate(noteWithBook.created_at)}
-              </p>
-
-            </div>
-          </CardContent>
-        </Card>
+        {/* 하단 푸터 / CTA */}
+        <div className="mt-16 text-center space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 italic tracking-tight">
+              Habitree Reading Hub
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto leading-relaxed">
+              당신의 독서 여정을 한 그루의 나무처럼 심고 가꾸어 보세요.<br />
+              기록은 생각의 깊이를 더해줍니다.
+            </p>
+          </div>
+          <Button asChild className="rounded-full px-8 h-12 text-sm font-bold shadow-xl shadow-primary/20 transition-all duration-300 hover:scale-105 active:scale-95">
+            <Link href="/login">
+              나도 기록 시작하기
+            </Link>
+          </Button>
+          <div className="pt-8">
+            <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-primary transition-colors">
+              <Home className="w-3.5 h-3.5" />
+              홈페이지 방문하기
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
 

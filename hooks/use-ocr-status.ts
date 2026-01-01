@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getTranscription } from "@/app/actions/notes";
+import { getTranscription, updateTranscriptionStatus } from "@/app/actions/notes";
 
 type OCRStatus = "processing" | "completed" | "failed" | null;
 
@@ -15,6 +15,7 @@ interface UseOCRStatusOptions {
 /**
  * OCR 처리 상태를 확인하는 훅
  * 주기적으로 기록을 확인하여 OCR 결과가 있는지 체크
+ * 10분 이상 processing 상태인 경우 자동으로 failed로 변경
  */
 export function useOCRStatus({
   noteId,
@@ -26,6 +27,8 @@ export function useOCRStatus({
   const pollCountRef = useRef(0);
   const onCompleteRef = useRef(onComplete);
   const maxPolls = 20; // 최대 20회 (약 1분)
+  const TIMEOUT_MINUTES = 10; // 10분 타임아웃
+  const TIMEOUT_MS = TIMEOUT_MINUTES * 60 * 1000; // 10분을 밀리초로 변환
 
   // onComplete ref 업데이트
   useEffect(() => {
@@ -85,12 +88,39 @@ export function useOCRStatus({
           }
         } else {
           // processing 상태
+          // 10분 이상 지속된 경우 자동으로 failed로 변경
+          if (transcription.created_at) {
+            const createdAt = new Date(transcription.created_at).getTime();
+            const now = Date.now();
+            const elapsed = now - createdAt;
+
+            if (elapsed >= TIMEOUT_MS) {
+              // 10분 이상 지속된 경우 failed로 변경
+              console.warn(`[useOCRStatus] OCR 처리 타임아웃: noteId=${noteId}, 경과시간=${Math.round(elapsed / 1000)}초`);
+              
+              try {
+                await updateTranscriptionStatus(noteId, "failed");
+                console.log(`[useOCRStatus] OCR 상태를 'failed'로 업데이트 완료: noteId=${noteId}`);
+              } catch (error) {
+                console.error("[useOCRStatus] OCR 상태 업데이트 실패:", error);
+              }
+
+              if (isMounted) {
+                setStatus("failed");
+                if (intervalId) {
+                  clearInterval(intervalId);
+                }
+              }
+              return;
+            }
+          }
+
           if (isMounted) {
             setStatus("processing");
           }
           pollCountRef.current++;
 
-          // 최대 폴링 횟수 초과 시 실패로 처리
+          // 최대 폴링 횟수 초과 시 실패로 처리 (기존 로직 유지)
           if (pollCountRef.current >= maxPolls && isMounted) {
             setStatus("failed");
             if (intervalId) {

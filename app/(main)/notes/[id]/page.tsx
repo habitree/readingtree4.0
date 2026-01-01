@@ -1,22 +1,18 @@
 import { notFound } from "next/navigation";
 import { Metadata, Viewport } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { getNoteDetail, deleteNote, getTranscription } from "@/app/actions/notes";
-import { getImageUrl } from "@/lib/utils/image";
-import { formatDate, formatSmartDate } from "@/lib/utils/date";
+import { getNoteDetail, getTranscription } from "@/app/actions/notes";
 import { SimpleShareDialog } from "@/components/share/simple-share-dialog";
 import { NoteDeleteButton } from "@/components/notes/note-delete-button";
-import { FileText, PenTool, Camera, ImageIcon, Edit, Trash2 } from "lucide-react";
+import { Edit, ChevronLeft, ShieldCheck, ShieldAlert } from "lucide-react";
 import { isValidUUID } from "@/lib/utils/validation";
 import { sanitizeErrorForLogging } from "@/lib/utils/validation";
-import { getNoteTypeLabel } from "@/lib/utils/note";
-import { NoteContentViewer } from "@/components/notes/note-content-viewer";
+import { ShareNoteCard } from "@/components/share/share-note-card";
 import { OCRStatusChecker } from "@/components/notes/ocr-status-checker";
-import type { NoteType } from "@/types/note";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { NoteWithBook } from "@/types/note";
 
 interface NoteDetailPageProps {
   params: {
@@ -26,218 +22,134 @@ interface NoteDetailPageProps {
 
 /**
  * 기록 상세 페이지
+ * 보안성 검토 및 심미적인 통합 레이아웃 제공
  */
 export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
-  // Next.js 15+ 에서 params는 Promise일 수 있음
   const resolvedParams = await params;
   const noteId = resolvedParams.id;
 
-  // params.id 검증
-  if (!noteId || typeof noteId !== 'string') {
-    console.error("NoteDetailPage: noteId가 유효하지 않습니다.", { noteId, params: resolvedParams });
-    notFound();
-  }
-
-  // UUID 검증
-  if (!isValidUUID(noteId)) {
-    console.error("NoteDetailPage: noteId가 유효한 UUID가 아닙니다.", { noteId });
+  // 1. 입력 보안 검증
+  if (!noteId || typeof noteId !== 'string' || !isValidUUID(noteId)) {
+    console.error("NoteDetailPage Security: 유효하지 않은 요청 ID", { noteId });
     notFound();
   }
 
   let note;
   try {
-    console.log("NoteDetailPage: 기록 상세 조회 시도", { noteId });
+    // 2. 데이터 소유권 및 접근 권한 검증 (Server Action 내부에서 수행)
     note = await getNoteDetail(noteId);
-    console.log("NoteDetailPage: 기록 상세 조회 성공", { noteId, hasNote: !!note });
   } catch (error) {
     const safeError = sanitizeErrorForLogging(error);
-    console.error("기록 상세 조회 오류:", {
-      noteId,
-      error: safeError,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined,
-    });
+    console.error("기록 상세 조회 보안 오류:", { noteId, error: safeError });
     notFound();
   }
 
-  const typeIcons = {
-    quote: FileText,
-    transcription: PenTool,
-    photo: Camera,
-    memo: ImageIcon,
-  };
+  const noteWithBook = note as NoteWithBook;
 
-  const hasImage = !!note.image_url;
-  const typeLabel = getNoteTypeLabel(note.type as NoteType, hasImage);
-  const Icon = typeIcons[note.type as keyof typeof typeIcons];
-
-  // 필사 데이터 조회 (transcription 타입이고 이미지가 있는 경우)
+  // 필사 데이터 상세 조회 (있을 경우)
   let transcription = null;
-  if (note.type === "transcription" && hasImage) {
+  if (noteWithBook.type === "transcription" && noteWithBook.image_url) {
     try {
-      transcription = await getTranscription(note.id);
+      transcription = await getTranscription(noteWithBook.id);
     } catch (error) {
       console.error("필사 데이터 조회 오류:", error);
     }
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">
-              {typeLabel}
-            </h1>
-            <OCRStatusChecker
-              noteId={note.id}
-              noteType={note.type}
-              hasImage={hasImage}
-            />
-          </div>
-          <p className="text-muted-foreground">
-            {formatSmartDate(note.created_at)}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SimpleShareDialog note={note as any} />
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/notes/${note.id}/edit`}>
-              <Edit className="h-4 w-4" />
+    <div className="max-w-5xl mx-auto space-y-8 pb-20">
+      {/* 1. 상단 내비게이션 및 액션 바 */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild className="group">
+            <Link href="/notes">
+              <ChevronLeft className="h-4 w-4 mr-1 transition-transform group-hover:-translate-x-1" />
+              목록으로
             </Link>
           </Button>
-          <NoteDeleteButton noteId={note.id} />
-        </div>
-      </div>
-
-      {note.book && (
-        <div className="flex items-center gap-2">
-          <Link 
-            href={note.user_book_id ? `/books/${note.user_book_id}` : '#'} 
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            {note.book.title}
-          </Link>
-          {note.page_number && (
-            <>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-sm text-muted-foreground">
-                {note.page_number}페이지
-              </span>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* 필사 이미지와 내용을 함께 표시 (transcription 타입인 경우) */}
-      {note.type === "transcription" && note.image_url ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-6">
-          {/* 필사 이미지 - 유연한 크기 조정 */}
-          <div className="flex items-start justify-center lg:justify-start">
-            <div className="relative w-full max-w-xs aspect-[3/4] overflow-hidden rounded-lg bg-muted shadow-md">
-              <Image
-                src={getImageUrl(note.image_url)}
-                alt="필사 이미지"
-                fill
-                className="object-contain"
-                sizes="(max-width: 1024px) 100vw, 33vw"
-              />
-            </div>
-          </div>
-
-          {/* 필사 내용 - OCR이 완료된 경우 */}
-          <div className="flex-1">
-            {transcription && transcription.status === "completed" ? (
-              <Card className="h-full">
-                <CardHeader>
-                  <CardTitle className="text-lg">필사 내용</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {transcription.extracted_text ? (
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-sm font-semibold mb-2 text-muted-foreground">OCR로 추출된 텍스트</h4>
-                        <p className="text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md max-h-64 overflow-y-auto">
-                          {transcription.extracted_text}
-                        </p>
-                      </div>
-                      {transcription.quote_content && (
-                        <div>
-                          <h4 className="text-sm font-semibold mb-2 text-muted-foreground">인상깊은 구절</h4>
-                          <p className="text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md max-h-48 overflow-y-auto">
-                            {transcription.quote_content}
-                          </p>
-                        </div>
-                      )}
-                      {transcription.memo_content && (
-                        <div>
-                          <h4 className="text-sm font-semibold mb-2 text-muted-foreground">내 생각</h4>
-                          <p className="text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md max-h-48 overflow-y-auto">
-                            {transcription.memo_content}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">추출된 텍스트가 없습니다.</p>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="h-full">
-                <CardHeader>
-                  <CardTitle className="text-lg">필사 내용</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">OCR 처리가 진행 중입니다...</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* 일반 이미지 (transcription이 아닌 경우) */
-        note.image_url && (
-          <div className="relative aspect-[3/4] w-full max-w-md mx-auto overflow-hidden rounded-lg bg-muted">
-            <Image
-              src={getImageUrl(note.image_url)}
-              alt={note.type}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden md:block" />
+          <div className="flex items-center gap-2">
+            <Badge variant={noteWithBook.is_public ? "default" : "outline"} className="gap-1.5 py-1">
+              {noteWithBook.is_public ? (
+                <>
+                  <ShieldCheck className="w-3 h-3 text-white" />
+                  <span>공개 기록</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="w-3 h-3 text-muted-foreground" />
+                  <span>나만 보기</span>
+                </>
+              )}
+            </Badge>
+            <OCRStatusChecker
+              noteId={noteWithBook.id}
+              noteType={noteWithBook.type}
+              hasImage={!!noteWithBook.image_url}
             />
           </div>
-        )
-      )}
-
-      {/* 일반 기록 내용 표시 (필사가 아닌 경우) */}
-      {note.content && note.type !== "transcription" && (
-        <NoteContentViewer
-          content={note.content}
-          pageNumber={note.page_number}
-          maxLength={200}
-        />
-      )}
-
-      {note.tags && note.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {note.tags.map((tag: string, index: number) => (
-            <Badge key={index} variant="secondary">
-              {tag}
-            </Badge>
-          ))}
         </div>
-      )}
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Badge variant={note.is_public ? "default" : "outline"}>
-          {note.is_public ? "공개" : "비공개"}
-        </Badge>
-        <span>작성일: {formatDate(note.created_at)}</span>
-        {note.updated_at !== note.created_at && (
-          <span>수정일: {formatDate(note.updated_at)}</span>
-        )}
+        <div className="flex items-center gap-2 self-end md:self-auto">
+          <SimpleShareDialog note={noteWithBook} />
+          <Button variant="outline" size="sm" asChild className="gap-2">
+            <Link href={`/notes/${noteWithBook.id}/edit`}>
+              <Edit className="h-4 w-4" />
+              수정
+            </Link>
+          </Button>
+          <NoteDeleteButton noteId={noteWithBook.id} />
+        </div>
       </div>
+
+      {/* 2. 메인 리딩 카드 (통합 디자인) */}
+      <div className="relative">
+        {/* 장식적 요소 */}
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl -z-10" />
+        <ShareNoteCard note={noteWithBook} className="shadow-2xl border border-slate-100 dark:border-slate-800" />
+      </div>
+
+      {/* 3. 상세 분석 정보 (필사 데이터 등) */}
+      {transcription && (transcription.status === "completed" || transcription.extracted_text) && (
+        <Card className="border-none bg-slate-50 dark:bg-slate-900/50 shadow-inner">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-400">
+              AI Analysis & Text Extraction
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 pt-4">
+            {transcription.extracted_text && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-primary">추출된 원문</h4>
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                  <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 whitespace-pre-wrap italic">
+                    {transcription.extracted_text}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {transcription.quote_content && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-blue-500">인상깊은 구절 (정제됨)</h4>
+                  <p className="text-sm bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-lg border-l-2 border-blue-400 text-slate-700 dark:text-slate-300">
+                    "{transcription.quote_content}"
+                  </p>
+                </div>
+              )}
+              {transcription.memo_content && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-500">내 생각 (정제됨)</h4>
+                  <p className="text-sm bg-slate-100/50 dark:bg-slate-800/50 p-4 rounded-lg text-slate-600 dark:text-slate-400">
+                    {transcription.memo_content}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
@@ -245,34 +157,21 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 export async function generateMetadata({
   params,
 }: NoteDetailPageProps): Promise<Metadata> {
-  // Next.js 15+ 에서 params는 Promise일 수 있음
   const resolvedParams = await params;
   const noteId = resolvedParams.id;
 
-  // params.id 검증
-  if (!noteId || typeof noteId !== 'string') {
-    return {
-      title: "기록 상세 | Habitree Reading Hub",
-    };
-  }
-
-  // UUID 검증
-  if (!isValidUUID(noteId)) {
-    return {
-      title: "기록 상세 | Habitree Reading Hub",
-    };
+  if (!noteId || !isValidUUID(noteId)) {
+    return { title: "기록 상세 | ReadingTree" };
   }
 
   try {
     const note = await getNoteDetail(noteId);
     return {
-      title: `${note.type} 기록 | Habitree Reading Hub`,
-      description: note.content?.substring(0, 100) || "기록 상세",
+      title: `${note.type === 'quote' ? '인상깊은 구절' : '독서 기록'} | ReadingTree`,
+      description: note.book?.title || "기록 상세 정보",
     };
   } catch {
-    return {
-      title: "기록 상세 | Habitree Reading Hub",
-    };
+    return { title: "기록 상세 | ReadingTree" };
   }
 }
 

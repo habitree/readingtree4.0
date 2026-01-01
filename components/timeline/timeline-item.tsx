@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
+import { cn } from "@/lib/utils";
 import { formatSmartDate } from "@/lib/utils/date";
 import { getNoteTypeLabel } from "@/lib/utils/note";
 import { NoteContentViewer } from "@/components/notes/note-content-viewer";
@@ -35,69 +36,67 @@ export function TimelineItem({ note }: TimelineItemProps) {
   const book = Array.isArray(bookData) ? bookData[0] : bookData;
   const bookCoverImage = book?.cover_image_url;
   const hasBookCover = bookCoverImage && isValidImageUrl(bookCoverImage);
-  
+
   // 디버깅: 책 정보 확인 (개발 환경에서만)
   if (process.env.NODE_ENV === 'development') {
     if (!book) {
-      console.log('TimelineItem: 책 정보 없음', { 
-        noteId: note.id, 
+      console.log('TimelineItem: 책 정보 없음', {
+        noteId: note.id,
         book: note.book,
         books: (note as any).books,
-        bookData 
+        bookData
       });
     } else {
-      console.log('TimelineItem: 책 정보 있음', { 
-        noteId: note.id, 
+      console.log('TimelineItem: 책 정보 있음', {
+        noteId: note.id,
         bookTitle: book.title,
-        bookCoverImage: book.cover_image_url 
+        bookCoverImage: book.cover_image_url
       });
     }
   }
 
   return (
-    <Link href={`/notes/${note.id}`}>
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+    <Link href={`/notes/${note.id}`} className="group">
+      <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden border-slate-200/60 dark:border-slate-800">
         <CardContent className="p-4">
           <div className="flex gap-4">
             {/* 책 표지 이미지와 기록 이미지 겹치기 - UX 원칙 05: 깊이감 부여 */}
-            <div className="relative shrink-0">
-              {/* 책 표지 이미지 - 배경 레이어 */}
+            <div className={cn("relative shrink-0", hasImage && "mb-4 mr-4")}>
+              {/* 책 표지 이미지 - 배경 레이어 (조금 더 뒤쪽 느낌) */}
               {book ? (
-                <div className="relative w-20 h-28 overflow-hidden rounded-lg bg-muted border shadow-md">
+                <div className="relative w-24 h-32 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-[1.02]">
                   {hasBookCover ? (
                     <Image
                       src={getImageUrl(bookCoverImage!)}
                       alt={book.title || "책 표지"}
                       fill
                       className="object-cover"
-                      sizes="80px"
+                      sizes="96px"
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <BookOpen className="h-8 w-8 text-muted-foreground" />
+                      <BookOpen className="h-10 w-10 text-slate-300" />
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="relative w-20 h-28 overflow-hidden rounded-lg bg-muted border shadow-md flex items-center justify-center">
-                  <BookOpen className="h-8 w-8 text-muted-foreground" />
+                <div className="relative w-24 h-32 overflow-hidden rounded-lg bg-slate-100 border-2 border-slate-200 flex items-center justify-center">
+                  <BookOpen className="h-10 w-10 text-slate-300" />
                 </div>
               )}
-              
-              {/* 기록 이미지 또는 아이콘 - 전면 레이어 (오프셋으로 겹치기) */}
-              {note.image_url ? (
-                <div className="absolute -bottom-2 -right-2 w-16 h-20 overflow-hidden rounded-lg bg-muted border-2 border-background shadow-lg">
-                  <Image
-                    src={getImageUrl(note.image_url)}
-                    alt={note.type}
-                    fill
-                    className="object-cover"
-                    sizes="64px"
-                  />
-                </div>
-              ) : (
-                <div className="absolute -bottom-2 -right-2 w-16 h-20 flex items-center justify-center rounded-lg bg-muted border-2 border-background shadow-lg">
-                  <Icon className="h-5 w-5 text-muted-foreground" />
+
+              {/* 기록 이미지가 있는 경우에만 전면 레이어 표시 (사용자 가이드 반영: 동일한 규격감으로 과감하게 겹치기) */}
+              {note.image_url && (
+                <div className="absolute top-6 left-6 w-24 h-32 z-10 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1">
+                  <div className="relative w-full h-full overflow-hidden rounded-lg bg-white dark:bg-slate-900 border-2 border-white dark:border-slate-800 shadow-[10px_10px_25px_-10px_rgba(0,0,0,0.3)]">
+                    <Image
+                      src={getImageUrl(note.image_url)}
+                      alt={note.type}
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                    />
+                  </div>
                 </div>
               )}
             </div>
