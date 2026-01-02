@@ -15,19 +15,20 @@ export function HeroSection() {
                         Reading Asset Management
                     </div>
 
-                    <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif font-bold text-charcoal-900 leading-[1.1] tracking-tight break-keep">
-                        사라지는 독서를<br />
+                    <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-7xl font-serif font-bold text-charcoal-900 leading-[1.2] tracking-tight break-keep">
+                        독서를 <span className="text-forest-700">기록</span>으로,<br />
+                        기록을{" "}
                         <span className="relative inline-block text-forest-800">
                             자산
                             <svg className="absolute w-full h-4 -bottom-1 left-0 text-forest-300/60 -z-10" viewBox="0 0 100 10" preserveAspectRatio="none">
                                 <path d="M0 5 Q 50 10 100 5" stroke="currentColor" strokeWidth="12" fill="none" />
                             </svg>
-                        </span>으로.
+                        </span>
+                        으로
                     </h1>
 
                     <p className="text-xl md:text-2xl text-charcoal-600 leading-relaxed max-w-lg break-keep font-serif">
-                        읽고, 찍고, 남기세요.<br />
-                        당신의 모든 페이지가 지식이 됩니다.
+                        읽고 사라지는 독서를 구조화합니다.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 pt-4 w-full sm:w-auto">
