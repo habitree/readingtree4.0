@@ -1,11 +1,24 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/app/actions/auth";
+
+/**
+ * 관리자 권한 확인 및 예외 발생
+ */
+async function requireAdmin() {
+    const admin = await isAdmin();
+    if (!admin) {
+        throw new Error("관리자 권한이 필요합니다.");
+    }
+}
 
 /**
  * 관리자용 전체 시스템 통계 조회
  */
 export async function getAdminStats() {
+    await requireAdmin();
+    
     const supabase = await createServerSupabaseClient();
 
     // 전체 사용자 수
@@ -61,6 +74,8 @@ export async function getAdminStats() {
  * 월별 사용자 성장 데이터 조회 (최근 6개월)
  */
 export async function getUserGrowthData() {
+    await requireAdmin();
+    
     const supabase = await createServerSupabaseClient();
     const now = new Date();
     const growthData = [];
@@ -89,6 +104,8 @@ export async function getUserGrowthData() {
  * 최근 시스템 활동 조회 (최근 가입자 및 최근 기록)
  */
 export async function getRecentSystemActivity() {
+    await requireAdmin();
+    
     const supabase = await createServerSupabaseClient();
 
     // 최근 가입한 사용자 5명
