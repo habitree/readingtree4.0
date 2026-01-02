@@ -71,7 +71,7 @@ export function HeroSection() {
                                 <div className="text-xs font-mono text-charcoal-400">P. 124</div>
                             </div>
                             <div className="font-serif text-2xl font-bold text-charcoal-900">
-                                The Psychology of Money
+                                어떻게 읽을 것인가
                             </div>
                         </div>
 
@@ -87,7 +87,7 @@ export function HeroSection() {
                             <div className="relative p-1">
                                 <div className="absolute inset-0 bg-yellow-100/50 -rotate-1 rounded-sm transform origin-left group-hover:bg-yellow-200/50 transition-colors" />
                                 <p className="relative font-serif text-charcoal-800 text-lg leading-relaxed italic">
-                                    &quot;돈을 버는 것은 위험을 감수하고, 낙관적이어야 하며, 기꺼이 자신을 드러내는 것과 관련이 있다.&quot;
+                                    &quot;한 권의 책은 우리 안의 얼어붙은 바다를 깨는 도끼여야 한다.&quot;
                                 </p>
                             </div>
 
@@ -105,19 +105,6 @@ export function HeroSection() {
                         </div>
                     </div>
 
-                    {/* Floating Elements */}
-                    <div className="absolute top-20 -right-4 bg-white p-4 rounded-xl shadow-xl border border-paper-200 max-w-[200px] animate-fade-in-up delay-300">
-                        <div className="flex items-center gap-2 mb-2 text-xs font-bold text-forest-600 uppercase tracking-wider">
-                            <Library className="w-3 h-3" />
-                            Archive
-                        </div>
-                        <div className="h-1.5 w-full bg-paper-200 rounded-full overflow-hidden">
-                            <div className="h-full w-2/3 bg-forest-500 rounded-full" />
-                        </div>
-                        <div className="mt-2 text-xs text-charcoal-500">
-                            올해 독서 목표 <strong>68%</strong> 달성
-                        </div>
-                    </div>
                 </div>
             </div>
         </section>
