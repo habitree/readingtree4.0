@@ -72,6 +72,9 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link href="/profile">프로필 설정</Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/admin">관리자 대시보드</Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem>설정</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

@@ -37,6 +37,7 @@ const sidebarItems: SidebarItem[] = [
   { icon: Clock, label: "타임라인", href: "/timeline" },
   { icon: Users, label: "독서모임", href: "/groups" },
   { icon: User, label: "프로필", href: "/profile" },
+  { icon: Trees, label: "관리자", href: "/admin" },
 ];
 
 /**
@@ -52,8 +53,8 @@ export function Sidebar() {
       aria-label="주요 네비게이션"
     >
       <div className="flex flex-col flex-1 pt-6 pb-4 overflow-y-auto">
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="flex items-center flex-shrink-0 px-6 mb-8 gap-2 hover:opacity-80 transition-opacity"
           aria-label="홈으로 이동"
         >
