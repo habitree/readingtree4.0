@@ -17,6 +17,17 @@ import { signOut } from "@/app/actions/auth";
 import { ThemeSelector } from "@/components/theme/theme-selector";
 
 /**
+ * 관리자 여부 확인
+ */
+function isAdminUser(user: any): boolean {
+  if (!user || !user.email) {
+    return false;
+  }
+  const ADMIN_EMAIL = "cdhnaya@kakao.com";
+  return user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+}
+
+/**
  * 헤더 컴포넌트
  * 로고, 검색, 알림, 프로필 메뉴 포함
  */
@@ -24,6 +35,7 @@ export function Header() {
   const { user, isLoading } = useAuth();
   const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "사용자";
   const userAvatar = user?.user_metadata?.avatar_url || null;
+  const isAdmin = isAdminUser(user);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -72,9 +84,11 @@ export function Header() {
                 <DropdownMenuItem asChild>
                   <Link href="/profile">프로필 설정</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/admin">관리자 대시보드</Link>
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin">관리자 대시보드</Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem>설정</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

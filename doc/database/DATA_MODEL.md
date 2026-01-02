@@ -546,6 +546,29 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
 - 모든 사용자가 조회 가능
 - 수정/삭제 불가 (애플리케이션 레벨에서 차단)
 
+### 6.7 관리자 접근 규칙
+
+**관리자 권한**:
+- 관리자는 `cdhnaya@kakao.com` 이메일 주소로만 지정
+- 관리자는 모든 사용자 데이터를 조회할 수 있음 (SELECT 권한)
+- 관리자도 수정/삭제는 개인 데이터만 가능 (기존 RLS 정책 유지)
+- 관리자용 RLS 정책은 `is_admin_user()` 함수를 통해 확인
+
+**관리자 접근 가능한 데이터**:
+- `users`: 모든 사용자 프로필 조회
+- `user_books`: 모든 사용자의 독서 목록 조회
+- `notes`: 모든 기록 조회
+- `groups`: 모든 그룹 조회
+- `group_members`: 모든 그룹 멤버십 조회
+- `group_books`: 모든 그룹 책 조회
+- `group_notes`: 모든 그룹 공유 기록 조회
+- `group_shared_books`: 모든 그룹 공유 책 조회
+- `transcriptions`: 모든 전사 데이터 조회
+
+**보안 주의사항**:
+- 관리자 이메일 주소는 하드코딩되어 있으며, 변경 시 마이그레이션 파일 수정 필요
+- 관리자 권한은 조회(SELECT)만 허용되며, 수정/삭제는 개인 데이터만 가능
+
 ---
 
 ## 7. 변경 로그(Change Log)
@@ -608,6 +631,29 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
   - `users`
 - **마이그레이션 파일**: `migration-202512282233__users__add_consent_fields.sql`
 - **목적**: 로그인 후 약관 동의 페이지를 통한 명시적 동의 수집
+
+### 2025-01-02 (관리자 접근 제한 기능 추가)
+
+- **변경 내용**: 관리자 페이지 접근 제한 및 관리자용 RLS 정책 추가
+  - 관리자 권한 체크 함수 추가 (`app/actions/auth.ts`의 `isAdmin()`)
+  - 관리자 페이지 접근 제한 (`app/(main)/admin/page.tsx`)
+  - 사이드바 및 헤더에서 관리자 링크 조건부 표시
+  - 관리자 액션들에 권한 체크 추가 (`app/actions/admin.ts`)
+  - 관리자용 RLS 정책 추가: `is_admin_user()` 함수 생성
+    - 관리자는 모든 사용자 데이터 조회 가능 (SELECT 권한)
+    - 수정/삭제는 개인 데이터만 가능 (기존 RLS 정책 유지)
+- **영향받는 테이블**:
+  - `users` (관리자 SELECT 정책 추가)
+  - `user_books` (관리자 SELECT 정책 추가)
+  - `notes` (관리자 SELECT 정책 추가)
+  - `groups` (관리자 SELECT 정책 추가)
+  - `group_members` (관리자 SELECT 정책 추가)
+  - `group_books` (관리자 SELECT 정책 추가)
+  - `group_notes` (관리자 SELECT 정책 추가)
+  - `group_shared_books` (관리자 SELECT 정책 추가)
+  - `transcriptions` (관리자 SELECT 정책 추가)
+- **마이그레이션 파일**: `migration-202501021500__admin__add_admin_rls_policies.sql`
+- **목적**: 관리자(`cdhnaya@kakao.com`)만 관리자 페이지에 접근 가능하도록 제한하고, 전체 데이터 조회 권한 부여
 
 ### 향후 변경 사항
 
