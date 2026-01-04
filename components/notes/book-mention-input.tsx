@@ -133,14 +133,17 @@ export function BookMentionInput({
   };
 
   // 책 선택 시 링크로 변환
-  const handleBookSelect = (book: Book, event?: React.MouseEvent) => {
+  const handleBookSelect = (book: Book, event?: React.MouseEvent, savedMentionStart?: number | null) => {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
 
-    if (mentionStart === null) {
-      console.error("handleBookSelect: mentionStart가 null입니다");
+    // savedMentionStart가 제공되면 사용, 아니면 현재 mentionStart 사용
+    const currentMentionStart = savedMentionStart !== undefined ? savedMentionStart : mentionStart;
+
+    if (currentMentionStart === null) {
+      console.error("handleBookSelect: mentionStart가 null입니다", { mentionStart, savedMentionStart });
       return;
     }
 
@@ -153,7 +156,7 @@ export function BookMentionInput({
     const cursorPosition = inputRef.current.selectionStart || currentValue.length;
     
     // @부터 커서 위치까지의 텍스트를 링크로 교체
-    const textBefore = currentValue.substring(0, mentionStart);
+    const textBefore = currentValue.substring(0, currentMentionStart);
     const textAfter = currentValue.substring(cursorPosition);
     
     // 링크 형식: [책 제목](@book:userBookId)
@@ -168,7 +171,7 @@ export function BookMentionInput({
     // 커서 위치 조정
     setTimeout(() => {
       if (inputRef.current) {
-        const newCursorPos = mentionStart + linkText.length;
+        const newCursorPos = currentMentionStart + linkText.length;
         inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
         inputRef.current.focus();
       }
@@ -249,10 +252,31 @@ export function BookMentionInput({
                 "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-3",
                 index === selectedIndex && "bg-accent"
               )}
-              onClick={(e) => {
+              onMouseDown={(e) => {
+                // blur 이벤트를 방지하기 위해 preventDefault 사용
+                // 하지만 클릭 이벤트는 onMouseUp에서 처리
+                e.preventDefault();
+                // mentionStart를 저장
+                const savedMentionStart = mentionStart;
+                (e.currentTarget as any)._savedMentionStart = savedMentionStart;
+              }}
+              onMouseUp={(e) => {
+                // onMouseDown에서 preventDefault를 했으므로 onMouseUp에서 클릭 처리
                 e.preventDefault();
                 e.stopPropagation();
-                handleBookSelect(book, e);
+                const savedMentionStart = (e.currentTarget as any)._savedMentionStart;
+                if (savedMentionStart !== null && savedMentionStart !== undefined) {
+                  handleBookSelect(book, e, savedMentionStart);
+                }
+              }}
+              onClick={(e) => {
+                // onMouseDown에서 preventDefault를 했으므로 onClick도 처리
+                e.preventDefault();
+                e.stopPropagation();
+                const savedMentionStart = (e.currentTarget as any)._savedMentionStart;
+                if (savedMentionStart !== null && savedMentionStart !== undefined) {
+                  handleBookSelect(book, e, savedMentionStart);
+                }
               }}
               onMouseEnter={() => setSelectedIndex(index)}
             >
