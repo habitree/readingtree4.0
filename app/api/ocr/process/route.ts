@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { extractTextFromImage } from "@/lib/api/vision";
 import { createOrUpdateTranscription, updateTranscriptionStatus, verifyNoteOwnership } from "@/app/actions/notes";
 import { recordOcrSuccess, recordOcrFailure } from "@/app/actions/ocr";
+import type { User } from "@supabase/supabase-js";
 
 /**
  * OCR 실제 처리 API
@@ -12,14 +13,17 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   let noteId: string | undefined;
   let imageUrl: string | undefined;
+  let user: User | null = null;
 
   try {
     // 인증 확인 (내부 API 호출이지만 RLS 정책을 통과하기 위해 필요)
     const supabase = await createServerSupabaseClient();
     const {
-      data: { user },
+      data: { user: authUser },
       error: authError,
     } = await supabase.auth.getUser();
+    
+    user = authUser;
 
     console.log("[OCR Process] 인증 확인:", {
       hasUser: !!user,
