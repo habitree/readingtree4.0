@@ -11,7 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { parseNoteContentFields } from "@/lib/utils/note";
-import { renderBookLinks } from "@/lib/utils/book-link";
+import { BookLinkRenderer } from "@/components/notes/book-link-renderer";
 import { Eye } from "lucide-react";
 
 interface NoteContentViewerProps {
@@ -68,7 +68,7 @@ export function NoteContentViewer({
     <div className="space-y-2">
       {displayText && (
         <p className="text-sm whitespace-pre-line line-clamp-3">
-          {renderBookLinks(displayText)}
+          <BookLinkRenderer text={displayText} />
         </p>
       )}
       {isLong && (
@@ -89,7 +89,7 @@ export function NoteContentViewer({
                 <div>
                   <h4 className="text-sm font-semibold mb-2">인상깊은 구절</h4>
                   <p className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
-                    {renderBookLinks(quote)}
+                    <BookLinkRenderer text={quote} />
                   </p>
                 </div>
               )}
@@ -97,7 +97,7 @@ export function NoteContentViewer({
                 <div>
                   <h4 className="text-sm font-semibold mb-2">내 생각</h4>
                   <p className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
-                    {renderBookLinks(memo)}
+                    <BookLinkRenderer text={memo} />
                   </p>
                 </div>
               )}
