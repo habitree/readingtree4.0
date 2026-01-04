@@ -231,7 +231,11 @@ export function BookMentionTextarea({
                 "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-3",
                 index === selectedIndex && "bg-accent"
               )}
-              onClick={() => handleBookSelect(book)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleBookSelect(book, e);
+              }}
               onMouseEnter={() => setSelectedIndex(index)}
             >
               {book.books.cover_image_url ? (

@@ -211,11 +211,12 @@ export function BookMentionInput({
             if (relatedTarget && suggestionsRef.current?.contains(relatedTarget)) {
               return; // suggestions로 포커스가 이동한 경우 무시
             }
+            // 클릭 이벤트가 처리될 시간을 주기 위해 더 긴 지연
             setTimeout(() => {
               if (!suggestionsRef.current?.contains(document.activeElement)) {
                 setShowSuggestions(false);
               }
-            }, 200);
+            }, 300);
           }}
           className={cn(className, "relative z-10")}
           style={value && value.includes('[@book:') ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
@@ -252,9 +253,6 @@ export function BookMentionInput({
                 e.preventDefault();
                 e.stopPropagation();
                 handleBookSelect(book, e);
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault(); // blur 이벤트 방지
               }}
               onMouseEnter={() => setSelectedIndex(index)}
             >
