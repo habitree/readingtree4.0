@@ -34,6 +34,8 @@ import { validateImageSize, validateImageType } from "@/lib/utils/image";
 import { parseNoteContentFields } from "@/lib/utils/note";
 import type { NoteWithBook } from "@/types/note";
 import { TagInput } from "./tag-input";
+import { BookMentionInput } from "./book-mention-input";
+import { BookMentionTextarea } from "./book-mention-textarea";
 
 // 스키마: 모든 값은 선택이지만 완전히 빈값은 불가
 const noteEditFormSchema = z.object({
@@ -206,7 +208,11 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
             <FormItem>
               <FormLabel>제목 <span className="text-muted-foreground text-xs font-normal">(선택)</span></FormLabel>
               <FormControl>
-                <Input placeholder="기록에 제목을 붙여보세요" {...field} />
+                <BookMentionInput
+                  placeholder="기록에 제목을 붙여보세요. @를 입력하면 책을 링크할 수 있습니다."
+                  value={field.value || ""}
+                  onValueChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -214,34 +220,46 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
         />
 
         {/* 인상깊은 구절 */}
-        <div className="space-y-2">
-          <Label htmlFor="quoteContent">인상깊은 구절</Label>
-          <Textarea
-            id="quoteContent"
-            {...register("quoteContent")}
-            placeholder="인상 깊었던 문장"
-            rows={4}
-            className="resize-none max-w-2xl"
-          />
-          {errors.quoteContent && (
-            <p className="text-sm text-destructive">{errors.quoteContent.message}</p>
+        <FormField
+          control={form.control}
+          name="quoteContent"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>인상깊은 구절</FormLabel>
+              <FormControl>
+                <BookMentionTextarea
+                  placeholder="인상 깊었던 문장. @를 입력하면 책을 링크할 수 있습니다."
+                  value={field.value || ""}
+                  onValueChange={field.onChange}
+                  rows={4}
+                  className="resize-none max-w-2xl"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
+        />
 
         {/* 내 생각 */}
-        <div className="space-y-2">
-          <Label htmlFor="memoContent">내 생각</Label>
-          <Textarea
-            id="memoContent"
-            {...register("memoContent")}
-            placeholder="생각이나 감상"
-            rows={6}
-            className="resize-none max-w-2xl"
-          />
-          {errors.memoContent && (
-            <p className="text-sm text-destructive">{errors.memoContent.message}</p>
+        <FormField
+          control={form.control}
+          name="memoContent"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>내 생각</FormLabel>
+              <FormControl>
+                <BookMentionTextarea
+                  placeholder="생각이나 감상. @를 입력하면 책을 링크할 수 있습니다."
+                  value={field.value || ""}
+                  onValueChange={field.onChange}
+                  rows={6}
+                  className="resize-none max-w-2xl"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
+        />
 
         {/* 업로드 타입 선택 */}
         <div className="space-y-2">

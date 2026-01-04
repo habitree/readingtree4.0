@@ -184,7 +184,7 @@ export function BookMentionTextarea({
         {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
         {value && (
           <div className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-20 overflow-hidden">
-            <BookLinkInputRenderer text={value} className="w-full whitespace-pre-wrap" />
+            <BookLinkInputRenderer text={value} className="w-full whitespace-pre-wrap break-words" />
           </div>
         )}
         <Textarea
@@ -193,6 +193,7 @@ export function BookMentionTextarea({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           className={cn(className, value && "text-transparent caret-foreground")}
+          style={value ? { color: 'transparent' } : undefined}
           {...props}
         />
       </div>
