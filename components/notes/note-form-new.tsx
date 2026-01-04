@@ -28,6 +28,8 @@ import { TagInput } from "./tag-input";
 import { TextPreviewDialog } from "./text-preview-dialog";
 import { addStampToImage } from "@/lib/utils/stamp";
 import { Checkbox } from "@/components/ui/checkbox";
+import { BookMentionTextarea } from "./book-mention-textarea";
+import { BookMentionInput } from "./book-mention-input";
 
 // 스키마: 모든 값은 선택이지만 완전히 빈값은 불가
 const noteFormSchema = z.object({
@@ -400,7 +402,11 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
             <FormItem>
               <FormLabel>제목 <span className="text-muted-foreground text-xs font-normal">(선택)</span></FormLabel>
               <FormControl>
-                <Input placeholder="기록에 제목을 붙여보세요" {...field} />
+                <BookMentionInput
+                  placeholder="기록에 제목을 붙여보세요. @를 입력하면 책을 링크할 수 있습니다."
+                  value={field.value || ""}
+                  onValueChange={field.onChange}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -419,10 +425,11 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
               maxLength={5000}
             />
           </div>
-          <Textarea
+          <BookMentionTextarea
             id="quoteContent"
-            {...register("quoteContent")}
-            placeholder="인상 깊었던 문장"
+            value={quoteContent}
+            onValueChange={(value) => setValue("quoteContent", value)}
+            placeholder="인상 깊었던 문장. @를 입력하면 책을 링크할 수 있습니다."
             rows={4}
             className="resize-none max-w-2xl"
           />
@@ -443,10 +450,11 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
               maxLength={10000}
             />
           </div>
-          <Textarea
+          <BookMentionTextarea
             id="memoContent"
-            {...register("memoContent")}
-            placeholder="생각이나 감상"
+            value={memoContent}
+            onValueChange={(value) => setValue("memoContent", value)}
+            placeholder="생각이나 감상. @를 입력하면 책을 링크할 수 있습니다."
             rows={6}
             className="resize-none max-w-2xl"
           />

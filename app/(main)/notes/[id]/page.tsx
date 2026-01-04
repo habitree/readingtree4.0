@@ -14,6 +14,7 @@ import { OCRStatusChecker } from "@/components/notes/ocr-status-checker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { NoteWithBook } from "@/types/note";
 import { getUserById } from "@/app/actions/profile";
+import { BookLinkRenderer } from "@/components/notes/book-link-renderer";
 
 interface NoteDetailPageProps {
   params: {
@@ -138,7 +139,7 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-blue-500">인상깊은 구절 (정제됨)</h4>
                   <p className="text-sm bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-lg border-l-2 border-blue-400 text-slate-700 dark:text-slate-300">
-                    "{transcription.quote_content}"
+                    "<BookLinkRenderer text={transcription.quote_content} />"
                   </p>
                 </div>
               )}
@@ -146,7 +147,7 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-500">내 생각 (정제됨)</h4>
                   <p className="text-sm bg-slate-100/50 dark:bg-slate-800/50 p-4 rounded-lg text-slate-600 dark:text-slate-400">
-                    {transcription.memo_content}
+                    <BookLinkRenderer text={transcription.memo_content} />
                   </p>
                 </div>
               )}

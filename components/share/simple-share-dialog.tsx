@@ -18,6 +18,7 @@ import { isClipboardSupported, isMobile, downloadImage } from "@/lib/utils/devic
 import { ShareNoteCard } from "./share-note-card";
 import type { NoteWithBook } from "@/types/note";
 import { getUserById } from "@/app/actions/profile";
+import { addStampToBlob } from "@/lib/utils/stamp";
 
 interface SimpleShareDialogProps {
   note: NoteWithBook;
@@ -137,10 +138,19 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           return;
         }
 
+        // 스템프 적용
+        let finalBlob = blob;
+        try {
+          finalBlob = await addStampToBlob(blob, new Date(note.created_at));
+        } catch (stampError) {
+          console.error("스탬프 적용 실패, 원본 이미지 사용:", stampError);
+          // 스탬프 적용 실패 시 원본 사용
+        }
+
         // 모바일에서도 클립보드 복사를 우선 시도
         try {
           // Clipboard API를 직접 시도 (isClipboardSupported 체크를 우회하여 실제 작동 여부 확인)
-          const item = new ClipboardItem({ [blob.type]: blob });
+          const item = new ClipboardItem({ [finalBlob.type]: finalBlob });
           await navigator.clipboard.write([item]);
           setCardCopied(true);
           toast.success("카드 이미지가 클립보드에 복사되었습니다.");
@@ -154,7 +164,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           // 클립보드 복사 실패 시 다운로드로 fallback
           try {
             const filename = `habitree-card-${note.id}-${Date.now()}.png`;
-            downloadImage(blob, filename);
+            downloadImage(finalBlob, filename);
             setCardCopied(true);
             toast.success("카드 이미지가 다운로드되었습니다.");
 
@@ -217,10 +227,19 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           return;
         }
 
+        // 스템프 적용
+        let finalBlob = blob;
+        try {
+          finalBlob = await addStampToBlob(blob, new Date(note.created_at));
+        } catch (stampError) {
+          console.error("스탬프 적용 실패, 원본 이미지 사용:", stampError);
+          // 스탬프 적용 실패 시 원본 사용
+        }
+
         // 모바일에서도 클립보드 복사를 우선 시도
         try {
           // Clipboard API를 직접 시도 (isClipboardSupported 체크를 우회하여 실제 작동 여부 확인)
-          const item = new ClipboardItem({ [blob.type]: blob });
+          const item = new ClipboardItem({ [finalBlob.type]: finalBlob });
           await navigator.clipboard.write([item]);
           setPhotoCopied(true);
           toast.success("원본 이미지가 클립보드에 복사되었습니다.");
@@ -234,7 +253,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           // 클립보드 복사 실패 시 다운로드로 fallback
           try {
             const filename = `habitree-image-${note.id}-${Date.now()}.png`;
-            downloadImage(blob, filename);
+            downloadImage(finalBlob, filename);
             setPhotoCopied(true);
             toast.success("원본 이미지가 다운로드되었습니다.");
 

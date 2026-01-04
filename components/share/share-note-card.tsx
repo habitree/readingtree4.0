@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ImageLightbox } from "@/components/notes/image-lightbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { renderBookLinks } from "@/lib/utils/book-link";
 
 interface ShareNoteCardProps {
     note: NoteWithBook;
@@ -49,7 +50,7 @@ function ExpandableText({
     return (
         <div className={cn("relative group", className)}>
             <p className="whitespace-pre-wrap transition-all duration-300">
-                {displayText}
+                {renderBookLinks(displayText)}
             </p>
             {shouldTruncate && !hideActions && (
                 <Button
