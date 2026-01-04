@@ -208,25 +208,24 @@ export function BookMentionInput({
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
           onBlur={(e) => {
-            // 포커스가 자동완성 목록으로 이동하는 경우를 고려하여 약간의 지연
-            // relatedTarget이 suggestions 내부인지 확인
+            // 포커스가 자동완성 목록으로 이동하는 경우를 고려
             const relatedTarget = e.relatedTarget as HTMLElement;
             if (relatedTarget && suggestionsRef.current?.contains(relatedTarget)) {
               return; // suggestions로 포커스가 이동한 경우 무시
             }
-            // 클릭 이벤트가 처리될 시간을 주기 위해 더 긴 지연
+            // 클릭 이벤트가 처리될 시간을 주기 위해 지연
             setTimeout(() => {
               if (!suggestionsRef.current?.contains(document.activeElement)) {
                 setShowSuggestions(false);
               }
-            }, 300);
+            }, 200);
           }}
           className={cn(className, "relative z-10")}
           style={value && value.includes('[@book:') ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
           {...props}
         />
         {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
-        {value && (
+        {value && value.includes('[@book:') && (
           <div className="absolute inset-0 pointer-events-none flex items-center px-3 py-2 text-sm z-30 overflow-hidden">
             <BookLinkInputRenderer text={value} className="w-full" />
           </div>
@@ -254,26 +253,11 @@ export function BookMentionInput({
               )}
               onMouseDown={(e) => {
                 // blur 이벤트를 방지하기 위해 preventDefault 사용
-                // 하지만 클릭 이벤트는 onMouseUp에서 처리
                 e.preventDefault();
                 // mentionStart를 저장
                 const savedMentionStart = mentionStart;
                 (e.currentTarget as any)._savedMentionStart = savedMentionStart;
-              }}
-              onMouseUp={(e) => {
-                // onMouseDown에서 preventDefault를 했으므로 onMouseUp에서 클릭 처리
-                e.preventDefault();
-                e.stopPropagation();
-                const savedMentionStart = (e.currentTarget as any)._savedMentionStart;
-                if (savedMentionStart !== null && savedMentionStart !== undefined) {
-                  handleBookSelect(book, e, savedMentionStart);
-                }
-              }}
-              onClick={(e) => {
-                // onMouseDown에서 preventDefault를 했으므로 onClick도 처리
-                e.preventDefault();
-                e.stopPropagation();
-                const savedMentionStart = (e.currentTarget as any)._savedMentionStart;
+                // 클릭 이벤트를 즉시 처리
                 if (savedMentionStart !== null && savedMentionStart !== undefined) {
                   handleBookSelect(book, e, savedMentionStart);
                 }
