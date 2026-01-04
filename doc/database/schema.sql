@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS notes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     book_id UUID NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+    title TEXT,
     type note_type NOT NULL,
     content TEXT,
     image_url TEXT,
@@ -188,6 +189,7 @@ CREATE TABLE IF NOT EXISTS notes (
 CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
 CREATE INDEX IF NOT EXISTS idx_notes_book_id ON notes(book_id);
 CREATE INDEX IF NOT EXISTS idx_notes_type ON notes(type);
+CREATE INDEX IF NOT EXISTS idx_notes_title ON notes(title);
 CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notes_page_number ON notes(page_number);
 CREATE INDEX IF NOT EXISTS idx_notes_is_sample ON notes(is_sample) WHERE is_sample = TRUE; -- 샘플 데이터 조회용 인덱스

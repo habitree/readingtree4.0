@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { extractTextFromImage } from "@/lib/api/vision";
 import { createOrUpdateTranscription, updateTranscriptionStatus, verifyNoteOwnership } from "@/app/actions/notes";
+import { recordOcrSuccess, recordOcrFailure } from "@/app/actions/ocr";
 
 /**
  * OCR 실제 처리 API
@@ -95,6 +96,15 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     console.log(`[OCR Process] 처리 완료: noteId=${noteId}, 소요시간=${duration}ms`);
 
+    // OCR 성공 통계 기록
+    try {
+      await recordOcrSuccess(user.id, noteId, duration);
+      console.log(`[OCR Process] 성공 통계 기록 완료: userId=${user.id}`);
+    } catch (statsError) {
+      console.error("[OCR Process] 통계 기록 실패 (계속 진행):", statsError);
+      // 통계 기록 실패해도 OCR 처리는 성공으로 간주
+    }
+
     return NextResponse.json({ 
       success: true, 
       extractedText,
@@ -127,6 +137,17 @@ export async function POST(request: NextRequest) {
         console.log(`[OCR Process] Transcription 상태를 'failed'로 업데이트: noteId=${noteId}`);
       } catch (statusError) {
         console.error("[OCR Process] Transcription 상태 업데이트 실패:", statusError);
+      }
+    }
+
+    // OCR 실패 통계 기록
+    if (user) {
+      try {
+        await recordOcrFailure(user.id, noteId, errorMessage, duration);
+        console.log(`[OCR Process] 실패 통계 기록 완료: userId=${user.id}`);
+      } catch (statsError) {
+        console.error("[OCR Process] 통계 기록 실패:", statsError);
+        // 통계 기록 실패해도 에러 응답은 계속 진행
       }
     }
 

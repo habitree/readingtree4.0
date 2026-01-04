@@ -65,7 +65,12 @@ export function NoteCard({ note }: NoteCardProps) {
             {/* 내용 */}
             <div className="flex-1 min-w-0 space-y-2">
               <div className="flex items-start justify-between gap-2 flex-wrap">
-                <Badge variant="secondary">{typeLabel}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">{typeLabel}</Badge>
+                  {note.title && (
+                    <h3 className="text-sm font-bold line-clamp-1">{note.title}</h3>
+                  )}
+                </div>
                 <OCRStatusBadge status={ocrStatus} />
               </div>
 

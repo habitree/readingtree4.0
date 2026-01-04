@@ -39,6 +39,10 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
     throw new Error("유효하지 않은 책 ID입니다.");
   }
 
+  if (data.title && !isValidLength(data.title, 1, 100)) {
+    throw new Error("제목은 100자 이하여야 합니다.");
+  }
+
   // 입력 검증
   // quote_content와 memo_content 검증
   if (data.quote_content && !isValidLength(data.quote_content, 1, 5000)) {
@@ -47,18 +51,18 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
   if (data.memo_content && !isValidLength(data.memo_content, 1, 10000)) {
     throw new Error("내 생각은 1자 이상 10,000자 이하여야 합니다.");
   }
-  
+
   // 기존 content 필드 검증 (하위 호환성)
   if (data.content && !isValidLength(data.content, 1, 10000)) {
     throw new Error("내용은 1자 이상 10,000자 이하여야 합니다.");
   }
-  
+
   // 최소 하나의 값이 있어야 함
   const hasQuote = data.quote_content && data.quote_content.trim().length > 0;
   const hasMemo = data.memo_content && data.memo_content.trim().length > 0;
   const hasContent = data.content && data.content.trim().length > 0;
   const hasImage = data.image_url && data.image_url.trim().length > 0;
-  
+
   if (!hasQuote && !hasMemo && !hasContent && !hasImage) {
     throw new Error("인상깊은 구절, 내 생각, 내용, 또는 이미지 중 최소 하나는 입력해주세요.");
   }
@@ -117,6 +121,7 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
     .insert({
       user_id: currentUser.id,
       book_id: userBook.book_id,
+      title: data.title || null,
       type: noteType,
       content: content,
       image_url: data.image_url || null,
@@ -188,10 +193,10 @@ export async function updateNote(noteId: string, data: UpdateNoteInput, user?: U
       .select("content")
       .eq("id", noteId)
       .single();
-    
+
     let existingQuote: string | undefined;
     let existingMemo: string | undefined;
-    
+
     if (existingNote?.content) {
       try {
         const parsed = JSON.parse(existingNote.content);
@@ -204,20 +209,20 @@ export async function updateNote(noteId: string, data: UpdateNoteInput, user?: U
         existingMemo = existingNote.content;
       }
     }
-    
+
     const contentData: { quote?: string; memo?: string } = {};
     if (data.quote_content !== undefined) {
       contentData.quote = data.quote_content.trim().length > 0 ? data.quote_content.trim() : undefined;
     } else if (existingQuote) {
       contentData.quote = existingQuote;
     }
-    
+
     if (data.memo_content !== undefined) {
       contentData.memo = data.memo_content.trim().length > 0 ? data.memo_content.trim() : undefined;
     } else if (existingMemo) {
       contentData.memo = existingMemo;
     }
-    
+
     // quote와 memo가 모두 없으면 null, 하나라도 있으면 JSON
     if (!contentData.quote && !contentData.memo) {
       content = null;
@@ -242,19 +247,20 @@ export async function updateNote(noteId: string, data: UpdateNoteInput, user?: U
 
   // 기록 수정
   const updateData: any = {
+    title: data.title !== undefined ? (data.title || null) : undefined,
     page_number: data.page_number !== undefined ? data.page_number : undefined,
     is_public: data.is_public !== undefined ? data.is_public : undefined,
     tags: data.tags !== undefined ? data.tags : undefined,
   };
-  
+
   if (content !== undefined) {
     updateData.content = content;
   }
-  
+
   if (noteType !== undefined) {
     updateData.type = noteType;
   }
-  
+
   if (data.image_url !== undefined) {
     updateData.image_url = data.image_url;
   }
@@ -324,11 +330,11 @@ export async function deleteNote(noteId: string, user?: User | null) {
       // URL 형식: https://[project].supabase.co/storage/v1/object/public/images/photos/[userId]/[fileName]
       const url = new URL(note.image_url);
       const pathParts = url.pathname.split("/storage/v1/object/public/");
-      
+
       if (pathParts.length === 2) {
         const fullPath = pathParts[1];
         const pathSegments = fullPath.split("/");
-        
+
         if (pathSegments.length >= 2) {
           const bucket = pathSegments[0]; // "images"
           const filePath = pathSegments.slice(1).join("/"); // "photos/[userId]/[fileName]"
@@ -395,7 +401,7 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
     const selectQuery = includeBook
       ? `*, books (id, title, author, cover_image_url)`
       : `*`;
-    
+
     let query = supabase
       .from("notes")
       .select(selectQuery)
@@ -431,11 +437,11 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
     // bookId가 user_books.id인 경우, books.id를 조회
     bookId && isValidUUID(bookId)
       ? supabase
-          .from("user_books")
-          .select("book_id")
-          .eq("id", bookId)
-          .eq("user_id", currentUser.id)
-          .maybeSingle()
+        .from("user_books")
+        .select("book_id")
+        .eq("id", bookId)
+        .eq("user_id", currentUser.id)
+        .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
   ]);
 
@@ -738,15 +744,15 @@ export async function deleteTag(tag: string, user?: User | null) {
   // 각 기록에서 태그 제거
   let updatedCount = 0;
   let errorCount = 0;
-  
+
   for (const note of notes) {
     if (note.tags && Array.isArray(note.tags)) {
       // 태그 배열에서 해당 태그 제거
       const updatedTags = note.tags.filter((t) => t !== tag);
-      
+
       // 태그가 모두 제거되면 null로 설정, 아니면 업데이트된 배열 사용
       const tagsToUpdate = updatedTags.length > 0 ? updatedTags : null;
-      
+
       const { error: updateError } = await supabase
         .from("notes")
         .update({ tags: tagsToUpdate })
@@ -757,11 +763,11 @@ export async function deleteTag(tag: string, user?: User | null) {
         errorCount++;
         continue;
       }
-      
+
       updatedCount++;
     }
   }
-  
+
   // 일부 기록에서 오류가 발생한 경우 경고
   if (errorCount > 0) {
     console.warn(`${errorCount}개의 기록에서 태그 삭제 중 오류가 발생했습니다.`);
@@ -892,7 +898,7 @@ export async function createOrUpdateTranscription(
       console.error("[createOrUpdateTranscription] 업데이트 오류:", updateError);
       throw new Error(`필사 데이터 업데이트 실패: ${updateError.message}`);
     }
-    
+
     console.log("[createOrUpdateTranscription] Transcription 업데이트 완료:", {
       transcriptionId: existingTranscription.id,
       noteId,
@@ -918,7 +924,7 @@ export async function createOrUpdateTranscription(
       console.error("[createOrUpdateTranscription] 생성 오류:", insertError);
       throw new Error(`필사 데이터 생성 실패: ${insertError.message}`);
     }
-    
+
     console.log("[createOrUpdateTranscription] Transcription 생성 완료:", {
       transcriptionId: newTranscription.id,
       noteId,
