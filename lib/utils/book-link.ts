@@ -31,46 +31,51 @@ export function parseBookLinks(text: string): BookLink[] {
 }
 
 /**
- * 텍스트를 링크가 포함된 React 노드로 변환
+ * 텍스트를 링크 정보가 포함된 파트 배열로 변환
+ * 렌더링은 BookLinkRenderer 컴포넌트에서 수행
  */
-export function renderBookLinks(text: string): (string | JSX.Element)[] {
+export interface BookLinkPart {
+  type: "text" | "link";
+  content: string;
+  userBookId?: string;
+}
+
+export function parseBookLinkParts(text: string): BookLinkPart[] {
   const links = parseBookLinks(text);
   if (links.length === 0) {
-    return [text];
+    return [{ type: "text", content: text }];
   }
 
-  const nodes: (string | JSX.Element)[] = [];
+  const parts: BookLinkPart[] = [];
   let lastIndex = 0;
 
-  links.forEach((link, index) => {
+  links.forEach((link) => {
     // 링크 이전 텍스트
     if (link.startIndex > lastIndex) {
-      nodes.push(text.substring(lastIndex, link.startIndex));
+      parts.push({
+        type: "text",
+        content: text.substring(lastIndex, link.startIndex),
+      });
     }
 
     // 링크
-    nodes.push(
-      <a
-        key={`book-link-${index}`}
-        href={`/books/${link.userBookId}`}
-        className="text-primary hover:underline font-medium"
-        onClick={(e) => {
-          e.preventDefault();
-          window.location.href = `/books/${link.userBookId}`;
-        }}
-      >
-        {link.text}
-      </a>
-    );
+    parts.push({
+      type: "link",
+      content: link.text,
+      userBookId: link.userBookId,
+    });
 
     lastIndex = link.endIndex;
   });
 
   // 마지막 링크 이후 텍스트
   if (lastIndex < text.length) {
-    nodes.push(text.substring(lastIndex));
+    parts.push({
+      type: "text",
+      content: text.substring(lastIndex),
+    });
   }
 
-  return nodes;
+  return parts;
 }
 

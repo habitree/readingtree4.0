@@ -1,6 +1,7 @@
 "use client";
 
-import { renderBookLinks } from "@/lib/utils/book-link";
+import { parseBookLinkParts } from "@/lib/utils/book-link";
+import Link from "next/link";
 
 interface BookLinkRendererProps {
   text: string;
@@ -12,6 +13,25 @@ interface BookLinkRendererProps {
  * 서버 컴포넌트에서 사용할 수 있도록 분리
  */
 export function BookLinkRenderer({ text, className }: BookLinkRendererProps) {
-  return <span className={className}>{renderBookLinks(text)}</span>;
+  const parts = parseBookLinkParts(text);
+
+  return (
+    <span className={className}>
+      {parts.map((part, index) => {
+        if (part.type === "link" && part.userBookId) {
+          return (
+            <Link
+              key={`book-link-${index}`}
+              href={`/books/${part.userBookId}`}
+              className="text-primary hover:underline font-medium"
+            >
+              {part.content}
+            </Link>
+          );
+        }
+        return <span key={`text-${index}`}>{part.content}</span>;
+      })}
+    </span>
+  );
 }
 
