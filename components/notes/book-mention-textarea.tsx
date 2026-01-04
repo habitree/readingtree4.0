@@ -106,9 +106,19 @@ export function BookMentionTextarea({
   };
 
   // 책 선택 시 링크로 변환
-  const handleBookSelect = (book: Book) => {
-    if (mentionStart === null || !textareaRef.current) {
-      console.error("handleBookSelect: mentionStart 또는 textareaRef가 null입니다", { mentionStart, textareaRef: textareaRef.current });
+  const handleBookSelect = (book: Book, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (mentionStart === null) {
+      console.error("handleBookSelect: mentionStart가 null입니다");
+      return;
+    }
+
+    if (!textareaRef.current) {
+      console.error("handleBookSelect: textareaRef가 null입니다");
       return;
     }
 
@@ -181,21 +191,21 @@ export function BookMentionTextarea({
   return (
     <div className="relative">
       <div className="relative">
-        {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
-        {value && (
-          <div className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-20 overflow-hidden">
-            <BookLinkInputRenderer text={value} className="w-full whitespace-pre-wrap break-words" />
-          </div>
-        )}
         <Textarea
           ref={textareaRef}
           value={value}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          className={cn(className, value && "text-transparent caret-foreground")}
-          style={value ? { color: 'transparent' } : undefined}
+          className={cn(className, "relative z-10")}
+          style={value && value.includes('[@book:') ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
           {...props}
         />
+        {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
+        {value && (
+          <div className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-30 overflow-hidden">
+            <BookLinkInputRenderer text={value} className="w-full whitespace-pre-wrap break-words" />
+          </div>
+        )}
       </div>
 
       {/* 자동완성 목록 */}

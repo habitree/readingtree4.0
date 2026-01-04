@@ -133,9 +133,19 @@ export function BookMentionInput({
   };
 
   // 책 선택 시 링크로 변환
-  const handleBookSelect = (book: Book) => {
-    if (mentionStart === null || !inputRef.current) {
-      console.error("handleBookSelect: mentionStart 또는 inputRef가 null입니다", { mentionStart, inputRef: inputRef.current });
+  const handleBookSelect = (book: Book, event?: React.MouseEvent) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (mentionStart === null) {
+      console.error("handleBookSelect: mentionStart가 null입니다");
+      return;
+    }
+
+    if (!inputRef.current) {
+      console.error("handleBookSelect: inputRef가 null입니다");
       return;
     }
 
@@ -188,12 +198,6 @@ export function BookMentionInput({
   return (
     <div className="relative">
       <div className="relative">
-        {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
-        {value && (
-          <div className="absolute inset-0 pointer-events-none flex items-center px-3 py-2 text-sm z-20 overflow-hidden whitespace-nowrap">
-            <BookLinkInputRenderer text={value} className="w-full truncate" />
-          </div>
-        )}
         <Input
           ref={inputRef}
           value={value}
@@ -202,16 +206,27 @@ export function BookMentionInput({
           onFocus={handleFocus}
           onBlur={(e) => {
             // 포커스가 자동완성 목록으로 이동하는 경우를 고려하여 약간의 지연
+            // relatedTarget이 suggestions 내부인지 확인
+            const relatedTarget = e.relatedTarget as HTMLElement;
+            if (relatedTarget && suggestionsRef.current?.contains(relatedTarget)) {
+              return; // suggestions로 포커스가 이동한 경우 무시
+            }
             setTimeout(() => {
               if (!suggestionsRef.current?.contains(document.activeElement)) {
                 setShowSuggestions(false);
               }
             }, 200);
           }}
-          className={cn(className, "relative z-10", value && "text-transparent caret-foreground")}
-          style={value ? { color: 'transparent' } : undefined}
+          className={cn(className, "relative z-10")}
+          style={value && value.includes('[@book:') ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
           {...props}
         />
+        {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
+        {value && (
+          <div className="absolute inset-0 pointer-events-none flex items-center px-3 py-2 text-sm z-30 overflow-hidden">
+            <BookLinkInputRenderer text={value} className="w-full" />
+          </div>
+        )}
       </div>
 
       {/* 자동완성 목록 */}
@@ -233,7 +248,14 @@ export function BookMentionInput({
                 "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-3",
                 index === selectedIndex && "bg-accent"
               )}
-              onClick={() => handleBookSelect(book)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleBookSelect(book, e);
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault(); // blur 이벤트 방지
+              }}
               onMouseEnter={() => setSelectedIndex(index)}
             >
               {book.books.cover_image_url ? (
