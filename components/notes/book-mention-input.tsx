@@ -7,6 +7,7 @@ import { getUserBooks } from "@/app/actions/books";
 import { BookOpen, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
+import { BookLinkInputRenderer } from "./book-link-input-renderer";
 
 interface Book {
   id: string; // user_books.id
@@ -104,12 +105,46 @@ export function BookMentionInput({
     onValueChange(newValue);
   };
 
+  // 입력 필드 포커스 시 커서 위치 업데이트
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    // 포커스 시 현재 커서 위치를 기준으로 @ 감지
+    const cursorPosition = e.target.selectionStart || 0;
+    const textBeforeCursor = value.substring(0, cursorPosition);
+    const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+    
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1);
+      if (!textAfterAt.includes(" ")) {
+        const query = textAfterAt.toLowerCase();
+        setMentionStart(lastAtIndex);
+        setSearchQuery(query);
+        
+        const filtered = books.filter((book) => {
+          const title = book.books.title.toLowerCase();
+          const author = (book.books.author || "").toLowerCase();
+          return title.includes(query) || author.includes(query);
+        });
+        
+        setSuggestions(filtered.slice(0, 5));
+        setShowSuggestions(filtered.length > 0);
+        setSelectedIndex(0);
+      }
+    }
+  };
+
   // 책 선택 시 링크로 변환
   const handleBookSelect = (book: Book) => {
-    if (mentionStart === null || !inputRef.current) return;
+    if (mentionStart === null || !inputRef.current) {
+      console.error("handleBookSelect: mentionStart 또는 inputRef가 null입니다", { mentionStart, inputRef: inputRef.current });
+      return;
+    }
 
-    const textBefore = value.substring(0, mentionStart);
-    const textAfter = value.substring(inputRef.current.selectionStart || value.length);
+    const currentValue = value;
+    const cursorPosition = inputRef.current.selectionStart || currentValue.length;
+    
+    // @부터 커서 위치까지의 텍스트를 링크로 교체
+    const textBefore = currentValue.substring(0, mentionStart);
+    const textAfter = currentValue.substring(cursorPosition);
     
     // 링크 형식: [책 제목](@book:userBookId)
     const linkText = `[${book.books.title}](@book:${book.id})`;
@@ -152,14 +187,31 @@ export function BookMentionInput({
 
   return (
     <div className="relative">
-      <Input
-        ref={inputRef}
-        value={value}
-        onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        className={cn(className)}
-        {...props}
-      />
+      <div className="relative">
+        {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
+        {value && (
+          <div className="absolute inset-0 pointer-events-none flex items-center px-3 py-2 text-sm z-20 overflow-hidden">
+            <BookLinkInputRenderer text={value} className="w-full" />
+          </div>
+        )}
+        <Input
+          ref={inputRef}
+          value={value}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          onFocus={handleFocus}
+          onBlur={(e) => {
+            // 포커스가 자동완성 목록으로 이동하는 경우를 고려하여 약간의 지연
+            setTimeout(() => {
+              if (!suggestionsRef.current?.contains(document.activeElement)) {
+                setShowSuggestions(false);
+              }
+            }, 200);
+          }}
+          className={cn(className, "relative z-10", value && "text-transparent caret-foreground")}
+          {...props}
+        />
+      </div>
 
       {/* 자동완성 목록 */}
       {showSuggestions && suggestions.length > 0 && (

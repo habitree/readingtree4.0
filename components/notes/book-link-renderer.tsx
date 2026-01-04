@@ -23,7 +23,7 @@ export function BookLinkRenderer({ text, className }: BookLinkRendererProps) {
             <Link
               key={`book-link-${index}`}
               href={`/books/${part.userBookId}`}
-              className="text-primary hover:underline font-medium"
+              className="text-primary hover:underline font-medium underline decoration-primary/50"
             >
               {part.content}
             </Link>
