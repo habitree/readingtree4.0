@@ -121,7 +121,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                     Habitree
                 </span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Your Intelligence Forest</span>
-                <span className="text-[10px] font-medium text-slate-300 dark:text-slate-600">by NTL</span>
+                <span className="text-[10px] font-medium text-slate-300 dark:text-slate-600"></span>
             </div>
         </div>
     );
