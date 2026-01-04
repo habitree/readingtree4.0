@@ -19,6 +19,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateBookStatus } from "@/app/actions/books";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/utils/date";
 import type { BookWithNotes } from "@/app/actions/books";
 import type { ReadingStatus } from "@/types/book";
 
@@ -286,6 +287,35 @@ export function BookTable({ books }: BookTableProps) {
                           </span>
                         </div>
                       )}
+                      {(() => {
+                        let dates: string[] = [];
+                        if (item.completed_dates) {
+                          if (Array.isArray(item.completed_dates)) {
+                            dates = item.completed_dates;
+                          } else if (typeof item.completed_dates === 'string') {
+                            try {
+                              dates = JSON.parse(item.completed_dates);
+                            } catch {
+                              dates = [];
+                            }
+                          }
+                        } else if (item.completed_at) {
+                          dates = [item.completed_at];
+                        }
+                        return dates.length > 0 ? (
+                          <div>
+                            <span className="text-muted-foreground">완독일:</span>{" "}
+                            <span className="font-medium">
+                              {dates.map((date: string, index: number) => (
+                                <span key={index}>
+                                  {formatDate(date)}
+                                  {index < dates.length - 1 && ", "}
+                                </span>
+                              ))}
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
                     </div>
                   </td>
                 </tr>

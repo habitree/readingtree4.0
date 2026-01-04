@@ -26,6 +26,8 @@ import { getImageUrl } from "@/lib/utils/image";
 import { validateImageSize, validateImageType } from "@/lib/utils/image";
 import { TagInput } from "./tag-input";
 import { TextPreviewDialog } from "./text-preview-dialog";
+import { addStampToImage } from "@/lib/utils/stamp";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // 스키마: 모든 값은 선택이지만 완전히 빈값은 불가
 const noteFormSchema = z.object({
@@ -77,6 +79,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const [currentUploadType, setCurrentUploadType] = useState<"photo" | "transcription" | null>(null);
+  const [applyStamp, setApplyStamp] = useState(false);
   const transcriptionInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -119,12 +122,30 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
 
     for (let i = 0; i < validFiles.length; i++) {
       const file = validFiles[i];
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("type", type);
-
+      
       try {
         setUploadProgress((prev) => ({ ...prev, [i]: 0 }));
+
+        // 스탬프 적용 여부에 따라 이미지 처리
+        let fileToUpload = file;
+        if (applyStamp) {
+          try {
+            const stampedBlob = await addStampToImage(file);
+            fileToUpload = new File([stampedBlob], file.name, {
+              type: file.type || "image/jpeg",
+            });
+          } catch (stampError) {
+            console.error("스탬프 적용 오류:", stampError);
+            toast.warning("스탬프 적용에 실패했습니다. 원본 이미지를 업로드합니다.");
+            // 스탬프 적용 실패 시 원본 파일 사용
+          }
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileToUpload);
+        formData.append("type", type);
+
+        setUploadProgress((prev) => ({ ...prev, [i]: 50 }));
 
         const response = await fetch("/api/upload", {
           method: "POST",
@@ -456,6 +477,20 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
                 이미지등록
               </div>
             </label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="apply-stamp"
+              checked={applyStamp}
+              onCheckedChange={(checked) => setApplyStamp(checked === true)}
+              disabled={uploading}
+            />
+            <Label
+              htmlFor="apply-stamp"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Stamp
+            </Label>
           </div>
           <p className="text-xs text-muted-foreground">
             필사등록 시 이미지에서 텍스트를 자동으로 추출하여 필사 테이블에 저장됩니다.

@@ -13,6 +13,7 @@ import { ShareNoteCard } from "@/components/share/share-note-card";
 import { OCRStatusChecker } from "@/components/notes/ocr-status-checker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { NoteWithBook } from "@/types/note";
+import { getUserById } from "@/app/actions/profile";
 
 interface NoteDetailPageProps {
   params: {
@@ -45,6 +46,9 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
   }
 
   const noteWithBook = note as NoteWithBook;
+
+  // 사용자 정보 가져오기
+  const user = noteWithBook.user_id ? await getUserById(noteWithBook.user_id) : null;
 
   // 필사 데이터 상세 조회 (있을 경우)
   let transcription = null;
@@ -106,7 +110,7 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
       <div className="relative">
         {/* 장식적 요소 */}
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-primary/5 rounded-full blur-3xl -z-10" />
-        <ShareNoteCard note={noteWithBook} className="shadow-2xl border border-slate-100 dark:border-slate-800" />
+        <ShareNoteCard note={noteWithBook} user={user} className="shadow-2xl border border-slate-100 dark:border-slate-800" />
       </div>
 
       {/* 3. 상세 분석 정보 (필사 데이터 등) */}

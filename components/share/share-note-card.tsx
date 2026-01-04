@@ -11,12 +11,19 @@ import { Quote, BookOpen, Calendar, ChevronDown, ChevronUp, Trees } from "lucide
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ImageLightbox } from "@/components/notes/image-lightbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface ShareNoteCardProps {
     note: NoteWithBook;
     className?: string;
     isPublicView?: boolean;
     hideActions?: boolean; // 캡처 시 버튼 숨김용
+    showTimestamp?: boolean; // 타임스탬프 표시 여부
+    user?: {
+        id: string;
+        name: string;
+        avatar_url: string | null;
+    } | null; // 사용자 정보
 }
 
 /**
@@ -74,11 +81,24 @@ const formatDate = (dateStr: string) => {
 };
 
 /**
+ * 날짜와 시간을 YYYY.MM.DD HH:mm 형식으로 변환
+ */
+const formatDateTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return `${y}.${m}.${d} ${hh}:${mm}`;
+};
+
+/**
  * 사용자 피드백 가이드 기반 고도화된 독서 기록 카드
  * - [v4.0] 모든 케이스(이미지 유/무)에 대해 '좌우 분할' 단일 레이아웃 적용
  * - 표준 너비: max-w-[960px]
  */
-export function ShareNoteCard({ note, className, isPublicView = false, hideActions = false }: ShareNoteCardProps) {
+export function ShareNoteCard({ note, className, isPublicView = false, hideActions = false, showTimestamp = true, user }: ShareNoteCardProps) {
     // [데이터 매핑 수정] Supabase 쿼리 결과인 'books' 필드와 'book' 필드 모두를 지원하도록 정규화
     const book = note.book || (note as any).books;
 
@@ -151,6 +171,13 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                                 className="object-contain p-2"
                                                 priority
                                             />
+                                            {showTimestamp && (
+                                                <div className="absolute bottom-4 left-4 z-20">
+                                                    <p className="text-[10px] font-bold text-slate-400/80 drop-shadow-sm bg-white/10 backdrop-blur-[2px] px-2 py-0.5 rounded-md">
+                                                        {formatDateTime(note.created_at)}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </ImageLightbox>
                                     <div className="mt-4 text-center">
@@ -227,8 +254,24 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                 )}
                             </div>
 
-                            <div className="mt-auto pt-10">
+                            <div className="mt-auto pt-10 space-y-4">
+                                {/* Habitree 로고 먼저 표시 */}
                                 <FooterLogo />
+                                {/* 사용자 정보 표시 */}
+                                {user && (
+                                    <div className="flex items-center gap-3 text-sm">
+                                        <span className="text-slate-400 font-medium">by</span>
+                                        <Avatar className="h-8 w-8">
+                                            <AvatarImage src={getImageUrl(user.avatar_url)} />
+                                            <AvatarFallback className="bg-forest-100 text-forest-700 text-xs font-bold">
+                                                {user.name[0]?.toUpperCase() || "U"}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                            {user.name}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

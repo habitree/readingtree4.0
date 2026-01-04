@@ -315,16 +315,18 @@ export async function updateBookStatus(
 }
 
 /**
- * 책 정보 업데이트 (읽는 이유, 시작일)
+ * 책 정보 업데이트 (읽는 이유, 시작일, 완독일자)
  * @param userBookId UserBooks 테이블의 ID
  * @param readingReason 읽는 이유 (선택)
  * @param startedAt 시작일 (선택)
+ * @param completedDates 완독일자 배열 (선택)
  * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
 export async function updateBookInfo(
   userBookId: string,
   readingReason?: string | null,
   startedAt?: string | null,
+  completedDates?: string[] | null,
   user?: User | null
 ) {
   const supabase = await createServerSupabaseClient();
@@ -359,6 +361,7 @@ export async function updateBookInfo(
   const updateData: {
     reading_reason?: string | null;
     started_at?: string | null;
+    completed_dates?: any;
   } = {};
 
   if (readingReason !== undefined) {
@@ -367,6 +370,14 @@ export async function updateBookInfo(
 
   if (startedAt !== undefined) {
     updateData.started_at = startedAt || null;
+  }
+
+  if (completedDates !== undefined) {
+    // JSONB 배열로 저장 (Supabase가 자동으로 JSONB로 변환)
+    // 빈 배열이면 null로 저장
+    updateData.completed_dates = completedDates && completedDates.length > 0 
+      ? completedDates 
+      : null;
   }
 
   // 업데이트할 데이터가 없으면 에러
@@ -535,6 +546,9 @@ export interface BookWithNotes {
   id: string; // user_books.id
   status: ReadingStatus;
   reading_reason: string | null;
+  completed_at: string | null;
+  completed_dates?: any; // JSONB 배열
+  started_at?: string;
   books: {
     id: string;
     title: string;
@@ -635,6 +649,10 @@ export async function getUserBooksWithNotes(
       `
       id,
       status,
+      completed_at,
+      completed_dates,
+      started_at,
+      reading_reason,
       books (
         id,
         title,
@@ -768,6 +786,9 @@ export async function getUserBooksWithNotes(
           id: userBook.id,
           status: userBook.status,
           reading_reason: readingReason,
+          completed_at: userBook.completed_at || null,
+          completed_dates: userBook.completed_dates || null,
+          started_at: userBook.started_at || null,
           books: userBook.books || {},
           noteCount: 0,
           groupBooks: groupBooksMap[bookId] || [],
@@ -797,6 +818,9 @@ export async function getUserBooksWithNotes(
           id: userBook.id,
           status: userBook.status as ReadingStatus,
           reading_reason: readingReason,
+          completed_at: userBook.completed_at || null,
+          completed_dates: userBook.completed_dates || null,
+          started_at: userBook.started_at || null,
           books: {
             id: "",
             title: "알 수 없는 책",
@@ -815,6 +839,9 @@ export async function getUserBooksWithNotes(
         id: userBook.id,
         status: userBook.status as ReadingStatus,
         reading_reason: readingReason,
+        completed_at: userBook.completed_at || null,
+        completed_dates: userBook.completed_dates || null,
+        started_at: userBook.started_at || null,
         books: {
           id: userBook.books.id || "",
           title: userBook.books.title || "제목 없음",
@@ -921,6 +948,7 @@ export async function getBookDetail(userBookId: string, user?: User | null) {
     .select(
       `
       *,
+      completed_dates,
       books (
         id,
         isbn,
@@ -960,6 +988,9 @@ export async function getBookDetail(userBookId: string, user?: User | null) {
     userBookId,
     bookId: data.book_id,
     bookTitle: data.books?.title,
+    completed_at: data.completed_at,
+    completed_dates: data.completed_dates,
+    completed_dates_type: typeof data.completed_dates,
   });
 
   return data;

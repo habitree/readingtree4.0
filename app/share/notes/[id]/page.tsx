@@ -9,7 +9,8 @@ import { ShareNoteCard } from "@/components/share/share-note-card";
 import type { NoteWithBook } from "@/types/note";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Home } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
+import { getUserById } from "@/app/actions/profile";
 
 /**
  * 공유 페이지 메타데이터 생성
@@ -111,6 +112,9 @@ export default async function ShareNotePage({
 
   const noteWithBook = note as NoteWithBook;
 
+  // 사용자 정보 가져오기
+  const user = note.user_id ? await getUserById(note.user_id) : null;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 selection:bg-primary/20">
       <div className="container mx-auto px-4 py-12 md:py-20 max-w-5xl">
@@ -139,6 +143,7 @@ export default async function ShareNotePage({
             note={noteWithBook}
             isPublicView={true}
             className="relative z-10"
+            user={user}
           />
         </div>
 
@@ -158,12 +163,6 @@ export default async function ShareNotePage({
               나도 기록 시작하기
             </Link>
           </Button>
-          <div className="pt-8">
-            <Link href="/" className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-primary transition-colors">
-              <Home className="w-3.5 h-3.5" />
-              홈페이지 방문하기
-            </Link>
-          </div>
         </div>
       </div>
     </div>

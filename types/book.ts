@@ -23,6 +23,7 @@ export interface UserBook {
   status: ReadingStatus;
   started_at: string;
   completed_at: string | null;
+  completed_dates?: string | null; // JSONB 배열 (문자열로 저장)
   reading_reason: string | null;
   created_at: string;
   updated_at: string;
