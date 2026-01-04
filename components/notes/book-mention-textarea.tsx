@@ -191,6 +191,8 @@ export function BookMentionTextarea({
 
   const position = getSuggestionsPosition();
 
+  const hasBookLinks = value && value.includes('[@book:');
+
   return (
     <div className="relative">
       <div className="relative">
@@ -200,12 +202,25 @@ export function BookMentionTextarea({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           className={cn(className, "relative z-10")}
-          style={value && value.includes('[@book:') ? { color: 'transparent', caretColor: 'hsl(var(--foreground))' } : undefined}
+          style={hasBookLinks ? { 
+            color: 'transparent', 
+            caretColor: 'hsl(var(--foreground))',
+            WebkitTextFillColor: 'transparent'
+          } : undefined}
           {...props}
         />
         {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
-        {value && value.includes('[@book:') && (
-          <div className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-30 overflow-hidden whitespace-pre-wrap break-words">
+        {hasBookLinks && (
+          <div 
+            className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-20 overflow-hidden whitespace-pre-wrap break-words"
+            style={{ 
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'transparent'
+            }}
+          >
             <BookLinkInputRenderer text={value} className="w-full" />
           </div>
         )}
@@ -239,10 +254,11 @@ export function BookMentionTextarea({
                 e.preventDefault();
                 // mentionStart를 저장
                 const savedMentionStart = mentionStart;
-                (e.currentTarget as any)._savedMentionStart = savedMentionStart;
-                // 클릭 이벤트를 즉시 처리
+                // 클릭 이벤트를 즉시 처리 (setTimeout으로 다음 이벤트 루프에서 실행)
                 if (savedMentionStart !== null && savedMentionStart !== undefined) {
-                  handleBookSelect(book, e, savedMentionStart);
+                  setTimeout(() => {
+                    handleBookSelect(book, e, savedMentionStart);
+                  }, 0);
                 }
               }}
               onMouseEnter={() => setSelectedIndex(index)}
