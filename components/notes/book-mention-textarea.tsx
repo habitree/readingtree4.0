@@ -7,6 +7,7 @@ import { getUserBooks } from "@/app/actions/books";
 import { BookOpen, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/utils/image";
+import { BookLinkInputRenderer } from "./book-link-input-renderer";
 
 interface Book {
   id: string; // user_books.id
@@ -106,10 +107,17 @@ export function BookMentionTextarea({
 
   // 책 선택 시 링크로 변환
   const handleBookSelect = (book: Book) => {
-    if (mentionStart === null || !textareaRef.current) return;
+    if (mentionStart === null || !textareaRef.current) {
+      console.error("handleBookSelect: mentionStart 또는 textareaRef가 null입니다", { mentionStart, textareaRef: textareaRef.current });
+      return;
+    }
 
-    const textBefore = value.substring(0, mentionStart);
-    const textAfter = value.substring(textareaRef.current.selectionStart);
+    const currentValue = value;
+    const cursorPosition = textareaRef.current.selectionStart || currentValue.length;
+    
+    // @부터 커서 위치까지의 텍스트를 링크로 교체
+    const textBefore = currentValue.substring(0, mentionStart);
+    const textAfter = currentValue.substring(cursorPosition);
     
     // 링크 형식: [책 제목](@book:userBookId)
     const linkText = `[${book.books.title}](@book:${book.id})`;
@@ -172,14 +180,22 @@ export function BookMentionTextarea({
 
   return (
     <div className="relative">
-      <Textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleInputChange}
-        onKeyDown={handleKeyDown}
-        className={cn(className)}
-        {...props}
-      />
+      <div className="relative">
+        {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
+        {value && (
+          <div className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-20 overflow-hidden">
+            <BookLinkInputRenderer text={value} className="w-full whitespace-pre-wrap" />
+          </div>
+        )}
+        <Textarea
+          ref={textareaRef}
+          value={value}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          className={cn(className, value && "text-transparent caret-foreground")}
+          {...props}
+        />
+      </div>
 
       {/* 자동완성 목록 */}
       {showSuggestions && suggestions.length > 0 && (

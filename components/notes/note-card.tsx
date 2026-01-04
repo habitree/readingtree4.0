@@ -12,6 +12,7 @@ import { OCRStatusBadge } from "./ocr-status-badge";
 import { useOCRStatus } from "@/hooks/use-ocr-status";
 import type { NoteWithBook } from "@/types/note";
 import { FileText, Image as ImageIcon, PenTool, Camera } from "lucide-react";
+import { BookLinkRenderer } from "./book-link-renderer";
 
 interface NoteCardProps {
   note: NoteWithBook;
@@ -68,7 +69,9 @@ export function NoteCard({ note }: NoteCardProps) {
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{typeLabel}</Badge>
                   {note.title && (
-                    <h3 className="text-sm font-bold line-clamp-1">{note.title}</h3>
+                    <h3 className="text-sm font-bold line-clamp-1">
+                      <BookLinkRenderer text={note.title} />
+                    </h3>
                   )}
                 </div>
                 <OCRStatusBadge status={ocrStatus} />
