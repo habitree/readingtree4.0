@@ -84,6 +84,7 @@ export interface Database {
           status: "reading" | "completed" | "paused";
           started_at: string;
           completed_at: string | null;
+          completed_dates?: any; // JSONB 배열
           created_at: string;
           updated_at: string;
         };
@@ -94,6 +95,7 @@ export interface Database {
           status?: "reading" | "completed" | "paused";
           started_at?: string;
           completed_at?: string | null;
+          completed_dates?: any; // JSONB 배열
           created_at?: string;
           updated_at?: string;
         };
@@ -104,6 +106,7 @@ export interface Database {
           status?: "reading" | "completed" | "paused";
           started_at?: string;
           completed_at?: string | null;
+          completed_dates?: any; // JSONB 배열
           created_at?: string;
           updated_at?: string;
         };

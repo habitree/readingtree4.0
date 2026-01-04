@@ -103,6 +103,15 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
                 userBookId={userBook.id}
                 currentReadingReason={userBook.reading_reason}
                 currentStartedAt={userBook.started_at}
+                currentCompletedDates={
+                  (userBook as any).completed_dates && Array.isArray((userBook as any).completed_dates)
+                    ? (userBook as any).completed_dates
+                    : (userBook as any).completed_dates && typeof (userBook as any).completed_dates === 'string'
+                    ? JSON.parse((userBook as any).completed_dates)
+                    : userBook.completed_at
+                    ? [userBook.completed_at]
+                    : null
+                }
               />
             </div>
             {userBook.reading_reason ? (
@@ -120,33 +129,59 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
                 <span className="font-medium">출판사:</span> {book.publisher}
               </div>
             )}
-            {book.published_date && (
-              <div>
-                <span className="font-medium">출판일:</span>{" "}
-                {formatDate(book.published_date)}
-              </div>
-            )}
             {book.isbn && (
               <div>
                 <span className="font-medium">ISBN:</span> {book.isbn}
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <span className="font-medium">시작일:</span>
-              {userBook.started_at ? (
-                <span>{formatDate(userBook.started_at)}</span>
-              ) : (
-                <span className="text-muted-foreground text-sm">
-                  시작일을 등록해보세요.
-                </span>
-              )}
-            </div>
-            {userBook.completed_at && (
-              <div>
-                <span className="font-medium">완독일:</span>{" "}
-                {formatDate(userBook.completed_at)}
+            {/* 시작일과 완독일을 함께 표시 */}
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">시작일:</span>
+                {userBook.started_at ? (
+                  <span>{formatDate(userBook.started_at)}</span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">
+                    시작일을 등록해보세요.
+                  </span>
+                )}
               </div>
-            )}
+              {(() => {
+                let dates: string[] = [];
+                if ((userBook as any).completed_dates) {
+                  if (Array.isArray((userBook as any).completed_dates)) {
+                    dates = (userBook as any).completed_dates;
+                  } else if (typeof (userBook as any).completed_dates === 'string') {
+                    try {
+                      dates = JSON.parse((userBook as any).completed_dates);
+                    } catch {
+                      dates = [];
+                    }
+                  }
+                } else if (userBook.completed_at) {
+                  dates = [userBook.completed_at];
+                }
+                return (
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">완독일:</span>
+                    {dates.length > 0 ? (
+                      <span>
+                        {dates.map((date: string, index: number) => (
+                          <span key={index}>
+                            {formatDate(date)}
+                            {index < dates.length - 1 && ", "}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">
+                        완독일을 등록해보세요.
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
           <div className="flex gap-2 flex-wrap justify-center sm:justify-start">

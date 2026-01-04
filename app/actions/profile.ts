@@ -215,3 +215,28 @@ export async function updateProfileImage(imageFile: File) {
   return { success: true, avatarUrl: publicUrl };
 }
 
+/**
+ * 사용자 ID로 사용자 정보 조회
+ * @param userId 사용자 ID
+ * @returns 사용자 정보 또는 null
+ */
+export async function getUserById(userId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  if (!userId || !isValidUUID(userId)) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, avatar_url")
+    .eq("id", userId)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+

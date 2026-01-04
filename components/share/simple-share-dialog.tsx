@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import { getImageUrl } from "@/lib/utils/image";
 import { isClipboardSupported, isMobile, downloadImage } from "@/lib/utils/device";
 import { ShareNoteCard } from "./share-note-card";
 import type { NoteWithBook } from "@/types/note";
+import { getUserById } from "@/app/actions/profile";
 
 interface SimpleShareDialogProps {
   note: NoteWithBook;
@@ -34,7 +35,19 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
   const [cardCopied, setCardCopied] = useState(false);
   const [photoCopied, setPhotoCopied] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [user, setUser] = useState<{ id: string; name: string; avatar_url: string | null } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // 사용자 정보 가져오기
+  useEffect(() => {
+    if (open && note.user_id) {
+      getUserById(note.user_id).then((userData) => {
+        if (userData) {
+          setUser(userData);
+        }
+      });
+    }
+  }, [open, note.user_id]);
 
   // 이미지가 있는지 확인 (필사/사진 타입)
   const hasImage =
@@ -124,46 +137,27 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           return;
         }
 
-        // Clipboard API 지원 여부 확인
-        const clipboardSupported = isClipboardSupported();
-
+        // 모바일에서도 클립보드 복사를 우선 시도
         try {
-          if (clipboardSupported) {
-            // Clipboard API 사용 (데스크톱 및 지원되는 모바일)
-            const item = new ClipboardItem({ [blob.type]: blob });
-            await navigator.clipboard.write([item]);
-            setCardCopied(true);
-            toast.success("카드 이미지가 클립보드에 복사되었습니다.");
-          } else {
-            // 모바일 fallback: 다운로드
-            const filename = `habitree-card-${note.id}-${Date.now()}.png`;
-            downloadImage(blob, filename);
-            setCardCopied(true);
-            toast.success("카드 이미지가 다운로드되었습니다.");
-
-            // 모바일에서는 다운로드 후에도 클립보드 복사 시도 (일부 브라우저에서 작동할 수 있음)
-            try {
-              // iOS Safari 등에서도 작동할 수 있는 대체 방법 시도
-              const item = new ClipboardItem({ [blob.type]: blob });
-              await navigator.clipboard.write([item]);
-            } catch (fallbackError) {
-              // 실패해도 무시 (다운로드는 이미 성공)
-              console.log("클립보드 복사 실패 (다운로드는 성공):", fallbackError);
-            }
-          }
+          // Clipboard API를 직접 시도 (isClipboardSupported 체크를 우회하여 실제 작동 여부 확인)
+          const item = new ClipboardItem({ [blob.type]: blob });
+          await navigator.clipboard.write([item]);
+          setCardCopied(true);
+          toast.success("카드 이미지가 클립보드에 복사되었습니다.");
 
           setTimeout(() => {
             setCardCopied(false);
           }, 2000);
-        } catch (error) {
-          console.error("이미지 복사/다운로드 실패:", error);
+        } catch (clipboardError) {
+          console.log("클립보드 복사 실패, 다운로드로 fallback:", clipboardError);
           
-          // 에러 발생 시 다운로드로 fallback
+          // 클립보드 복사 실패 시 다운로드로 fallback
           try {
             const filename = `habitree-card-${note.id}-${Date.now()}.png`;
             downloadImage(blob, filename);
-            toast.success("카드 이미지가 다운로드되었습니다.");
             setCardCopied(true);
+            toast.success("카드 이미지가 다운로드되었습니다.");
+
             setTimeout(() => {
               setCardCopied(false);
             }, 2000);
@@ -223,45 +217,27 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           return;
         }
 
-        // Clipboard API 지원 여부 확인
-        const clipboardSupported = isClipboardSupported();
-
+        // 모바일에서도 클립보드 복사를 우선 시도
         try {
-          if (clipboardSupported) {
-            // Clipboard API 사용 (데스크톱 및 지원되는 모바일)
-            const item = new ClipboardItem({ [blob.type]: blob });
-            await navigator.clipboard.write([item]);
-            setPhotoCopied(true);
-            toast.success("원본 이미지가 클립보드에 복사되었습니다.");
-          } else {
-            // 모바일 fallback: 다운로드
-            const filename = `habitree-image-${note.id}-${Date.now()}.png`;
-            downloadImage(blob, filename);
-            setPhotoCopied(true);
-            toast.success("원본 이미지가 다운로드되었습니다.");
-
-            // 모바일에서는 다운로드 후에도 클립보드 복사 시도 (일부 브라우저에서 작동할 수 있음)
-            try {
-              const item = new ClipboardItem({ [blob.type]: blob });
-              await navigator.clipboard.write([item]);
-            } catch (fallbackError) {
-              // 실패해도 무시 (다운로드는 이미 성공)
-              console.log("클립보드 복사 실패 (다운로드는 성공):", fallbackError);
-            }
-          }
+          // Clipboard API를 직접 시도 (isClipboardSupported 체크를 우회하여 실제 작동 여부 확인)
+          const item = new ClipboardItem({ [blob.type]: blob });
+          await navigator.clipboard.write([item]);
+          setPhotoCopied(true);
+          toast.success("원본 이미지가 클립보드에 복사되었습니다.");
 
           setTimeout(() => {
             setPhotoCopied(false);
           }, 2000);
-        } catch (error) {
-          console.error("이미지 복사/다운로드 실패:", error);
+        } catch (clipboardError) {
+          console.log("클립보드 복사 실패, 다운로드로 fallback:", clipboardError);
           
-          // 에러 발생 시 다운로드로 fallback
+          // 클립보드 복사 실패 시 다운로드로 fallback
           try {
             const filename = `habitree-image-${note.id}-${Date.now()}.png`;
             downloadImage(blob, filename);
-            toast.success("원본 이미지가 다운로드되었습니다.");
             setPhotoCopied(true);
+            toast.success("원본 이미지가 다운로드되었습니다.");
+
             setTimeout(() => {
               setPhotoCopied(false);
             }, 2000);
@@ -294,44 +270,28 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-4">
-            <div className="mb-6 sm:mb-10 group bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-              {/* 중복 UI 제거하고 ShareNoteCard 재사용 (표준 규격 적용) */}
-              <div ref={cardRef} className="rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 bg-white">
-                <ShareNoteCard note={note} hideActions={isCapturing} />
-              </div>
-            </div>
-
-            {/* 비공개 상태 안내 */}
-            {!note.is_public && (
-              <div className="mb-8 p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-3xl">
-                <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200 font-bold flex gap-3">
-                  <span className="shrink-0 text-xl">⚠️</span>
-                  현재 비공개 설정된 기록입니다. 링크로 공유하시려면 기록 설정에서 '공개'로 변경해 주세요. (카드/이미지 복사는 가능합니다)
-                </p>
-              </div>
-            )}
-
-            {/* 개편된 3버튼 체계 (사이즈 확대) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-2">
+            {/* 개편된 3버튼 체계 (상단으로 이동, 슬림하게 변경) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-6">
               {/* 1. 링크 공유 */}
               <Button
                 onClick={handleCopyLink}
                 variant={linkCopied ? "default" : "outline"}
+                size="sm"
                 className={cn(
-                  "h-16 rounded-[1.25rem] gap-4 text-base font-black transition-all duration-300 shadow-sm",
-                  linkCopied ? "bg-green-500 hover:bg-green-600 border-none text-white" : "border-2 hover:bg-slate-50 border-slate-200"
+                  "h-10 rounded-xl gap-2 text-xs font-bold transition-all duration-300 shadow-sm",
+                  linkCopied ? "bg-green-500 hover:bg-green-600 border-none text-white" : "border hover:bg-slate-50 border-slate-200 text-slate-600"
                 )}
                 disabled={!note.is_public}
               >
                 {linkCopied ? (
                   <>
-                    <Check className="h-6 w-6" />
+                    <Check className="h-4 w-4" />
                     링크 복사됨
                   </>
                 ) : (
                   <>
-                    <LinkIcon className="h-6 w-6 text-forest-600" />
+                    <LinkIcon className="h-4 w-4 text-forest-600" />
                     링크 공유
                   </>
                 )}
@@ -341,19 +301,20 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
               <Button
                 onClick={handleCopyCardImage}
                 variant={cardCopied ? "default" : "outline"}
+                size="sm"
                 className={cn(
-                  "h-16 rounded-[1.25rem] gap-4 text-base font-black transition-all duration-300 shadow-sm",
-                  cardCopied ? "bg-forest-600 hover:bg-forest-700 border-none text-white" : "border-2 hover:bg-slate-50 border-slate-200"
+                  "h-10 rounded-xl gap-2 text-xs font-bold transition-all duration-300 shadow-sm",
+                  cardCopied ? "bg-forest-600 hover:bg-forest-700 border-none text-white" : "border hover:bg-slate-50 border-slate-200 text-slate-600"
                 )}
               >
                 {cardCopied ? (
                   <>
-                    <Check className="h-6 w-6" />
+                    <Check className="h-4 w-4" />
                     카드 복사됨
                   </>
                 ) : (
                   <>
-                    <ImageIcon className="h-6 w-6 text-forest-600" />
+                    <ImageIcon className="h-4 w-4 text-forest-600" />
                     카드 복사
                   </>
                 )}
@@ -364,25 +325,43 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
                 <Button
                   onClick={handleCopyPhotoOnly}
                   variant={photoCopied ? "default" : "outline"}
+                  size="sm"
                   className={cn(
-                    "h-16 rounded-[1.25rem] gap-4 text-base font-black transition-all duration-300 shadow-sm",
-                    photoCopied ? "bg-slate-900 border-none text-white" : "border-2 hover:bg-slate-50 border-slate-200"
+                    "h-10 rounded-xl gap-2 text-xs font-bold transition-all duration-300 shadow-sm",
+                    photoCopied ? "bg-slate-900 border-none text-white" : "border hover:bg-slate-50 border-slate-200 text-slate-600"
                   )}
                 >
                   {photoCopied ? (
                     <>
-                      <Check className="h-6 w-6" />
+                      <Check className="h-4 w-4" />
                       원본 복사됨
                     </>
                   ) : (
                     <>
-                      <Download className="h-6 w-6 text-forest-600" />
+                      <Download className="h-4 w-4 text-forest-600" />
                       이미지 복사
                     </>
                   )}
                 </Button>
               )}
             </div>
+
+            <div className="mb-6 group bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+              {/* 중복 UI 제거하고 ShareNoteCard 재사용 (표준 규격 적용) */}
+              <div ref={cardRef} className="rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 bg-white">
+                <ShareNoteCard note={note} hideActions={isCapturing} showTimestamp={false} user={user} />
+              </div>
+            </div>
+
+            {/* 비공개 상태 안내 */}
+            {!note.is_public && (
+              <div className="mb-8 p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900 rounded-3xl">
+                <p className="text-sm leading-relaxed text-amber-800 dark:text-amber-200 font-medium flex gap-3">
+                  <span className="shrink-0 text-xl">⚠️</span>
+                  현재 비공개 설정된 기록입니다. 링크로 공유하시려면 기록 설정에서 '공개'로 변경해 주세요. (카드/이미지 복사는 가능합니다)
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 text-center">
