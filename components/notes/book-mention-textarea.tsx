@@ -204,9 +204,9 @@ export function BookMentionTextarea({
           {...props}
         />
         {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
-        {value && (
-          <div className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-30 overflow-hidden">
-            <BookLinkInputRenderer text={value} className="w-full whitespace-pre-wrap break-words" />
+        {value && value.includes('[@book:') && (
+          <div className="absolute inset-0 pointer-events-none flex items-start px-3 py-2 text-sm z-30 overflow-hidden whitespace-pre-wrap break-words">
+            <BookLinkInputRenderer text={value} className="w-full" />
           </div>
         )}
       </div>
@@ -236,26 +236,11 @@ export function BookMentionTextarea({
               )}
               onMouseDown={(e) => {
                 // blur 이벤트를 방지하기 위해 preventDefault 사용
-                // 하지만 클릭 이벤트는 onMouseUp에서 처리
                 e.preventDefault();
                 // mentionStart를 저장
                 const savedMentionStart = mentionStart;
                 (e.currentTarget as any)._savedMentionStart = savedMentionStart;
-              }}
-              onMouseUp={(e) => {
-                // onMouseDown에서 preventDefault를 했으므로 onMouseUp에서 클릭 처리
-                e.preventDefault();
-                e.stopPropagation();
-                const savedMentionStart = (e.currentTarget as any)._savedMentionStart;
-                if (savedMentionStart !== null && savedMentionStart !== undefined) {
-                  handleBookSelect(book, e, savedMentionStart);
-                }
-              }}
-              onClick={(e) => {
-                // onMouseDown에서 preventDefault를 했으므로 onClick도 처리
-                e.preventDefault();
-                e.stopPropagation();
-                const savedMentionStart = (e.currentTarget as any)._savedMentionStart;
+                // 클릭 이벤트를 즉시 처리
                 if (savedMentionStart !== null && savedMentionStart !== undefined) {
                   handleBookSelect(book, e, savedMentionStart);
                 }

@@ -31,7 +31,11 @@ export function BookLinkInputRenderer({ text, className }: BookLinkInputRenderer
             </span>
           );
         }
-        return <span key={`text-${index}`}>{part.content}</span>;
+        return (
+          <span key={`text-${index}`} className="text-foreground">
+            {part.content}
+          </span>
+        );
       })}
     </span>
   );
