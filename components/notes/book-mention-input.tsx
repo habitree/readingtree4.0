@@ -190,8 +190,8 @@ export function BookMentionInput({
       <div className="relative">
         {/* 입력 필드 위에 링크를 시각적으로 표시하는 오버레이 */}
         {value && (
-          <div className="absolute inset-0 pointer-events-none flex items-center px-3 py-2 text-sm z-20 overflow-hidden">
-            <BookLinkInputRenderer text={value} className="w-full" />
+          <div className="absolute inset-0 pointer-events-none flex items-center px-3 py-2 text-sm z-20 overflow-hidden whitespace-nowrap">
+            <BookLinkInputRenderer text={value} className="w-full truncate" />
           </div>
         )}
         <Input
@@ -209,6 +209,7 @@ export function BookMentionInput({
             }, 200);
           }}
           className={cn(className, "relative z-10", value && "text-transparent caret-foreground")}
+          style={value ? { color: 'transparent' } : undefined}
           {...props}
         />
       </div>
