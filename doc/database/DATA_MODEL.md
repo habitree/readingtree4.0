@@ -118,6 +118,17 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 
 **사용 테이블**: `group_members`
 
+### 3.5 ocr_log_status (OCR 로그 상태)
+
+```sql
+CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
+```
+
+- **success**: OCR 처리 성공
+- **failed**: OCR 처리 실패
+
+**사용 테이블**: `ocr_logs`
+
 ---
 
 ## 4. 테이블 정의
@@ -239,6 +250,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 - `id` (UUID, PK): 기본 키
 - `user_id` (UUID, NOT NULL): 사용자 ID (`users(id)` 참조)
 - `book_id` (UUID, NOT NULL): 책 ID (`books(id)` 참조)
+- `title` (TEXT): 기록 제목 (선택 사항)
 - `type` (note_type, NOT NULL): 기록 유형
 - `content` (TEXT): 기록 내용
 - `image_url` (TEXT): 이미지 URL (사진/전사 타입용)
@@ -262,6 +274,7 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 - `idx_notes_is_sample`: 샘플 데이터 조회용
 - `idx_notes_content_fts`: 내용 전문 검색용 (GIN)
 - `idx_notes_tags`: 태그 검색용 (GIN)
+- `idx_notes_title`: 제목 검색용
 
 **RLS 정책 요약**:
 - **SELECT**: 자신의 기록, 공개 기록, 샘플 기록 조회 가능 (`auth.uid() = user_id OR is_public = TRUE OR is_sample = TRUE`)
@@ -306,7 +319,81 @@ CREATE TYPE member_status AS ENUM ('pending', 'approved', 'rejected');
 
 ---
 
-### 4.6 groups (독서모임)
+### 4.6 ocr_usage_stats (OCR 사용 통계)
+
+**목적**: 사용자별 OCR 처리 횟수를 집계하여 저장합니다. 유료화 및 사용량 제한을 위한 내부 통계 데이터입니다. 사용자에게는 표시되지 않으며 관리자 및 시스템에서만 조회합니다.
+
+**소유 구조**: 개인 (각 사용자는 자신의 통계만 소유, 하지만 사용자는 조회 불가)
+
+**주요 컬럼**:
+- `id` (UUID, PK): 기본 키
+- `user_id` (UUID, NOT NULL): 사용자 ID (`auth.users(id)` 참조, UNIQUE)
+- `success_count` (INTEGER, DEFAULT 0): 성공한 OCR 처리 횟수
+- `failure_count` (INTEGER, DEFAULT 0): 실패한 OCR 처리 횟수
+- `last_processed_at` (TIMESTAMP WITH TIME ZONE): 마지막 OCR 처리 시간
+- `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
+- **UNIQUE 제약**: `(user_id)` - 한 사용자는 하나의 통계 레코드만 가짐
+
+**관계 정의**:
+- `user_id` → `auth.users(id)` (ON DELETE CASCADE)
+
+**인덱스**:
+- `idx_ocr_usage_stats_user_id`: 사용자별 통계 조회용 (UNIQUE 인덱스)
+
+**RLS 정책 요약**:
+- **SELECT**: 관리자만 조회 가능 (`is_admin_user()` 함수 사용)
+- **INSERT**: 시스템에서만 생성 가능 (RLS 정책 없음, 서버 액션에서 직접 처리)
+- **UPDATE**: 시스템에서만 수정 가능 (RLS 정책 없음, 서버 액션에서 직접 처리)
+- **DELETE**: 사용자 삭제 시 CASCADE 삭제
+
+**특수 기능**:
+- 사용자는 자신의 통계를 조회할 수 없음 (내부 로그용)
+- 관리자만 전체 통계 조회 가능
+- OCR 처리 성공/실패 시 자동으로 카운트 증가
+
+---
+
+### 4.7 ocr_logs (OCR 처리 상세 로그)
+
+**목적**: 각 OCR 처리 요청의 상세 로그를 기록합니다. 디버깅, 분석, 유료화 정책 수립을 위한 상세 이력 데이터입니다.
+
+**소유 구조**: 개인 (각 사용자는 자신의 로그만 소유, 하지만 사용자는 조회 불가)
+
+**주요 컬럼**:
+- `id` (UUID, PK): 기본 키
+- `user_id` (UUID, NOT NULL): 사용자 ID (`auth.users(id)` 참조)
+- `note_id` (UUID): 기록 ID (`notes(id)` 참조, NULL 허용)
+- `status` (ocr_log_status, NOT NULL): OCR 처리 상태
+  - `success`: 성공
+  - `failed`: 실패
+- `error_message` (TEXT): 실패 시 에러 메시지 (NULL 허용)
+- `processing_duration_ms` (INTEGER): 처리 소요 시간 (밀리초, NULL 허용)
+- `created_at` (TIMESTAMP WITH TIME ZONE, DEFAULT NOW()): 로그 생성 시간
+
+**관계 정의**:
+- `user_id` → `auth.users(id)` (ON DELETE CASCADE)
+- `note_id` → `notes(id)` (ON DELETE SET NULL)
+
+**인덱스**:
+- `idx_ocr_logs_user_id`: 사용자별 로그 조회용
+- `idx_ocr_logs_note_id`: 기록별 로그 조회용
+- `idx_ocr_logs_status`: 상태별 필터링용
+- `idx_ocr_logs_created_at`: 시간순 정렬용 (DESC)
+
+**RLS 정책 요약**:
+- **SELECT**: 관리자만 조회 가능 (`is_admin_user()` 함수 사용)
+- **INSERT**: 시스템에서만 생성 가능 (RLS 정책 없음, 서버 액션에서 직접 처리)
+- **UPDATE**: 없음 (로그는 수정 불가)
+- **DELETE**: 사용자 삭제 시 CASCADE 삭제
+
+**특수 기능**:
+- 사용자는 자신의 로그를 조회할 수 없음 (내부 로그용)
+- 관리자만 전체 로그 조회 가능
+- 로그는 생성 후 수정 불가 (불변 데이터)
+
+---
+
+### 4.8 groups (독서모임)
 
 **목적**: 독서 그룹 정보를 저장합니다. 리더가 그룹을 생성하고 관리합니다.
 
@@ -492,14 +579,17 @@ group_shared_books ←→ user_books (N:M)
 7. **groups ↔ books**: N:M 관계 (group_books를 통해), 한 그룹은 여러 책을 읽을 수 있음
 8. **user_books ↔ groups**: N:M 관계 (group_shared_books를 통해), 한 사용자 서재는 여러 그룹에 공유 가능
 9. **notes ↔ groups**: N:M 관계 (group_notes를 통해), 한 기록은 여러 그룹에 공유 가능
+10. **users ↔ ocr_usage_stats**: 1:1 관계, 한 사용자는 하나의 OCR 통계만 가짐
+11. **users ↔ ocr_logs**: 1:N 관계, 한 사용자는 여러 OCR 로그를 가짐
+12. **notes ↔ ocr_logs**: 1:N 관계, 한 기록은 여러 OCR 로그를 가질 수 있음 (NULL 허용)
 
 ### 5.3 CASCADE 규칙
 
-- **users 삭제 시**: `user_books`, `notes`, `groups` (리더인 경우), `group_members` CASCADE 삭제
+- **users 삭제 시**: `user_books`, `notes`, `groups` (리더인 경우), `group_members`, `ocr_usage_stats`, `ocr_logs` CASCADE 삭제
 - **books 삭제 시**: `user_books`, `notes`, `group_books` CASCADE 삭제
 - **groups 삭제 시**: `group_members`, `group_books`, `group_notes`, `group_shared_books` CASCADE 삭제
 - **user_books 삭제 시**: `group_shared_books` CASCADE 삭제
-- **notes 삭제 시**: `group_notes` CASCADE 삭제
+- **notes 삭제 시**: `group_notes` CASCADE 삭제, `ocr_logs`의 `note_id`는 SET NULL
 
 ---
 
@@ -655,6 +745,29 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
 - **마이그레이션 파일**: `migration-202501021500__admin__add_admin_rls_policies.sql`
 - **목적**: 관리자(`cdhnaya@kakao.com`)만 관리자 페이지에 접근 가능하도록 제한하고, 전체 데이터 조회 권한 부여
 
+### 2025-01-03 (OCR 사용 통계 및 로그 기능 추가)
+
+- **변경 내용**: OCR 처리 횟수 기록을 위한 테이블 추가
+  - `ocr_usage_stats` 테이블 생성: 사용자별 OCR 처리 통계 (성공/실패 횟수)
+    - `user_id` (UUID, UNIQUE): 사용자 ID
+    - `success_count` (INTEGER): 성공 횟수
+    - `failure_count` (INTEGER): 실패 횟수
+    - `last_processed_at` (TIMESTAMP): 마지막 처리 시간
+  - `ocr_logs` 테이블 생성: 각 OCR 처리 요청의 상세 로그
+    - `user_id` (UUID): 사용자 ID
+    - `note_id` (UUID, NULL): 관련 기록 ID
+    - `status` (ocr_log_status ENUM): 처리 상태 (success/failed)
+    - `error_message` (TEXT, NULL): 실패 시 에러 메시지
+    - `processing_duration_ms` (INTEGER, NULL): 처리 소요 시간
+  - `ocr_log_status` ENUM 타입 추가: 'success', 'failed'
+  - RLS 정책: 관리자만 조회 가능 (사용자는 자신의 통계/로그 조회 불가)
+- **영향받는 테이블**:
+  - `ocr_usage_stats` (신규)
+  - `ocr_logs` (신규)
+- **마이그레이션 파일**:
+  - `migration-202501031200__ocr__add_usage_stats_and_logs.sql`
+- **목적**: OCR 처리 횟수를 기록하여 유료화 정책 수립 및 사용량 제한을 위한 데이터 수집
+
 ### 향후 변경 사항
 
 변경 사항은 이 섹션에 기록됩니다:
@@ -662,6 +775,15 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
 - 변경 내용
 - 영향받는 테이블
 - 마이그레이션 파일명
+
+### 2026-01-04 (기록 제목 추가)
+
+- **변경 내용**: `notes` 테이블에 `title` 컬럼 추가
+  - `title` (TEXT, NULL 허용)
+  - 인덱스 추가: `idx_notes_title`
+- **영향받는 테이블**:
+  - `notes`
+- **마이그레이션 파일**: `migration-202601041320__notes__add_title_column.sql`
 
 ---
 

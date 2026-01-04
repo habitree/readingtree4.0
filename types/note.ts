@@ -8,6 +8,7 @@ export interface Note {
   id: string;
   user_id: string;
   book_id: string;
+  title: string | null;
   type: NoteType;
   content: string | null;
   image_url: string | null;
@@ -29,6 +30,7 @@ export interface NoteWithBook extends Note {
 
 export interface CreateNoteInput {
   book_id: string;
+  title?: string;
   type?: NoteType; // 업로드 타입이 있을 때만 필요
   content?: string; // 기존 content 필드 (하위 호환성)
   quote_content?: string; // 인상깊은 구절
@@ -41,6 +43,7 @@ export interface CreateNoteInput {
 }
 
 export interface UpdateNoteInput {
+  title?: string;
   content?: string; // 기존 content 필드 (하위 호환성)
   quote_content?: string; // 인상깊은 구절
   memo_content?: string; // 내 생각

@@ -113,6 +113,7 @@ export interface Database {
           id: string;
           user_id: string;
           book_id: string;
+          title: string | null;
           type: "quote" | "photo" | "memo" | "transcription";
           content: string | null;
           image_url: string | null;
@@ -126,6 +127,7 @@ export interface Database {
           id?: string;
           user_id: string;
           book_id: string;
+          title?: string | null;
           type: "quote" | "photo" | "memo" | "transcription";
           content?: string | null;
           image_url?: string | null;
@@ -139,6 +141,7 @@ export interface Database {
           id?: string;
           user_id?: string;
           book_id?: string;
+          title?: string | null;
           type?: "quote" | "photo" | "memo" | "transcription";
           content?: string | null;
           image_url?: string | null;
@@ -227,6 +230,64 @@ export interface Database {
           book_id?: string;
           started_at?: string;
           target_completed_at?: string | null;
+          created_at?: string;
+        };
+      };
+      ocr_usage_stats: {
+        Row: {
+          id: string;
+          user_id: string;
+          success_count: number;
+          failure_count: number;
+          last_processed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          success_count?: number;
+          failure_count?: number;
+          last_processed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          success_count?: number;
+          failure_count?: number;
+          last_processed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      ocr_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          note_id: string | null;
+          status: "success" | "failed";
+          error_message: string | null;
+          processing_duration_ms: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          note_id?: string | null;
+          status: "success" | "failed";
+          error_message?: string | null;
+          processing_duration_ms?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          note_id?: string | null;
+          status?: "success" | "failed";
+          error_message?: string | null;
+          processing_duration_ms?: number | null;
           created_at?: string;
         };
       };

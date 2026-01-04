@@ -6,6 +6,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +29,7 @@ import { TextPreviewDialog } from "./text-preview-dialog";
 
 // 스키마: 모든 값은 선택이지만 완전히 빈값은 불가
 const noteFormSchema = z.object({
+  title: z.string().max(100, "제목은 100자 이하여야 합니다.").optional(),
   quoteContent: z.string().max(5000, "인상깊은 구절은 5000자 이하여야 합니다.").optional(),
   memoContent: z.string().max(10000, "내 생각은 10000자 이하여야 합니다.").optional(),
   uploadType: z.enum(["photo", "transcription"]).optional(),
@@ -71,19 +80,21 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
   const transcriptionInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    setValue,
-    watch,
-  } = useForm<NoteFormValues>({
+  const form = useForm<NoteFormValues>({
     resolver: zodResolver(noteFormSchema),
     defaultValues: {
       isPublic: true, // 기본값: 공개
       uploadType: undefined,
     },
   });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+  } = form;
 
   const isPublic = watch("isPublic");
   const quoteContent = watch("quoteContent") || "";
@@ -144,13 +155,13 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
       ref: transcriptionInputRef.current,
       refExists: !!transcriptionInputRef.current,
     });
-    
+
     if (!transcriptionInputRef.current) {
       console.error("transcriptionInputRef가 null입니다.");
       toast.error("파일 입력 요소를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
       return;
     }
-    
+
     // 브라우저 보안 정책으로 인해 setTimeout을 사용하여 다음 이벤트 루프에서 실행
     setTimeout(() => {
       try {
@@ -212,7 +223,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
 
       // type 결정: 업로드가 있으면 업로드 타입, 없으면 memo
       const uploadType = currentUploadType || (images.length > 0 ? "photo" : undefined);
-      const noteType = images.length > 0 
+      const noteType = images.length > 0
         ? (uploadType === "photo" ? "photo" : "transcription")
         : "memo";
 
@@ -238,6 +249,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
           for (const pageNumber of pagesToCreate) {
             const result = await createNote({
               book_id: bookId,
+              title: data.title,
               type: noteType,
               quote_content: data.quoteContent?.trim() || undefined,
               memo_content: data.memoContent?.trim() || undefined,
@@ -285,7 +297,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
                 if (ocrResponse.ok) {
                   const responseData = await ocrResponse.json().catch(() => ({}));
                   console.log("[OCR Client] OCR 요청 성공:", responseData);
-                  
+
                   // OCR 요청 성공 (비동기 처리 시작)
                   toast.success("OCR 처리가 시작되었습니다.", {
                     description: "처리가 완료되면 자동으로 업데이트됩니다.",
@@ -298,7 +310,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
                     statusText: ocrResponse.statusText,
                     error: errorData,
                   });
-                  
+
                   toast.warning("OCR 처리 요청에 실패했습니다.", {
                     description: errorData.error || "나중에 다시 시도해주세요.",
                   });
@@ -327,6 +339,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
         for (const pageNumber of pagesToCreate) {
           await createNote({
             book_id: bookId,
+            title: data.title,
             type: noteType,
             quote_content: data.quoteContent?.trim() || undefined,
             memo_content: data.memoContent?.trim() || undefined,
@@ -356,210 +369,225 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* 인상깊은 구절 */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="quoteContent">인상깊은 구절</Label>
-          <TextPreviewDialog
-            title="인상깊은 구절"
-            content={quoteContent}
-            label="전체 보기"
-            onSave={(value) => setValue("quoteContent", value)}
-            maxLength={5000}
-          />
-        </div>
-        <Textarea
-          id="quoteContent"
-          {...register("quoteContent")}
-          placeholder="인상 깊었던 문장"
-          rows={4}
-          className="resize-none max-w-2xl"
+    <Form {...form}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* 제목 입력 */}
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>제목 <span className="text-muted-foreground text-xs font-normal">(선택)</span></FormLabel>
+              <FormControl>
+                <Input placeholder="기록에 제목을 붙여보세요" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-        {errors.quoteContent && (
-          <p className="text-sm text-destructive">{errors.quoteContent.message}</p>
-        )}
-      </div>
 
-      {/* 내 생각 */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="memoContent">내 생각</Label>
-          <TextPreviewDialog
-            title="내 생각"
-            content={memoContent}
-            label="전체 보기"
-            onSave={(value) => setValue("memoContent", value)}
-            maxLength={10000}
-          />
-        </div>
-        <Textarea
-          id="memoContent"
-          {...register("memoContent")}
-          placeholder="생각이나 감상"
-          rows={6}
-          className="resize-none max-w-2xl"
-        />
-        {errors.memoContent && (
-          <p className="text-sm text-destructive">{errors.memoContent.message}</p>
-        )}
-      </div>
-
-      {/* 이미지 업로드 버튼 */}
-      <div className="space-y-2">
-        <Label>이미지 등록 (선택)</Label>
-        <div className="flex gap-2">
-          <label htmlFor="transcription-input" className="flex-1 cursor-pointer">
-            <div
-              className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full ${
-                uploading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              <PenTool className="mr-2 h-4 w-4" />
-              필사등록
-            </div>
-          </label>
-          <label htmlFor="photo-input" className="flex-1 cursor-pointer">
-            <div
-              className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full ${
-                uploading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              <Camera className="mr-2 h-4 w-4" />
-              이미지등록
-            </div>
-          </label>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          필사등록 시 이미지에서 텍스트를 자동으로 추출하여 필사 테이블에 저장됩니다.
-        </p>
-        <input
-          id="transcription-input"
-          ref={transcriptionInputRef}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
-          onChange={(e) => handleImageUpload(e.target.files, "transcription")}
-          className="hidden"
-        />
-        <input
-          id="photo-input"
-          ref={photoInputRef}
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
-          multiple
-          onChange={(e) => handleImageUpload(e.target.files, "photo")}
-          className="hidden"
-        />
-      </div>
-
-      {/* 업로드된 이미지 표시 */}
-      {images.length > 0 && (
+        {/* 인상깊은 구절 */}
         <div className="space-y-2">
-          <Label>업로드된 이미지</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {images.map((url, index) => (
-              <div key={index} className="relative group">
-                <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted">
-                  <Image
-                    src={getImageUrl(url)}
-                    alt={`업로드된 이미지 ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 50vw, 33vw"
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => removeImage(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                {uploadProgress[index] !== undefined && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center">
-                    {uploadProgress[index]}%
-                  </div>
-                )}
-              </div>
-            ))}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="quoteContent">인상깊은 구절</Label>
+            <TextPreviewDialog
+              title="인상깊은 구절"
+              content={quoteContent}
+              label="전체 보기"
+              onSave={(value) => setValue("quoteContent", value)}
+              maxLength={5000}
+            />
           </div>
-          {currentUploadType && (
-            <p className="text-xs text-muted-foreground">
-              타입: {currentUploadType === "photo" ? "이미지" : "필사"}
-            </p>
+          <Textarea
+            id="quoteContent"
+            {...register("quoteContent")}
+            placeholder="인상 깊었던 문장"
+            rows={4}
+            className="resize-none max-w-2xl"
+          />
+          {errors.quoteContent && (
+            <p className="text-sm text-destructive">{errors.quoteContent.message}</p>
           )}
         </div>
-      )}
 
-      {/* 페이지 번호 (여러 줄 입력 가능) */}
-      <div className="space-y-2">
-        <Label htmlFor="pageNumbers">페이지 번호</Label>
-        <Textarea
-          id="pageNumbers"
-          {...register("pageNumbers")}
-          placeholder={`예시)
+        {/* 내 생각 */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="memoContent">내 생각</Label>
+            <TextPreviewDialog
+              title="내 생각"
+              content={memoContent}
+              label="전체 보기"
+              onSave={(value) => setValue("memoContent", value)}
+              maxLength={10000}
+            />
+          </div>
+          <Textarea
+            id="memoContent"
+            {...register("memoContent")}
+            placeholder="생각이나 감상"
+            rows={6}
+            className="resize-none max-w-2xl"
+          />
+          {errors.memoContent && (
+            <p className="text-sm text-destructive">{errors.memoContent.message}</p>
+          )}
+        </div>
+
+        {/* 이미지 업로드 버튼 */}
+        <div className="space-y-2">
+          <Label>이미지 등록 (선택)</Label>
+          <div className="flex gap-2">
+            <label htmlFor="transcription-input" className="flex-1 cursor-pointer">
+              <div
+                className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full ${uploading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+              >
+                <PenTool className="mr-2 h-4 w-4" />
+                필사등록
+              </div>
+            </label>
+            <label htmlFor="photo-input" className="flex-1 cursor-pointer">
+              <div
+                className={`inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full ${uploading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                이미지등록
+              </div>
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            필사등록 시 이미지에서 텍스트를 자동으로 추출하여 필사 테이블에 저장됩니다.
+          </p>
+          <input
+            id="transcription-input"
+            ref={transcriptionInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
+            onChange={(e) => handleImageUpload(e.target.files, "transcription")}
+            className="hidden"
+          />
+          <input
+            id="photo-input"
+            ref={photoInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
+            multiple
+            onChange={(e) => handleImageUpload(e.target.files, "photo")}
+            className="hidden"
+          />
+        </div>
+
+        {/* 업로드된 이미지 표시 */}
+        {images.length > 0 && (
+          <div className="space-y-2">
+            <Label>업로드된 이미지</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {images.map((url, index) => (
+                <div key={index} className="relative group">
+                  <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-muted">
+                    <Image
+                      src={getImageUrl(url)}
+                      alt={`업로드된 이미지 ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 50vw, 33vw"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => removeImage(index)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  {uploadProgress[index] !== undefined && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center">
+                      {uploadProgress[index]}%
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {currentUploadType && (
+              <p className="text-xs text-muted-foreground">
+                타입: {currentUploadType === "photo" ? "이미지" : "필사"}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 페이지 번호 (여러 줄 입력 가능) */}
+        <div className="space-y-2">
+          <Label htmlFor="pageNumbers">페이지 번호</Label>
+          <Textarea
+            id="pageNumbers"
+            {...register("pageNumbers")}
+            placeholder={`예시)
 42
 100
 150`}
-          rows={4}
-          className="resize-none max-w-2xl"
-        />
-        <p className="text-xs text-muted-foreground">
-          여러 페이지를 한번에 등록하려면 줄바꿈으로 구분하여 입력하세요.
-        </p>
-        {errors.pageNumbers && (
-          <p className="text-sm text-destructive">{errors.pageNumbers.message}</p>
-        )}
-      </div>
-
-      {/* 태그 */}
-      <TagInput
-        value={watch("tags") || ""}
-        onChange={(value) => setValue("tags", value)}
-      />
-
-      {/* 공개 설정 */}
-      <div className="flex items-center space-x-2">
-        <Switch
-          id="isPublic"
-          checked={!isPublic} // 반대로: 체크하면 비공개
-          onCheckedChange={(checked) => setValue("isPublic", !checked)}
-        />
-        <Label htmlFor="isPublic" className="cursor-pointer">
-          {isPublic ? "공개" : "비공개"}
-        </Label>
-      </div>
-
-      {/* 제출 버튼 */}
-      <div className="flex flex-col gap-2 pt-4">
-        <Button 
-          type="submit" 
-          disabled={isSubmitting || uploading}
-          fullWidth
-          size="lg"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              저장 중...
-            </>
-          ) : (
-            "저장"
+            rows={4}
+            className="resize-none max-w-2xl"
+          />
+          <p className="text-xs text-muted-foreground">
+            여러 페이지를 한번에 등록하려면 줄바꿈으로 구분하여 입력하세요.
+          </p>
+          {errors.pageNumbers && (
+            <p className="text-sm text-destructive">{errors.pageNumbers.message}</p>
           )}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          disabled={isSubmitting || uploading}
-          fullWidth
-        >
-          취소
-        </Button>
-      </div>
-    </form>
+        </div>
+
+        {/* 태그 */}
+        <TagInput
+          value={watch("tags") || ""}
+          onChange={(value) => setValue("tags", value)}
+        />
+
+        {/* 공개 설정 */}
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="isPublic"
+            checked={!isPublic} // 반대로: 체크하면 비공개
+            onCheckedChange={(checked) => setValue("isPublic", !checked)}
+          />
+          <Label htmlFor="isPublic" className="cursor-pointer">
+            {isPublic ? "공개" : "비공개"}
+          </Label>
+        </div>
+
+        {/* 제출 버튼 */}
+        <div className="flex flex-col gap-2 pt-4">
+          <Button
+            type="submit"
+            disabled={isSubmitting || uploading}
+            fullWidth
+            size="lg"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                저장 중...
+              </>
+            ) : (
+              "저장"
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.back()}
+            disabled={isSubmitting || uploading}
+            fullWidth
+          >
+            취소
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
 }
 
