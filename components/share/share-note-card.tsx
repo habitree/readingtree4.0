@@ -266,7 +266,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                             <span className="text-slate-400 font-medium text-xs">by</span>
                                             <Avatar className="h-7 w-7">
                                                 <AvatarImage
-                                                    src={getImageUrl(user.avatar_url)}
+                                                    src={user.avatar_url ? getImageUrl(user.avatar_url) : "/images/default-avatar.png"}
                                                     crossOrigin="anonymous" // html2canvas 캡처 시 CORS 문제 해결
                                                 />
                                                 <AvatarFallback className="bg-forest-100 text-forest-700 text-xs font-bold">

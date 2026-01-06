@@ -19,6 +19,11 @@ function getGeminiClient() {
     );
   }
 
+  // API 키 형식 검증 (Gemini API 키는 보통 특정 형식을 가짐)
+  if (apiKey.length < 20) {
+    console.warn("[Gemini API] API 키 길이가 짧습니다. 올바른 키인지 확인해주세요.");
+  }
+
   return new GoogleGenerativeAI(apiKey);
 }
 
@@ -84,9 +89,14 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
     const text = result.response.text();
     return text.trim();
   } catch (error) {
-    console.error("OCR 처리 오류:", error);
+    const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
+    console.error("[Gemini API] OCR 처리 오류:", {
+      message: errorMessage,
+      imageUrl: imageUrl.substring(0, 100) + "...",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     throw new Error(
-      `텍스트 추출 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`
+      `Gemini API 텍스트 추출 실패: ${errorMessage}`
     );
   }
 }
