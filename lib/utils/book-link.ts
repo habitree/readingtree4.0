@@ -79,3 +79,12 @@ export function parseBookLinkParts(text: string): BookLinkPart[] {
   return parts;
 }
 
+/**
+ * 마크다운 링크 형식을 책 제목만으로 변환
+ * [책 제목](@book:userBookId) -> 책 제목
+ * 입력 필드에 표시할 때 사용
+ */
+export function convertBookLinksToDisplayText(text: string): string {
+  return text.replace(/\[([^\]]+)\]\(@book:[^)]+\)/g, '$1');
+}
+

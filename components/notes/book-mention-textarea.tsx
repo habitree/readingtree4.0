@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { getUserBooks } from "@/app/actions/books";
 import { Loader2 } from "lucide-react";
 import { BookLinkInputRenderer } from "./book-link-input-renderer";
+import { convertBookLinksToDisplayText } from "@/lib/utils/book-link";
 
 interface Book {
   id: string; // user_books.id
@@ -59,13 +60,45 @@ export function BookMentionTextarea({
     }
   };
 
+  // 표시용 텍스트를 실제 마크다운 형식으로 변환하는 함수
+  const convertDisplayToActual = (displayText: string, currentValue: string): string => {
+    // 현재 value에서 링크 정보 추출
+    const links = currentValue.match(/\[([^\]]+)\]\(@book:([^)]+)\)/g) || [];
+    const linkMap = new Map<string, string>();
+    
+    links.forEach(link => {
+      const match = link.match(/\[([^\]]+)\]\(@book:([^)]+)\)/);
+      if (match) {
+        linkMap.set(match[1], match[2]); // 책 제목 -> userBookId 매핑
+      }
+    });
+    
+    // 표시용 텍스트에서 책 제목을 찾아서 링크로 변환
+    let actualText = displayText;
+    linkMap.forEach((userBookId, title) => {
+      // 정확한 책 제목만 매칭 (이미 링크로 변환된 부분 제외)
+      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(?<!\\[)${escapedTitle}(?!\\])`, 'g');
+      actualText = actualText.replace(regex, (match, offset) => {
+        const beforeMatch = actualText.substring(0, offset);
+        const afterMatch = actualText.substring(offset + match.length);
+        if (beforeMatch.endsWith('[') || afterMatch.startsWith(']')) {
+          return match;
+        }
+        return `[${title}](@book:${userBookId})`;
+      });
+    });
+    
+    return actualText;
+  };
+
   // @ 입력 감지 및 검색
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
+    const newDisplayValue = e.target.value;
     const cursorPosition = e.target.selectionStart;
 
-    // @ 입력 감지
-    const textBeforeCursor = newValue.substring(0, cursorPosition);
+    // @ 입력 감지 (표시용 텍스트 기준)
+    const textBeforeCursor = newDisplayValue.substring(0, cursorPosition);
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
     if (lastAtIndex !== -1) {
@@ -100,7 +133,9 @@ export function BookMentionTextarea({
       setSearchQuery("");
     }
 
-    onValueChange(newValue);
+    // 표시용 텍스트를 실제 마크다운 형식으로 변환하여 저장
+    const actualValue = convertDisplayToActual(newDisplayValue, value);
+    onValueChange(actualValue);
   };
 
   // 책 선택 시 링크로 변환
@@ -123,26 +158,55 @@ export function BookMentionTextarea({
       return;
     }
 
-    const currentValue = value;
-    const cursorPosition = textareaRef.current.selectionStart || currentValue.length;
+    // 표시용 텍스트 기준으로 처리
+    const displayText = convertBookLinksToDisplayText(value);
+    const cursorPosition = textareaRef.current.selectionStart || displayText.length;
     
-    // @부터 커서 위치까지의 텍스트를 링크로 교체
-    const textBefore = currentValue.substring(0, currentMentionStart);
-    const textAfter = currentValue.substring(cursorPosition);
+    // @부터 커서 위치까지의 텍스트를 책 제목으로 교체
+    const textBefore = displayText.substring(0, currentMentionStart);
+    const textAfter = displayText.substring(cursorPosition);
     
-    // 링크 형식: [책 제목](@book:userBookId)
-    const linkText = `[${book.books.title}](@book:${book.id})`;
-    const newValue = textBefore + linkText + textAfter;
+    // 표시용: 책 제목만 추가
+    const newDisplayText = textBefore + book.books.title + textAfter;
     
-    onValueChange(newValue);
+    // 실제 값: 기존 링크 정보를 유지하면서 새 링크 추가
+    const existingLinks = value.match(/\[([^\]]+)\]\(@book:([^)]+)\)/g) || [];
+    const linkMap = new Map<string, string>();
+    
+    existingLinks.forEach(link => {
+      const match = link.match(/\[([^\]]+)\]\(@book:([^)]+)\)/);
+      if (match) {
+        linkMap.set(match[1], match[2]); // 책 제목 -> userBookId 매핑
+      }
+    });
+    
+    // 새 책 추가
+    linkMap.set(book.books.title, book.id);
+    
+    // 표시용 텍스트에서 책 제목을 찾아서 링크로 변환
+    let actualText = newDisplayText;
+    linkMap.forEach((userBookId, title) => {
+      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(?<!\\[)${escapedTitle}(?!\\])`, 'g');
+      actualText = actualText.replace(regex, (match, offset) => {
+        const beforeMatch = actualText.substring(0, offset);
+        const afterMatch = actualText.substring(offset + match.length);
+        if (beforeMatch.endsWith('[') || afterMatch.startsWith(']')) {
+          return match;
+        }
+        return `[${title}](@book:${userBookId})`;
+      });
+    });
+    
+    onValueChange(actualText);
     setShowSuggestions(false);
     setMentionStart(null);
     setSearchQuery("");
 
-    // 커서 위치 조정
+    // 커서 위치 조정 (표시용 텍스트 기준)
     setTimeout(() => {
       if (textareaRef.current) {
-        const newCursorPos = currentMentionStart + linkText.length;
+        const newCursorPos = currentMentionStart + book.books.title.length;
         textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
         textareaRef.current.focus();
       }
@@ -191,13 +255,14 @@ export function BookMentionTextarea({
 
   // 링크 형식: [책 제목](@book:userBookId) 체크
   const hasBookLinks = value && /\[([^\]]+)\]\(@book:([^)]+)\)/.test(value);
+  const displayValue = convertBookLinksToDisplayText(value);
 
   return (
     <div className="relative">
       <div className="relative">
         <Textarea
           ref={textareaRef}
-          value={value}
+          value={displayValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           className={cn(className, "relative z-10")}
