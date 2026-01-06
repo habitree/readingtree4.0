@@ -38,6 +38,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [user, setUser] = useState<{ id: string; name: string; avatar_url: string | null } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const captureRef = useRef<HTMLDivElement>(null); // 캡처 전용 Hidden 요소 Ref
 
   // 사용자 정보 가져오기
   useEffect(() => {
@@ -89,19 +90,22 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
 
   // 2. 카드 복사 (디자인 캡처)
   const handleCopyCardImage = async () => {
-    if (!cardRef.current) {
+    // [UPDATE] 모바일/PC 모두 captureRef(가로 고정 숨김 요소)를 우선 사용
+    const targetElement = captureRef.current || cardRef.current;
+
+    if (!targetElement) {
       toast.error("카드를 찾을 수 없습니다.");
       return;
     }
 
     try {
-      // 캡처 모드 활성화 (더보기 버튼 숨기기 위함)
+      // 캡처 모드 활성화 (UI 피드백용)
       setIsCapturing(true);
 
-      // 상태 반영을 위해 잠깐 대기
+      // 상태 반영 및 이미지 로딩 확보를 위해 잠깐 대기
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      const element = cardRef.current;
+      const element = targetElement;
 
       // html2canvas 동적 import 및 타입 우회
       // html2canvas 타입 정의가 불완전하여 any로 타입 단언
@@ -110,6 +114,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
 
       // 모바일에서는 scale을 낮춰서 성능 개선
       const isMobileDevice = isMobile();
+      // 가로 고정 레이아웃이므로 모바일에서도 조금 더 높은 해상도 유지 가능하나 성능 고려
       const scale = isMobileDevice ? 1.5 : 2;
 
       // 캡처 전용 옵션 설정 (잘림 방지 및 고화질)
@@ -126,6 +131,8 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
         scrollY: -window.scrollY,
         backgroundColor: null, // CSS 배경색 사용
         logging: false, // 모바일에서 로깅 비활성화로 성능 개선
+        // [UPDATE] onclone을 통해 캡처 시점에만 강제 스타일 적용 가능하지만,
+        // 별도 hidden element를 사용하는 방식이 더 안정적이므로 hidden element 사용.
       };
 
       const canvas = await html2canvas(element, options);
@@ -160,7 +167,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           }, 2000);
         } catch (clipboardError) {
           console.log("클립보드 복사 실패, 다운로드로 fallback:", clipboardError);
-          
+
           // 클립보드 복사 실패 시 다운로드로 fallback
           try {
             const filename = `habitree-card-${note.id}-${Date.now()}.png`;
@@ -249,7 +256,7 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           }, 2000);
         } catch (clipboardError) {
           console.log("클립보드 복사 실패, 다운로드로 fallback:", clipboardError);
-          
+
           // 클립보드 복사 실패 시 다운로드로 fallback
           try {
             const filename = `habitree-image-${note.id}-${Date.now()}.png`;
@@ -366,9 +373,17 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
             </div>
 
             <div className="mb-6 group bg-slate-50 dark:bg-slate-900/50 p-4 sm:p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-              {/* 중복 UI 제거하고 ShareNoteCard 재사용 (표준 규격 적용) */}
+              {/* 중복 UI 제거하고 ShareNoteCard 재사용 (표준 규격 적용) - 화면 표시용 (반응형) */}
               <div ref={cardRef} className="rounded-3xl overflow-hidden shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 bg-white">
                 <ShareNoteCard note={note} hideActions={isCapturing} showTimestamp={false} user={user} />
+              </div>
+            </div>
+
+            {/* [NEW] 캡처용 Hidden Card (항상 가로 모드 Force, 화면 밖 배치) */}
+            <div style={{ position: "absolute", left: "-99999px", top: 0, width: "960px" }}>
+              <div ref={captureRef} className="rounded-3xl overflow-hidden shadow-2xl bg-white">
+                {/* fixedHorizontal=true로 가로 강제, hideActions=true로 버튼 숨김 */}
+                <ShareNoteCard note={note} hideActions={true} showTimestamp={false} user={user} fixedHorizontal={true} />
               </div>
             </div>
 
