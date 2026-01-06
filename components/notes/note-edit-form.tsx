@@ -34,7 +34,6 @@ import { validateImageSize, validateImageType } from "@/lib/utils/image";
 import { parseNoteContentFields } from "@/lib/utils/note";
 import type { NoteWithBook } from "@/types/note";
 import { TagInput } from "./tag-input";
-import { BookMentionInput } from "./book-mention-input";
 import { BookMentionTextarea } from "./book-mention-textarea";
 
 // 스키마: 모든 값은 선택이지만 완전히 빈값은 불가
@@ -208,10 +207,10 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
             <FormItem>
               <FormLabel>제목 <span className="text-muted-foreground text-xs font-normal">(선택)</span></FormLabel>
               <FormControl>
-                <BookMentionInput
-                  placeholder="기록에 제목을 붙여보세요. @를 입력하면 책을 링크할 수 있습니다."
+                <Input
+                  placeholder="기록에 제목을 붙여보세요."
+                  {...field}
                   value={field.value || ""}
-                  onValueChange={field.onChange}
                 />
               </FormControl>
               <FormMessage />
