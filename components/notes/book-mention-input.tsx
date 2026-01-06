@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { getUserBooks } from "@/app/actions/books";
 import { Loader2 } from "lucide-react";
 import { BookLinkInputRenderer } from "./book-link-input-renderer";
+import { convertBookLinksToDisplayText } from "@/lib/utils/book-link";
 
 interface Book {
   id: string; // user_books.id
@@ -59,13 +60,37 @@ export function BookMentionInput({
     }
   };
 
+  // 표시용 텍스트를 실제 마크다운 형식으로 변환하는 함수
+  const convertDisplayToActual = (displayText: string, currentValue: string): string => {
+    // 현재 value에서 링크 정보 추출
+    const links = currentValue.match(/\[([^\]]+)\]\(@book:([^)]+)\)/g) || [];
+    const linkMap = new Map<string, string>();
+    
+    links.forEach(link => {
+      const match = link.match(/\[([^\]]+)\]\(@book:([^)]+)\)/);
+      if (match) {
+        linkMap.set(match[1], match[2]); // 책 제목 -> userBookId 매핑
+      }
+    });
+    
+    // 표시용 텍스트에서 책 제목을 찾아서 링크로 변환
+    let actualText = displayText;
+    linkMap.forEach((userBookId, title) => {
+      // 정확한 책 제목만 매칭 (이미 링크로 변환된 부분 제외)
+      const regex = new RegExp(`(?<!\\[)\\b${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b(?!\\])`, 'g');
+      actualText = actualText.replace(regex, `[${title}](@book:${userBookId})`);
+    });
+    
+    return actualText;
+  };
+
   // @ 입력 감지 및 검색
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
+    const newDisplayValue = e.target.value;
     const cursorPosition = e.target.selectionStart || 0;
 
-    // @ 입력 감지
-    const textBeforeCursor = newValue.substring(0, cursorPosition);
+    // @ 입력 감지 (표시용 텍스트 기준)
+    const textBeforeCursor = newDisplayValue.substring(0, cursorPosition);
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
 
     if (lastAtIndex !== -1) {
@@ -100,14 +125,17 @@ export function BookMentionInput({
       setSearchQuery("");
     }
 
-    onValueChange(newValue);
+    // 표시용 텍스트를 실제 마크다운 형식으로 변환하여 저장
+    const actualValue = convertDisplayToActual(newDisplayValue, value);
+    onValueChange(actualValue);
   };
 
   // 입력 필드 포커스 시 커서 위치 업데이트
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     // 포커스 시 현재 커서 위치를 기준으로 @ 감지
     const cursorPosition = e.target.selectionStart || 0;
-    const textBeforeCursor = value.substring(0, cursorPosition);
+    const displayText = convertBookLinksToDisplayText(value);
+    const textBeforeCursor = displayText.substring(0, cursorPosition);
     const lastAtIndex = textBeforeCursor.lastIndexOf("@");
     
     if (lastAtIndex !== -1) {
@@ -150,26 +178,60 @@ export function BookMentionInput({
       return;
     }
 
-    const currentValue = value;
-    const cursorPosition = inputRef.current.selectionStart || currentValue.length;
+    // 표시용 텍스트 기준으로 처리
+    const displayText = convertBookLinksToDisplayText(value);
+    const cursorPosition = inputRef.current.selectionStart || displayText.length;
     
-    // @부터 커서 위치까지의 텍스트를 링크로 교체
-    const textBefore = currentValue.substring(0, currentMentionStart);
-    const textAfter = currentValue.substring(cursorPosition);
+    // @부터 커서 위치까지의 텍스트를 책 제목으로 교체
+    const textBefore = displayText.substring(0, currentMentionStart);
+    const textAfter = displayText.substring(cursorPosition);
     
-    // 링크 형식: [책 제목](@book:userBookId)
-    const linkText = `[${book.books.title}](@book:${book.id})`;
-    const newValue = textBefore + linkText + textAfter;
+    // 표시용: 책 제목만 추가
+    const newDisplayText = textBefore + book.books.title + textAfter;
     
-    onValueChange(newValue);
+    // 실제 값: 기존 링크 정보를 유지하면서 새 링크 추가
+    const existingLinks = value.match(/\[([^\]]+)\]\(@book:([^)]+)\)/g) || [];
+    const linkMap = new Map<string, string>();
+    
+    existingLinks.forEach(link => {
+      const match = link.match(/\[([^\]]+)\]\(@book:([^)]+)\)/);
+      if (match) {
+        linkMap.set(match[1], match[2]); // 책 제목 -> userBookId 매핑
+      }
+    });
+    
+    // 새 책 추가
+    linkMap.set(book.books.title, book.id);
+    
+    // 표시용 텍스트에서 책 제목을 찾아서 링크로 변환
+    let actualText = newDisplayText;
+    linkMap.forEach((userBookId, title) => {
+      // 정확한 책 제목만 매칭 (이미 링크로 변환된 부분 제외)
+      // 단순한 방법: 책 제목을 찾아서 링크로 변환 (중복 방지)
+      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // 이미 링크 형식이 아닌 경우만 변환
+      const regex = new RegExp(`(?<!\\[)${escapedTitle}(?!\\])`, 'g');
+      actualText = actualText.replace(regex, (match, offset) => {
+        // 이미 링크로 변환된 부분인지 확인
+        const beforeMatch = actualText.substring(0, offset);
+        const afterMatch = actualText.substring(offset + match.length);
+        // 앞뒤로 [ 또는 ]가 있으면 이미 링크이므로 변환하지 않음
+        if (beforeMatch.endsWith('[') || afterMatch.startsWith(']')) {
+          return match;
+        }
+        return `[${title}](@book:${userBookId})`;
+      });
+    });
+    
+    onValueChange(actualText);
     setShowSuggestions(false);
     setMentionStart(null);
     setSearchQuery("");
 
-    // 커서 위치 조정
+    // 커서 위치 조정 (표시용 텍스트 기준)
     setTimeout(() => {
       if (inputRef.current) {
-        const newCursorPos = currentMentionStart + linkText.length;
+        const newCursorPos = currentMentionStart + book.books.title.length;
         inputRef.current.setSelectionRange(newCursorPos, newCursorPos);
         inputRef.current.focus();
       }
@@ -198,13 +260,14 @@ export function BookMentionInput({
 
   // 링크 형식: [책 제목](@book:userBookId) 체크
   const hasBookLinks = value && /\[([^\]]+)\]\(@book:([^)]+)\)/.test(value);
+  const displayValue = convertBookLinksToDisplayText(value);
 
   return (
     <div className="relative">
       <div className="relative">
         <Input
           ref={inputRef}
-          value={value}
+          value={displayValue}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={handleFocus}
