@@ -4,9 +4,11 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { getUserBooks } from "@/app/actions/books";
-import { Loader2 } from "lucide-react";
+import { Loader2, BookOpen } from "lucide-react";
 import { BookLinkInputRenderer } from "./book-link-input-renderer";
 import { convertBookLinksToDisplayText } from "@/lib/utils/book-link";
+import Image from "next/image";
+import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 
 interface Book {
   id: string; // user_books.id
@@ -166,11 +168,24 @@ export function BookMentionInput({
     }
 
     // savedMentionStart가 제공되면 사용, 아니면 현재 mentionStart 사용
-    const currentMentionStart = savedMentionStart !== undefined ? savedMentionStart : mentionStart;
+    let currentMentionStart = savedMentionStart !== undefined ? savedMentionStart : mentionStart;
 
+    // mentionStart가 null이면 현재 입력 필드에서 @ 위치를 다시 찾기
     if (currentMentionStart === null) {
-      console.error("handleBookSelect: mentionStart가 null입니다", { mentionStart, savedMentionStart });
-      return;
+      if (!inputRef.current) {
+        console.error("handleBookSelect: inputRef가 null입니다");
+        return;
+      }
+      const displayText = convertBookLinksToDisplayText(value);
+      const cursorPosition = inputRef.current.selectionStart || displayText.length;
+      const textBeforeCursor = displayText.substring(0, cursorPosition);
+      const lastAtIndex = textBeforeCursor.lastIndexOf("@");
+      
+      if (lastAtIndex === -1) {
+        console.error("handleBookSelect: @를 찾을 수 없습니다");
+        return;
+      }
+      currentMentionStart = lastAtIndex;
     }
 
     if (!inputRef.current) {
@@ -320,33 +335,58 @@ export function BookMentionInput({
               <Loader2 className="h-4 w-4 animate-spin" />
             </div>
           )}
-          {suggestions.map((book, index) => (
-            <button
-              key={book.id}
-              type="button"
-              className={cn(
-                "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer",
-                index === selectedIndex && "bg-accent"
-              )}
-              onMouseDown={(e) => {
-                // blur 이벤트를 방지하기 위해 preventDefault 사용
-                e.preventDefault();
-                // mentionStart를 저장
-                const savedMentionStart = mentionStart;
-                // 클릭 이벤트를 즉시 처리 (setTimeout으로 다음 이벤트 루프에서 실행)
-                if (savedMentionStart !== null && savedMentionStart !== undefined) {
+          {suggestions.map((book, index) => {
+            const hasValidImage = isValidImageUrl(book.books.cover_image_url) && book.books.cover_image_url;
+            return (
+              <button
+                key={book.id}
+                type="button"
+                className={cn(
+                  "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-3",
+                  index === selectedIndex && "bg-accent"
+                )}
+                onMouseDown={(e) => {
+                  // blur 이벤트를 방지하기 위해 preventDefault 사용
+                  e.preventDefault();
+                  // mentionStart를 저장
+                  const savedMentionStart = mentionStart;
+                  // 클릭 이벤트를 즉시 처리 (setTimeout으로 다음 이벤트 루프에서 실행)
                   setTimeout(() => {
                     handleBookSelect(book, e, savedMentionStart);
                   }, 0);
-                }
-              }}
-              onMouseEnter={() => setSelectedIndex(index)}
-            >
-              <div className="text-sm truncate">
-                {book.books.title}
-              </div>
-            </button>
-          ))}
+                }}
+                onMouseEnter={() => setSelectedIndex(index)}
+              >
+                {/* 책표지 */}
+                <div className="relative w-10 h-14 shrink-0 overflow-hidden rounded bg-muted">
+                  {hasValidImage ? (
+                    <Image
+                      src={getImageUrl(book.books.cover_image_url!)}
+                      alt={book.books.title}
+                      fill
+                      className="object-cover"
+                      sizes="40px"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <BookOpen className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                {/* 책 정보 */}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {book.books.title}
+                  </div>
+                  {book.books.author && (
+                    <div className="text-xs text-muted-foreground truncate">
+                      {book.books.author}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
