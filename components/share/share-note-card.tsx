@@ -20,6 +20,7 @@ interface ShareNoteCardProps {
     isPublicView?: boolean;
     hideActions?: boolean; // 캡처 시 버튼 숨김용
     showTimestamp?: boolean; // 타임스탬프 표시 여부
+    fixedHorizontal?: boolean; // 강제 가로 레이아웃 (캡처용)
     user?: {
         id: string;
         name: string;
@@ -99,7 +100,7 @@ const formatDateTime = (dateStr: string) => {
  * - [v4.0] 모든 케이스(이미지 유/무)에 대해 '좌우 분할' 단일 레이아웃 적용
  * - 표준 너비: max-w-[960px]
  */
-export function ShareNoteCard({ note, className, isPublicView = false, hideActions = false, showTimestamp = true, user }: ShareNoteCardProps) {
+export function ShareNoteCard({ note, className, isPublicView = false, hideActions = false, showTimestamp = true, fixedHorizontal = false, user }: ShareNoteCardProps) {
     // [데이터 매핑 수정] Supabase 쿼리 결과인 'books' 필드와 'book' 필드 모두를 지원하도록 정규화
     const book = note.book || (note as any).books;
 
@@ -129,7 +130,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
     return (
         <Card className={cn("overflow-hidden border-none shadow-2xl bg-white dark:bg-slate-950 w-full max-w-[960px] mx-auto", className)}>
             <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row min-h-[560px]">
+                <div className={cn("flex min-h-[560px]", fixedHorizontal ? "flex-row" : "flex-col md:flex-row")}>
                     {/* 좌측 섹션: 이미지 또는 책 표지 (폭 400px로 축소) */}
                     <div className="w-full md:w-[400px] bg-slate-50 dark:bg-slate-900/50 p-5 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800">
                         {/* 상단: 책 정보 요약 (항상 표시) */}
