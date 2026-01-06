@@ -4,9 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { getUserBooks } from "@/app/actions/books";
-import { BookOpen, Loader2 } from "lucide-react";
-import Image from "next/image";
-import { getImageUrl } from "@/lib/utils/image";
+import { Loader2 } from "lucide-react";
 import { BookLinkInputRenderer } from "./book-link-input-renderer";
 
 interface Book {
@@ -263,7 +261,7 @@ export function BookMentionInput({
               key={book.id}
               type="button"
               className={cn(
-                "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-3",
+                "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer",
                 index === selectedIndex && "bg-accent"
               )}
               onMouseDown={(e) => {
@@ -280,30 +278,8 @@ export function BookMentionInput({
               }}
               onMouseEnter={() => setSelectedIndex(index)}
             >
-              {book.books.cover_image_url ? (
-                <div className="relative w-8 h-10 shrink-0 rounded overflow-hidden">
-                  <Image
-                    src={getImageUrl(book.books.cover_image_url)}
-                    alt={book.books.title}
-                    fill
-                    className="object-cover"
-                    sizes="32px"
-                  />
-                </div>
-              ) : (
-                <div className="w-8 h-10 shrink-0 rounded bg-muted flex items-center justify-center">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm truncate">
-                  {book.books.title}
-                </div>
-                {book.books.author && (
-                  <div className="text-xs text-muted-foreground truncate">
-                    {book.books.author}
-                  </div>
-                )}
+              <div className="text-sm truncate">
+                {book.books.title}
               </div>
             </button>
           ))}
