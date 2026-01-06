@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { extractTextFromImage } from "@/lib/api/vision";
+import { extractTextFromImage } from "@/lib/api/ocr";
 import { createOrUpdateTranscription, updateTranscriptionStatus, verifyNoteOwnership } from "@/app/actions/notes";
 import { recordOcrSuccess, recordOcrFailure } from "@/app/actions/ocr";
 import type { User } from "@supabase/supabase-js";
@@ -65,9 +65,10 @@ export async function POST(request: NextRequest) {
     }
 
     // OCR 처리 (비동기)
-    console.log("[OCR Process] Vision API 호출 시작");
+    // Gemini API를 우선 사용하고, 실패 시 Vision API로 폴백
+    console.log("[OCR Process] OCR API 호출 시작");
     const extractedText = await extractTextFromImage(imageUrl);
-    console.log("[OCR Process] Vision API 호출 완료, 추출된 텍스트 길이:", extractedText.length);
+    console.log("[OCR Process] OCR API 호출 완료, 추출된 텍스트 길이:", extractedText.length);
 
     // Transcriptions 테이블에 저장
     await createOrUpdateTranscription(noteId, extractedText);
@@ -119,12 +120,22 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
     
+    // Google Vision API 설정 확인 (서비스 계정 파일 경로만)
+    const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const hasServiceAccount = !!credentialsPath;
+    
     console.error("=".repeat(80));
     console.error("[OCR Process] ========== OCR 처리 오류 발생 ==========");
     console.error("[OCR Process] 에러 메시지:", errorMessage);
     console.error("[OCR Process] Note ID:", noteId);
     console.error("[OCR Process] Image URL:", imageUrl?.substring(0, 100) + "...");
     console.error("[OCR Process] 처리 시간:", `${duration}ms`);
+    console.error("[OCR Process] Google Vision API 설정:", {
+      authMethod: "service_account_file",
+      hasServiceAccount,
+      credentialsPath: credentialsPath || "미설정",
+      status: hasServiceAccount ? "설정됨" : "미설정",
+    });
     if (error instanceof Error) {
       console.error("[OCR Process] 스택 트레이스:", error.stack);
       console.error("[OCR Process] 에러 이름:", error.name);

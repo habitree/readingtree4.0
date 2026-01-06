@@ -7,48 +7,37 @@ import { ImageAnnotatorClient } from "@google-cloud/vision";
 import path from "path";
 
 /**
- * Vision API 클라이언트 생성 (서비스 계정 방식)
+ * Vision API 클라이언트 생성 (서비스 계정 파일 경로 방식만 사용)
  * @returns ImageAnnotatorClient 인스턴스
  * @throws Error 환경 변수가 설정되지 않은 경우
  */
 function getVisionClient(): ImageAnnotatorClient {
-  // 방법 1: 서비스 계정 JSON 파일 경로
+  // 서비스 계정 JSON 파일 경로만 사용
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  
-  // 방법 2: 서비스 계정 JSON 문자열
-  const serviceAccountJson = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+
+  if (!credentialsPath) {
+    throw new Error(
+      "Google Vision API 서비스 계정 파일 경로가 설정되지 않았습니다.\n" +
+      "GOOGLE_APPLICATION_CREDENTIALS 환경 변수를 설정해주세요.\n" +
+      "예: GOOGLE_APPLICATION_CREDENTIALS=./habitree-f49e1-63991a2f3290.json"
+    );
+  }
 
   try {
-    if (credentialsPath) {
-      // 상대 경로를 절대 경로로 변환 (프로젝트 루트 기준)
-      const resolvedPath = path.isAbsolute(credentialsPath)
-        ? credentialsPath
-        : path.resolve(process.cwd(), credentialsPath);
-      
-      console.log("[Vision API] 서비스 계정 파일 경로:", {
-        원본: credentialsPath,
-        절대경로: resolvedPath,
-      });
-      
-      // 서비스 계정 파일 경로 사용
-      return new ImageAnnotatorClient({
-        keyFilename: resolvedPath,
-      });
-    } else if (serviceAccountJson) {
-      // 서비스 계정 JSON 문자열 사용
-      const credentials = JSON.parse(serviceAccountJson);
-      return new ImageAnnotatorClient({
-        credentials,
-      });
-    } else {
-      throw new Error(
-        "Google Vision API 인증 정보가 설정되지 않았습니다.\n" +
-        "다음 중 하나를 설정해주세요:\n" +
-        "- GOOGLE_APPLICATION_CREDENTIALS (서비스 계정 파일 경로)\n" +
-        "- GOOGLE_SERVICE_ACCOUNT_JSON (서비스 계정 JSON 문자열)\n\n" +
-        "참고: API 키 방식은 REST API를 통해 사용할 수 있습니다. (extractTextFromImageWithApiKey 함수 참고)"
-      );
-    }
+    // 상대 경로를 절대 경로로 변환 (프로젝트 루트 기준)
+    const resolvedPath = path.isAbsolute(credentialsPath)
+      ? credentialsPath
+      : path.resolve(process.cwd(), credentialsPath);
+    
+    console.log("[Vision API] 서비스 계정 파일 경로:", {
+      원본: credentialsPath,
+      절대경로: resolvedPath,
+    });
+    
+    // 서비스 계정 파일 경로 사용
+    return new ImageAnnotatorClient({
+      keyFilename: resolvedPath,
+    });
   } catch (error) {
     throw new Error(
       `Vision API 클라이언트 생성 실패: ${error instanceof Error ? error.message : "알 수 없는 오류"}`
@@ -202,24 +191,14 @@ function validateApiKey(apiKey: string | undefined): boolean {
 
 /**
  * 이미지에서 텍스트 추출 (OCR)
+ * 서비스 계정 파일 경로 방식만 사용
  * @param imageUrl 이미지 URL
  * @returns 추출된 텍스트
  */
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
   try {
-    // API 키 방식 우선 확인 (간단한 설정용)
-    const apiKey = process.env.GOOGLE_VISION_API_KEY;
-    
-    if (apiKey && validateApiKey(apiKey)) {
-      console.log("[Vision API] API 키 방식으로 OCR 처리 시작");
-      return extractTextFromImageWithApiKey(imageUrl, apiKey);
-    } else if (apiKey) {
-      console.warn("[Vision API] API 키가 설정되어 있지만 형식이 올바르지 않습니다.");
-    } else {
-      console.log("[Vision API] API 키가 없습니다. 서비스 계정 방식으로 시도합니다.");
-    }
-
-    // 서비스 계정 방식 사용
+    // 서비스 계정 파일 경로 방식만 사용
+    console.log("[Vision API] 서비스 계정 파일 경로 방식으로 OCR 처리 시작");
     const client = getVisionClient();
 
     // 이미지 다운로드
