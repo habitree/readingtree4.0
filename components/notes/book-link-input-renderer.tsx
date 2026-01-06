@@ -25,7 +25,7 @@ export function BookLinkInputRenderer({ text, className }: BookLinkInputRenderer
           return (
             <span
               key={`book-link-${index}`}
-              className="text-primary font-medium underline decoration-primary/50"
+              className="text-muted-foreground/70 font-medium"
             >
               {part.content}
             </span>
