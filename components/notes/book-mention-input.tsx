@@ -196,7 +196,8 @@ export function BookMentionInput({
     }
   };
 
-  const hasBookLinks = value && value.includes('[@book:');
+  // 링크 형식: [책 제목](@book:userBookId) 체크
+  const hasBookLinks = value && /\[([^\]]+)\]\(@book:([^)]+)\)/.test(value);
 
   return (
     <div className="relative">
