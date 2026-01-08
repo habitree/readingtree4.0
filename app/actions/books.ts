@@ -761,80 +761,49 @@ export async function getUserBooksWithNotes(
     }
   }
 
-  // 각 책의 기록 개수 및 최근 기록 조회 (병렬 실행)
-  // reading_reason은 별도로 조회 (컬럼이 없을 수 있음)
-  const booksWithNotes = await Promise.all(
-    userBooks.map(async (userBook: any) => {
-      const bookId = userBook.books?.id;
-      
-      // reading_reason 별도 조회 (컬럼이 있을 경우에만)
-      let readingReason: string | null = null;
-      try {
-        const { data: reasonData } = await supabase
-          .from("user_books")
-          .select("reading_reason")
-          .eq("id", userBook.id)
-          .maybeSingle();
-        readingReason = reasonData?.reading_reason || null;
-      } catch (error) {
-        // reading_reason 컬럼이 없으면 null로 처리
-        readingReason = null;
-      }
-      
-      if (!bookId) {
-        return {
-          id: userBook.id,
-          status: userBook.status,
-          reading_reason: readingReason,
-          completed_at: userBook.completed_at || null,
-          completed_dates: userBook.completed_dates || null,
-          started_at: userBook.started_at || null,
-          books: userBook.books || {},
-          noteCount: 0,
-          groupBooks: groupBooksMap[bookId] || [],
-        };
-      }
+  // 배치 쿼리로 모든 책의 노트 정보를 한 번에 조회 (N+1 문제 해결)
+  const bookIds = userBooks
+    .map((ub: any) => ub.books?.id)
+    .filter((id: string | undefined): id is string => !!id);
 
-      // 기록 개수 및 최근 기록 조회
-      const [countResult, latestNoteResult] = await Promise.all([
-        supabase
-          .from("notes")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", currentUser.id)
-          .eq("book_id", bookId),
-        supabase
-          .from("notes")
-          .select("id, type, content, created_at")
-          .eq("user_id", currentUser.id)
-          .eq("book_id", bookId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+  // 1. 모든 노트를 한 번에 조회 (노트 개수 및 최근 노트용)
+  let notesData: any[] = [];
+  if (bookIds.length > 0) {
+    const { data: allNotes } = await supabase
+      .from("notes")
+      .select("id, type, content, created_at, book_id")
+      .eq("user_id", currentUser.id)
+      .in("book_id", bookIds)
+      .order("created_at", { ascending: false });
+    notesData = allNotes || [];
+  }
 
-      // books 객체가 없는 경우를 대비한 안전한 처리
-      if (!userBook.books) {
-        return {
-          id: userBook.id,
-          status: userBook.status as ReadingStatus,
-          reading_reason: readingReason,
-          completed_at: userBook.completed_at || null,
-          completed_dates: userBook.completed_dates || null,
-          started_at: userBook.started_at || null,
-          books: {
-            id: "",
-            title: "알 수 없는 책",
-            author: null,
-            publisher: null,
-            isbn: null,
-            published_date: null,
-            cover_image_url: null,
-          },
-          noteCount: 0,
-          groupBooks: groupBooksMap[bookId] || [],
-        };
-      }
+  // 2. 메모리에서 book_id별로 그룹화하여 개수와 최근 노트 계산
+  const noteCountMap: Record<string, number> = {};
+  const latestNoteMap: Record<string, any> = {};
 
+  for (const note of notesData) {
+    const bookId = note.book_id;
+    // 개수 집계
+    noteCountMap[bookId] = (noteCountMap[bookId] || 0) + 1;
+    // 최근 노트 (이미 created_at 내림차순 정렬되어 있음)
+    if (!latestNoteMap[bookId]) {
+      latestNoteMap[bookId] = {
+        id: note.id,
+        type: note.type,
+        content: note.content,
+        created_at: note.created_at,
+      };
+    }
+  }
+
+  // 3. 결과 매핑 (추가 쿼리 없이 메모리에서 처리)
+  const booksWithNotes = userBooks.map((userBook: any) => {
+    const bookId = userBook.books?.id;
+    // reading_reason은 이미 user_books 조회 시 포함되어 있을 수 있음
+    const readingReason = userBook.reading_reason || null;
+
+    if (!bookId || !userBook.books) {
       return {
         id: userBook.id,
         status: userBook.status as ReadingStatus,
@@ -842,30 +811,43 @@ export async function getUserBooksWithNotes(
         completed_at: userBook.completed_at || null,
         completed_dates: userBook.completed_dates || null,
         started_at: userBook.started_at || null,
-        books: {
-          id: userBook.books.id || "",
-          title: userBook.books.title || "제목 없음",
-          author: userBook.books.author || null,
-          publisher: userBook.books.publisher || null,
-          isbn: userBook.books.isbn || null,
-          published_date: userBook.books.published_date || null,
-          cover_image_url: userBook.books.cover_image_url || null,
-          created_at: userBook.books.created_at,
-          updated_at: userBook.books.updated_at,
+        books: userBook.books || {
+          id: "",
+          title: "알 수 없는 책",
+          author: null,
+          publisher: null,
+          isbn: null,
+          published_date: null,
+          cover_image_url: null,
         },
-        noteCount: countResult.count || 0,
-        latestNote: latestNoteResult.data
-          ? {
-              id: latestNoteResult.data.id,
-              type: latestNoteResult.data.type,
-              content: latestNoteResult.data.content,
-              created_at: latestNoteResult.data.created_at,
-            }
-          : undefined,
+        noteCount: 0,
         groupBooks: groupBooksMap[bookId] || [],
       };
-    })
-  );
+    }
+
+    return {
+      id: userBook.id,
+      status: userBook.status as ReadingStatus,
+      reading_reason: readingReason,
+      completed_at: userBook.completed_at || null,
+      completed_dates: userBook.completed_dates || null,
+      started_at: userBook.started_at || null,
+      books: {
+        id: userBook.books.id || "",
+        title: userBook.books.title || "제목 없음",
+        author: userBook.books.author || null,
+        publisher: userBook.books.publisher || null,
+        isbn: userBook.books.isbn || null,
+        published_date: userBook.books.published_date || null,
+        cover_image_url: userBook.books.cover_image_url || null,
+        created_at: userBook.books.created_at,
+        updated_at: userBook.books.updated_at,
+      },
+      noteCount: noteCountMap[bookId] || 0,
+      latestNote: latestNoteMap[bookId],
+      groupBooks: groupBooksMap[bookId] || [],
+    };
+  });
 
   return {
     books: booksWithNotes,
