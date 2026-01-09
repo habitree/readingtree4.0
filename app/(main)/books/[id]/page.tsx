@@ -189,6 +189,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             <BookStatusSelector
               currentStatus={userBook.status as ReadingStatus}
               userBookId={userBook.id}
+              currentBookshelfId={(userBook as any).bookshelf_id || null}
             />
             <Button asChild variant="outline">
               <Link href={`/notes/new?bookId=${userBook.id}`}>
