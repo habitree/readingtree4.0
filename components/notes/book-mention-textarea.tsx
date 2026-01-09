@@ -333,12 +333,12 @@ export function BookMentionTextarea({
                 onMouseDown={(e) => {
                   // blur 이벤트를 방지하기 위해 preventDefault 사용
                   e.preventDefault();
-                  // mentionStart를 저장
+                  e.stopPropagation();
+                }}
+                onClick={(e) => {
+                  // mentionStart를 미리 저장 (상태가 변경되기 전에)
                   const savedMentionStart = mentionStart;
-                  // 클릭 이벤트를 즉시 처리 (setTimeout으로 다음 이벤트 루프에서 실행)
-                  setTimeout(() => {
-                    handleBookSelect(book, e, savedMentionStart);
-                  }, 0);
+                  handleBookSelect(book, e, savedMentionStart);
                 }}
                 onMouseEnter={() => setSelectedIndex(index)}
               >
