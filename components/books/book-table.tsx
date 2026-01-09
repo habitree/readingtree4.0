@@ -19,17 +19,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateBookStatus } from "@/app/actions/books";
 import { moveBookToBookshelf, getBookshelves } from "@/app/actions/bookshelves";
-import { BookshelfSelector } from "@/components/bookshelves/bookshelf-selector";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils/date";
 import type { BookWithNotes } from "@/app/actions/books";
@@ -49,8 +39,6 @@ export function BookTable({ books }: BookTableProps) {
   const [expandedBookId, setExpandedBookId] = useState<string | null>(null);
   const [bookNotes, setBookNotes] = useState<Record<string, any[]>>({});
   const [updatingStatus, setUpdatingStatus] = useState<Record<string, boolean>>({});
-  const [showBookshelfDialog, setShowBookshelfDialog] = useState<string | null>(null);
-  const [selectedBookshelfId, setSelectedBookshelfId] = useState<Record<string, string>>({});
   const [bookshelves, setBookshelves] = useState<Bookshelf[]>([]);
   const [bookshelvesMap, setBookshelvesMap] = useState<Record<string, Bookshelf>>({});
   const [isLoadingBookshelves, setIsLoadingBookshelves] = useState(false);
@@ -119,50 +107,18 @@ export function BookTable({ books }: BookTableProps) {
     }
   };
 
-  const handleOpenBookshelfDialog = async (userBookId: string, currentBookshelfId?: string | null) => {
-    setShowBookshelfDialog(userBookId);
-    setSelectedBookshelfId((prev) => ({
-      ...prev,
-      [userBookId]: currentBookshelfId || "",
-    }));
-
-    if (bookshelves.length === 0) {
-      setIsLoadingBookshelves(true);
-      try {
-        const data = await getBookshelves();
-        setBookshelves(data);
-        if (!currentBookshelfId && data.length > 0) {
-          const mainBookshelf = data.find((b) => b.is_main);
-          if (mainBookshelf) {
-            setSelectedBookshelfId((prev) => ({
-              ...prev,
-              [userBookId]: mainBookshelf.id,
-            }));
-          }
-        }
-      } catch (error) {
-        console.error("서재 목록 조회 오류:", error);
-      } finally {
-        setIsLoadingBookshelves(false);
-      }
-    }
-  };
-
-  const handleBookshelfChange = async (userBookId: string) => {
-    const newBookshelfId = selectedBookshelfId[userBookId];
+  const handleBookshelfChange = async (userBookId: string, bookshelfId: string) => {
     const book = books.find((b) => b.id === userBookId);
     const currentBookshelfId = (book as any)?.bookshelf_id || null;
 
-    if (!newBookshelfId || newBookshelfId === currentBookshelfId) {
-      setShowBookshelfDialog(null);
+    if (!bookshelfId || bookshelfId === currentBookshelfId) {
       return;
     }
 
     setUpdatingBookshelf((prev) => ({ ...prev, [userBookId]: true }));
     try {
-      await moveBookToBookshelf(userBookId, newBookshelfId);
+      await moveBookToBookshelf(userBookId, bookshelfId);
       toast.success("서재가 변경되었습니다.");
-      setShowBookshelfDialog(null);
       router.refresh();
     } catch (error) {
       console.error("서재 변경 오류:", error);
@@ -392,17 +348,30 @@ export function BookTable({ books }: BookTableProps) {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>서재</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleOpenBookshelfDialog(item.id, (item as any).bookshelf_id)}
-                              disabled={updatingStatus[item.id] || updatingBookshelf[item.id]}
-                            >
-                              <BookOpenIcon className="mr-2 h-4 w-4" />
-                              {(() => {
-                                const bookshelfId = (item as any).bookshelf_id;
-                                const bookshelf = bookshelfId ? bookshelvesMap[bookshelfId] : null;
-                                return bookshelf ? bookshelf.name : "서재 선택";
-                              })()}
-                            </DropdownMenuItem>
+                            {isLoadingBookshelves ? (
+                              <DropdownMenuItem disabled>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                로딩 중...
+                              </DropdownMenuItem>
+                            ) : bookshelves.length === 0 ? (
+                              <DropdownMenuItem disabled>서재가 없습니다</DropdownMenuItem>
+                            ) : (
+                              bookshelves.map((bookshelf) => {
+                                const currentBookshelfId = (item as any).bookshelf_id;
+                                return (
+                                  <DropdownMenuItem
+                                    key={bookshelf.id}
+                                    onClick={() => handleBookshelfChange(item.id, bookshelf.id)}
+                                    disabled={bookshelf.id === currentBookshelfId || updatingStatus[item.id] || updatingBookshelf[item.id]}
+                                    className={bookshelf.id === currentBookshelfId ? "bg-accent" : ""}
+                                  >
+                                    <BookOpenIcon className="mr-2 h-4 w-4" />
+                                    {bookshelf.name}
+                                    {bookshelf.id === currentBookshelfId && " ✓"}
+                                  </DropdownMenuItem>
+                                );
+                              })
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
@@ -480,76 +449,6 @@ export function BookTable({ books }: BookTableProps) {
         </table>
       </div>
 
-      {/* 서재 변경 다이얼로그 */}
-      {showBookshelfDialog && (
-        <Dialog open={!!showBookshelfDialog} onOpenChange={(open) => !open && setShowBookshelfDialog(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>서재 변경</DialogTitle>
-              <DialogDescription>
-                이 책이 속한 서재를 선택하세요.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="bookshelf-select">서재</Label>
-                {isLoadingBookshelves ? (
-                  <div className="h-10 bg-muted animate-pulse rounded-md" />
-                ) : (
-                  <BookshelfSelector
-                    value={selectedBookshelfId[showBookshelfDialog] || ""}
-                    onValueChange={(value) =>
-                      setSelectedBookshelfId((prev) => ({
-                        ...prev,
-                        [showBookshelfDialog]: value,
-                      }))
-                    }
-                    placeholder="서재를 선택하세요"
-                  />
-                )}
-                {(() => {
-                  const currentBookshelf = bookshelves.find(
-                    (b) => b.id === selectedBookshelfId[showBookshelfDialog]
-                  );
-                  const book = books.find((b) => b.id === showBookshelfDialog);
-                  const currentBookshelfId = (book as any)?.bookshelf_id || null;
-                  const currentBookshelfName = bookshelves.find(
-                    (b) => b.id === currentBookshelfId
-                  )?.name;
-
-                  return currentBookshelfName ? (
-                    <p className="text-xs text-muted-foreground">
-                      현재: {currentBookshelfName}
-                    </p>
-                  ) : null;
-                })()}
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowBookshelfDialog(null)}
-                disabled={updatingBookshelf[showBookshelfDialog]}
-              >
-                취소
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handleBookshelfChange(showBookshelfDialog)}
-                disabled={
-                  updatingBookshelf[showBookshelfDialog] ||
-                  !selectedBookshelfId[showBookshelfDialog] ||
-                  selectedBookshelfId[showBookshelfDialog] ===
-                    ((books.find((b) => b.id === showBookshelfDialog) as any)?.bookshelf_id || null)
-                }
-              >
-                {updatingBookshelf[showBookshelfDialog] ? "변경 중..." : "변경"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }
