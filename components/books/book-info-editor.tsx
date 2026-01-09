@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,9 +21,7 @@ import { getBookshelves } from "@/app/actions/bookshelves";
 import { BookshelfSelector } from "@/components/bookshelves/bookshelf-selector";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { Bookshelf } from "@/types/bookshelf";
-import { Label } from "@/components/ui/label";
 
 interface BookInfoEditorProps {
   userBookId: string;
