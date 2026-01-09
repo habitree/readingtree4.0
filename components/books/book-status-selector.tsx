@@ -10,18 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { updateBookStatus } from "@/app/actions/books";
 import { moveBookToBookshelf, getBookshelves } from "@/app/actions/bookshelves";
-import { BookshelfSelector } from "@/components/bookshelves/bookshelf-selector";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { BookStatusBadge } from "./book-status-badge";
@@ -46,18 +36,13 @@ export function BookStatusSelector({
 }: BookStatusSelectorProps) {
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showBookshelfDialog, setShowBookshelfDialog] = useState(false);
-  const [selectedBookshelfId, setSelectedBookshelfId] = useState<string>(
-    currentBookshelfId || ""
-  );
   const [bookshelves, setBookshelves] = useState<Bookshelf[]>([]);
   const [isLoadingBookshelves, setIsLoadingBookshelves] = useState(false);
 
   useEffect(() => {
-    if (showBookshelfDialog) {
-      loadBookshelves();
-    }
-  }, [showBookshelfDialog]);
+    // 컴포넌트 마운트 시 서재 목록 로드
+    loadBookshelves();
+  }, []);
 
   const loadBookshelves = async () => {
     setIsLoadingBookshelves(true);
@@ -95,17 +80,15 @@ export function BookStatusSelector({
     }
   };
 
-  const handleBookshelfChange = async () => {
-    if (!selectedBookshelfId || selectedBookshelfId === currentBookshelfId) {
-      setShowBookshelfDialog(false);
+  const handleBookshelfChange = async (bookshelfId: string) => {
+    if (!bookshelfId || bookshelfId === currentBookshelfId) {
       return;
     }
 
     setIsUpdating(true);
     try {
-      await moveBookToBookshelf(userBookId, selectedBookshelfId);
+      await moveBookToBookshelf(userBookId, bookshelfId);
       toast.success("서재가 변경되었습니다.");
-      setShowBookshelfDialog(false);
       router.refresh();
     } catch (error) {
       console.error("서재 변경 오류:", error);
@@ -125,96 +108,63 @@ export function BookStatusSelector({
     { value: "paused", label: "중단" },
   ];
 
-  const currentBookshelf = bookshelves.find((b) => b.id === selectedBookshelfId);
+  const currentBookshelf = bookshelves.find((b) => b.id === currentBookshelfId);
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" disabled={isUpdating}>
-            {isUpdating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                변경 중...
-              </>
-            ) : (
-              <>
-                상태 변경
-                <BookStatusBadge status={currentStatus} className="ml-2" />
-              </>
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuLabel>독서 상태</DropdownMenuLabel>
-          {statusOptions.map((option) => (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() => handleStatusChange(option.value)}
-              disabled={option.value === currentStatus || isUpdating}
-            >
-              {option.label}
-              {option.value === currentStatus && " ✓"}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" disabled={isUpdating}>
+          {isUpdating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              변경 중...
+            </>
+          ) : (
+            <>
+              상태 변경
+              <BookStatusBadge status={currentStatus} className="ml-2" />
+            </>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56">
+        <DropdownMenuLabel>독서 상태</DropdownMenuLabel>
+        {statusOptions.map((option) => (
           <DropdownMenuItem
-            onClick={() => setShowBookshelfDialog(true)}
-            disabled={isUpdating}
+            key={option.value}
+            onClick={() => handleStatusChange(option.value)}
+            disabled={option.value === currentStatus || isUpdating}
+            className={option.value === currentStatus ? "bg-accent" : ""}
           >
-            <BookOpen className="mr-2 h-4 w-4" />
-            서재 변경
+            {option.label}
+            {option.value === currentStatus && " ✓"}
           </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <Dialog open={showBookshelfDialog} onOpenChange={setShowBookshelfDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>서재 변경</DialogTitle>
-            <DialogDescription>
-              이 책이 속한 서재를 선택하세요.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="bookshelf-select">서재</Label>
-              {isLoadingBookshelves ? (
-                <div className="h-10 bg-muted animate-pulse rounded-md" />
-              ) : (
-                <BookshelfSelector
-                  value={selectedBookshelfId}
-                  onValueChange={setSelectedBookshelfId}
-                  placeholder="서재를 선택하세요"
-                />
-              )}
-              {currentBookshelf && (
-                <p className="text-xs text-muted-foreground">
-                  현재: {currentBookshelf.name}
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowBookshelfDialog(false)}
-              disabled={isUpdating}
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>서재</DropdownMenuLabel>
+        {isLoadingBookshelves ? (
+          <DropdownMenuItem disabled>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            로딩 중...
+          </DropdownMenuItem>
+        ) : bookshelves.length === 0 ? (
+          <DropdownMenuItem disabled>서재가 없습니다</DropdownMenuItem>
+        ) : (
+          bookshelves.map((bookshelf) => (
+            <DropdownMenuItem
+              key={bookshelf.id}
+              onClick={() => handleBookshelfChange(bookshelf.id)}
+              disabled={bookshelf.id === currentBookshelfId || isUpdating}
+              className={bookshelf.id === currentBookshelfId ? "bg-accent" : ""}
             >
-              취소
-            </Button>
-            <Button
-              type="button"
-              onClick={handleBookshelfChange}
-              disabled={isUpdating || !selectedBookshelfId || selectedBookshelfId === currentBookshelfId}
-            >
-              {isUpdating ? "변경 중..." : "변경"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+              <BookOpen className="mr-2 h-4 w-4" />
+              {bookshelf.name}
+              {bookshelf.id === currentBookshelfId && " ✓"}
+            </DropdownMenuItem>
+          ))
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

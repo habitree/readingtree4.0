@@ -191,12 +191,6 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
               userBookId={userBook.id}
               currentBookshelfId={(userBook as any).bookshelf_id || null}
             />
-            <Button asChild variant="outline">
-              <Link href={`/notes/new?bookId=${userBook.id}`}>
-                <PenTool className="mr-2 h-4 w-4" />
-                기록 작성
-              </Link>
-            </Button>
             {!bookId.startsWith("sample-") && (
               <BookDeleteButton
                 userBookId={userBook.id}
