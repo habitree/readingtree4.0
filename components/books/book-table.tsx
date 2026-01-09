@@ -4,12 +4,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { BookStatusBadge } from "./book-status-badge";
 import { BookNotesPreview } from "./book-notes-preview";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
@@ -51,8 +52,27 @@ export function BookTable({ books }: BookTableProps) {
   const [showBookshelfDialog, setShowBookshelfDialog] = useState<string | null>(null);
   const [selectedBookshelfId, setSelectedBookshelfId] = useState<Record<string, string>>({});
   const [bookshelves, setBookshelves] = useState<Bookshelf[]>([]);
+  const [bookshelvesMap, setBookshelvesMap] = useState<Record<string, Bookshelf>>({});
   const [isLoadingBookshelves, setIsLoadingBookshelves] = useState(false);
   const [updatingBookshelf, setUpdatingBookshelf] = useState<Record<string, boolean>>({});
+
+  // 서재 목록 로드
+  useEffect(() => {
+    async function loadBookshelves() {
+      try {
+        const data = await getBookshelves();
+        setBookshelves(data);
+        const map: Record<string, Bookshelf> = {};
+        data.forEach((b) => {
+          map[b.id] = b;
+        });
+        setBookshelvesMap(map);
+      } catch (error) {
+        console.error("서재 목록 조회 오류:", error);
+      }
+    }
+    loadBookshelves();
+  }, []);
 
   const handleToggleNotes = async (bookId: string, userBookId: string) => {
     if (expandedBookId === userBookId) {
@@ -294,47 +314,98 @@ export function BookTable({ books }: BookTableProps) {
 
                   {/* 상태 */}
                   <td className="px-4 py-4">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        {updatingStatus[item.id] ? (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>변경 중...</span>
-                          </div>
-                        ) : (
-                          <Select
-                            value={item.status}
-                            onValueChange={(value) =>
-                              handleStatusChange(item.id, value as ReadingStatus)
-                            }
-                            disabled={updatingStatus[item.id]}
-                          >
-                            <SelectTrigger className="w-[140px] h-9">
-                              <div className="flex items-center justify-between w-full">
-                                <BookStatusBadge status={item.status} />
+                    <div className="space-y-2">
+                      {updatingStatus[item.id] ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>변경 중...</span>
+                        </div>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-[180px] h-9 justify-between"
+                              disabled={updatingStatus[item.id]}
+                            >
+                              <div className="flex flex-col items-start gap-0.5">
+                                <span className="text-sm leading-tight">
+                                  {item.status === "not_started" && "읽기전"}
+                                  {item.status === "reading" && "읽는 중"}
+                                  {item.status === "completed" && "완독"}
+                                  {item.status === "rereading" && "재독"}
+                                  {item.status === "paused" && "중단"}
+                                </span>
+                                {(() => {
+                                  const bookshelfId = (item as any).bookshelf_id;
+                                  const bookshelf = bookshelfId ? bookshelvesMap[bookshelfId] : null;
+                                  return bookshelf ? (
+                                    <span className="text-xs text-muted-foreground leading-tight">
+                                      {bookshelf.name}
+                                    </span>
+                                  ) : null;
+                                })()}
                               </div>
-                              <SelectValue className="sr-only" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="not_started">읽기전</SelectItem>
-                              <SelectItem value="reading">읽는 중</SelectItem>
-                              <SelectItem value="completed">완독</SelectItem>
-                              <SelectItem value="rereading">재독</SelectItem>
-                              <SelectItem value="paused">중단</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleOpenBookshelfDialog(item.id, (item as any).bookshelf_id)}
-                        disabled={updatingStatus[item.id] || updatingBookshelf[item.id]}
-                        className="w-[140px] h-8 text-xs"
-                      >
-                        <BookOpenIcon className="w-3 h-3 mr-1" />
-                        서재 변경
-                      </Button>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="w-[180px]">
+                            <DropdownMenuLabel>상태</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(item.id, "not_started")}
+                              disabled={item.status === "not_started" || updatingStatus[item.id]}
+                              className={item.status === "not_started" ? "bg-accent" : ""}
+                            >
+                              읽기전
+                              {item.status === "not_started" && " ✓"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(item.id, "reading")}
+                              disabled={item.status === "reading" || updatingStatus[item.id]}
+                              className={item.status === "reading" ? "bg-accent" : ""}
+                            >
+                              읽는 중
+                              {item.status === "reading" && " ✓"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(item.id, "completed")}
+                              disabled={item.status === "completed" || updatingStatus[item.id]}
+                              className={item.status === "completed" ? "bg-accent" : ""}
+                            >
+                              완독
+                              {item.status === "completed" && " ✓"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(item.id, "rereading")}
+                              disabled={item.status === "rereading" || updatingStatus[item.id]}
+                              className={item.status === "rereading" ? "bg-accent" : ""}
+                            >
+                              재독
+                              {item.status === "rereading" && " ✓"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleStatusChange(item.id, "paused")}
+                              disabled={item.status === "paused" || updatingStatus[item.id]}
+                              className={item.status === "paused" ? "bg-accent" : ""}
+                            >
+                              중단
+                              {item.status === "paused" && " ✓"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>서재</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => handleOpenBookshelfDialog(item.id, (item as any).bookshelf_id)}
+                              disabled={updatingStatus[item.id] || updatingBookshelf[item.id]}
+                            >
+                              <BookOpenIcon className="mr-2 h-4 w-4" />
+                              {(() => {
+                                const bookshelfId = (item as any).bookshelf_id;
+                                const bookshelf = bookshelfId ? bookshelvesMap[bookshelfId] : null;
+                                return bookshelf ? bookshelf.name : "서재 선택";
+                              })()}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </td>
 
