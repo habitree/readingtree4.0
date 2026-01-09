@@ -49,12 +49,6 @@ export function BookStatusSelector({
     try {
       const data = await getBookshelves();
       setBookshelves(data);
-      if (!selectedBookshelfId && data.length > 0) {
-        const mainBookshelf = data.find((b) => b.is_main);
-        if (mainBookshelf) {
-          setSelectedBookshelfId(mainBookshelf.id);
-        }
-      }
     } catch (error) {
       console.error("서재 목록 조회 오류:", error);
     } finally {
