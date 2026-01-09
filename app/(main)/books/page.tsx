@@ -106,12 +106,17 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
           </p>
         </div>
         {!isGuest && (
-          <Button asChild>
-            <Link href="/books/search">
-              <Plus className="mr-2 h-4 w-4" />
-              책 추가
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/bookshelves">서재 관리</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/books/search">
+                <Plus className="mr-2 h-4 w-4" />
+                책 추가
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 

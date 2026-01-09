@@ -27,7 +27,8 @@ export interface AddBookInput {
 export async function addBook(
   bookData: AddBookInput,
   status: ReadingStatus = "reading",
-  user?: User | null
+  user?: User | null,
+  bookshelfId?: string | null
 ) {
   const supabase = await createServerSupabaseClient();
 
@@ -144,12 +145,41 @@ export async function addBook(
     throw new Error("이미 추가된 책입니다.");
   }
 
+  // bookshelf_id 결정: 제공되지 않으면 메인 서재 사용
+  let targetBookshelfId = bookshelfId;
+  if (!targetBookshelfId) {
+    const { data: mainBookshelf } = await supabase
+      .from("bookshelves")
+      .select("id")
+      .eq("user_id", currentUser.id)
+      .eq("is_main", true)
+      .maybeSingle();
+
+    if (!mainBookshelf) {
+      throw new Error("메인 서재를 찾을 수 없습니다. 서재를 먼저 생성해주세요.");
+    }
+    targetBookshelfId = mainBookshelf.id;
+  } else {
+    // 제공된 bookshelf_id가 사용자의 서재인지 확인
+    const { data: bookshelf } = await supabase
+      .from("bookshelves")
+      .select("id")
+      .eq("id", targetBookshelfId)
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+    if (!bookshelf) {
+      throw new Error("서재를 찾을 수 없거나 권한이 없습니다.");
+    }
+  }
+
   // UserBooks에 추가
   const { data: newUserBook, error: userBookError } = await supabase
     .from("user_books")
     .insert({
       user_id: currentUser.id,
       book_id: bookId,
+      bookshelf_id: targetBookshelfId,
       status,
       started_at: new Date().toISOString(),
     })
@@ -407,7 +437,11 @@ export async function updateBookInfo(
  * @param status 필터링할 상태 (선택)
  * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
-export async function getUserBooks(status?: ReadingStatus, user?: User | null) {
+export async function getUserBooks(
+  status?: ReadingStatus,
+  user?: User | null,
+  bookshelfId?: string | null
+) {
   const supabase = await createServerSupabaseClient();
 
   // 현재 사용자 확인
@@ -529,6 +563,25 @@ export async function getUserBooks(status?: ReadingStatus, user?: User | null) {
     .eq("user_id", currentUser.id)
     .order("created_at", { ascending: false });
 
+  // bookshelfId 필터링
+  // null이거나 제공되지 않으면 모든 서재의 책 조회 (메인 서재 뷰)
+  // 특정 서재 ID가 제공되면 해당 서재의 책만 조회
+  if (bookshelfId) {
+    // 메인 서재인지 확인
+    const { data: bookshelf } = await supabase
+      .from("bookshelves")
+      .select("is_main")
+      .eq("id", bookshelfId)
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+    // 메인 서재가 아니면 해당 서재의 책만 조회
+    if (bookshelf && !bookshelf.is_main) {
+      query = query.eq("bookshelf_id", bookshelfId);
+    }
+    // 메인 서재면 필터링하지 않음 (모든 서재의 책 조회)
+  }
+
   if (status) {
     query = query.eq("status", status);
   }
@@ -592,7 +645,8 @@ export interface BookStats {
 export async function getUserBooksWithNotes(
   status?: ReadingStatus,
   query?: string,
-  user?: User | null
+  user?: User | null,
+  bookshelfId?: string | null
 ): Promise<{
   books: BookWithNotes[];
   stats: BookStats;
@@ -668,6 +722,25 @@ export async function getUserBooksWithNotes(
     )
     .eq("user_id", currentUser.id)
     .order("created_at", { ascending: false });
+
+  // bookshelfId 필터링
+  // null이거나 제공되지 않으면 모든 서재의 책 조회 (메인 서재 뷰)
+  // 특정 서재 ID가 제공되면 해당 서재의 책만 조회
+  if (bookshelfId) {
+    // 메인 서재인지 확인
+    const { data: bookshelf } = await supabase
+      .from("bookshelves")
+      .select("is_main")
+      .eq("id", bookshelfId)
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+    // 메인 서재가 아니면 해당 서재의 책만 조회
+    if (bookshelf && !bookshelf.is_main) {
+      booksQuery = booksQuery.eq("bookshelf_id", bookshelfId);
+    }
+    // 메인 서재면 필터링하지 않음 (모든 서재의 책 조회)
+  }
 
   // 상태 필터 적용
   if (status) {
