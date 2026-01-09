@@ -20,6 +20,7 @@ export interface UserBook {
   id: string;
   user_id: string;
   book_id: string;
+  bookshelf_id: string;
   status: ReadingStatus;
   started_at: string;
   completed_at: string | null;

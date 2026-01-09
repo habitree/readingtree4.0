@@ -34,12 +34,13 @@ Habitree Reading Hub는 사용자의 독서 활동을 관리하고 공유하는 
 
 1. **Users (사용자)**: 인증된 사용자의 프로필 정보
 2. **Books (책)**: 공개 책 정보 (ISBN, 제목, 저자 등)
-3. **UserBooks (사용자-책 관계)**: 사용자가 읽는 책과 독서 상태
-4. **Notes (기록)**: 사용자가 책에 남긴 인용구, 메모, 사진, 전사 등
-5. **Groups (독서모임)**: 독서 그룹 정보
-6. **GroupMembers (모임 멤버)**: 그룹 멤버십 및 역할
-7. **GroupBooks (모임 책)**: 그룹에서 함께 읽는 책
-8. **GroupNotes (모임 공유 기록)**: 그룹에 공유된 기록
+3. **Bookshelves (서재)**: 사용자의 서재 정보 (메인 서재 및 하위 서재)
+4. **UserBooks (사용자-책 관계)**: 사용자가 읽는 책과 독서 상태
+5. **Notes (기록)**: 사용자가 책에 남긴 인용구, 메모, 사진, 전사 등
+6. **Groups (독서모임)**: 독서 그룹 정보
+7. **GroupMembers (모임 멤버)**: 그룹 멤버십 및 역할
+8. **GroupBooks (모임 책)**: 그룹에서 함께 읽는 책
+9. **GroupNotes (모임 공유 기록)**: 그룹에 공유된 기록
 
 ---
 
@@ -216,6 +217,7 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 - `id` (UUID, PK): 기본 키
 - `user_id` (UUID, NOT NULL): 사용자 ID (`users(id)` 참조)
 - `book_id` (UUID, NOT NULL): 책 ID (`books(id)` 참조)
+- `bookshelf_id` (UUID, NOT NULL): 서재 ID (`bookshelves(id)` 참조)
 - `status` (reading_status, DEFAULT 'reading'): 독서 상태
 - `started_at` (TIMESTAMP WITH TIME ZONE, DEFAULT NOW()): 시작일
 - `completed_at` (TIMESTAMP WITH TIME ZONE): 완독일
@@ -226,11 +228,13 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 **관계 정의**:
 - `user_id` → `users(id)` (ON DELETE CASCADE)
 - `book_id` → `books(id)` (ON DELETE CASCADE)
+- `bookshelf_id` → `bookshelves(id)` (ON DELETE SET NULL)
 
 **인덱스**:
 - `idx_user_books_user_id`: 사용자별 책 목록 조회용
 - `idx_user_books_book_id`: 책별 사용자 목록 조회용
 - `idx_user_books_status`: 상태별 필터링용
+- `idx_user_books_bookshelf_id`: 서재별 책 조회용
 
 **RLS 정책 요약**:
 - **SELECT**: 자신의 책 또는 샘플 책 조회 가능 (`auth.uid() = user_id OR book.is_sample = TRUE`)
@@ -240,7 +244,47 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 
 ---
 
-### 4.4 notes (기록)
+### 4.4 bookshelves (서재)
+
+**목적**: 사용자의 서재 정보를 관리합니다. 메인 서재(통합 뷰)와 하위 서재(개별 관리)를 지원합니다.
+
+**소유 구조**: 개인 (각 사용자는 자신의 서재만 소유)
+
+**주요 컬럼**:
+- `id` (UUID, PK): 기본 키
+- `user_id` (UUID, NOT NULL): 사용자 ID (`auth.users(id)` 참조)
+- `name` (VARCHAR(100), NOT NULL): 서재 이름
+- `description` (TEXT): 서재 설명 (선택 사항)
+- `is_main` (BOOLEAN, DEFAULT FALSE): 메인 서재 여부 (통합 뷰)
+- `order` (INTEGER, DEFAULT 0): 정렬 순서
+- `is_public` (BOOLEAN, DEFAULT FALSE): 공개 여부 (향후 공유 기능용)
+- `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
+- **UNIQUE 제약**: `(user_id, is_main)` WHERE `is_main = TRUE` - 사용자당 메인 서재는 1개만
+- **CHECK 제약**: `order >= 0` - 정렬 순서는 0 이상
+
+**관계 정의**:
+- `user_id` → `auth.users(id)` (ON DELETE CASCADE)
+- `id` ← `user_books(bookshelf_id)` (ON DELETE SET NULL)
+
+**인덱스**:
+- `idx_bookshelves_user_id`: 사용자별 서재 조회용
+- `idx_bookshelves_is_main`: 메인 서재 조회용
+- `idx_bookshelves_order`: 정렬 순서 조회용
+
+**RLS 정책 요약**:
+- **SELECT**: 자신의 서재 또는 공개 서재 조회 가능 (`auth.uid() = user_id OR is_public = TRUE`)
+- **INSERT**: 자신의 서재만 생성 가능 (`auth.uid() = user_id`)
+- **UPDATE**: 자신의 서재만 수정 가능 (`auth.uid() = user_id`)
+- **DELETE**: 자신의 서재만 삭제 가능 (`auth.uid() = user_id AND is_main = FALSE`)
+
+**특수 규칙**:
+- 메인 서재(`is_main = TRUE`)는 사용자당 1개만 존재하며, 삭제할 수 없음
+- 메인 서재는 모든 하위 서재의 책을 통합하여 보여주는 뷰 역할
+- 실제 책 데이터는 `user_books.bookshelf_id`에 저장되며, 메인 서재 조회 시 모든 서재의 책을 포함
+
+---
+
+### 4.5 notes (기록)
 
 **목적**: 사용자가 책에 남긴 다양한 형태의 기록(인용구, 메모, 사진, 전사)을 저장합니다.
 
@@ -662,6 +706,20 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
 ---
 
 ## 7. 변경 로그(Change Log)
+
+### 2026-01-09 (서재 상하구조 개편)
+
+- **변경 내용**: 서재 기능을 상하 구조로 개편
+  - `bookshelves` 테이블 생성: 사용자의 서재 정보 관리
+    - 메인 서재(`is_main = TRUE`): 통합 뷰 역할, 모든 하위 서재의 책을 통합 표시
+    - 하위 서재: 개별 서재 관리, 사용자가 생성/수정/삭제 가능
+  - `user_books` 테이블에 `bookshelf_id` 컬럼 추가: 책이 속한 서재 정보
+- **영향받는 테이블**:
+  - `bookshelves` (신규)
+  - `user_books` (수정: `bookshelf_id` 컬럼 추가)
+- **마이그레이션 파일**: `migration-202601091224__bookshelves__create_table.sql`
+- **목적**: 여러 서재를 관리할 수 있도록 하고, 메인 서재는 통합 뷰로, 하위 서재는 개별 관리로 구분
+- **향후 확장**: `bookshelf_shares` 테이블을 통한 서재별 공유 기능 예정
 
 ### 2025-01 (초기 스키마)
 
