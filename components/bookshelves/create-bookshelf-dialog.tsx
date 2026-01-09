@@ -47,9 +47,13 @@ export function CreateBookshelfDialog() {
       router.refresh();
     } catch (error) {
       console.error("서재 생성 오류:", error);
-      toast.error(
-        error instanceof Error ? error.message : "서재 생성에 실패했습니다."
-      );
+      const errorMessage = error instanceof Error ? error.message : "서재 생성에 실패했습니다.";
+      toast.error(errorMessage);
+      // 최대 개수 제한 오류인 경우 다이얼로그를 닫지 않음
+      if (errorMessage.includes("최대 5개")) {
+        setIsSubmitting(false);
+        return;
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -68,7 +72,7 @@ export function CreateBookshelfDialog() {
           <DialogHeader>
             <DialogTitle>새 서재 만들기</DialogTitle>
             <DialogDescription>
-              책을 분류하여 관리할 수 있는 서재를 만들어보세요.
+              책을 분류하여 관리할 수 있는 서재를 만들어보세요. (최대 5개까지 등록 가능)
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

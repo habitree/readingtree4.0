@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { BookshelfTree } from "./bookshelf-tree";
 
 /**
  * 사이드바 네비게이션 아이템 타입
@@ -83,6 +84,11 @@ export function Sidebar() {
               const Icon = item.icon;
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
+              // "내 서재" 항목은 서재 트리로 대체
+              if (item.href === "/books" && user) {
+                return null;
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -110,6 +116,9 @@ export function Sidebar() {
                 </Link>
               );
             })}
+          
+          {/* 서재 트리 (로그인 사용자만) */}
+          {user && <BookshelfTree />}
         </nav>
       </div>
     </aside>

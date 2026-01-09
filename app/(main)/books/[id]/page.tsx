@@ -112,6 +112,7 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
                     ? [userBook.completed_at]
                     : null
                 }
+                currentBookshelfId={(userBook as any).bookshelf_id || null}
               />
             </div>
             {userBook.reading_reason ? (
