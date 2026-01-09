@@ -14,7 +14,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/app/actions/auth";
-import { ThemeSelector } from "@/components/theme/theme-selector";
 
 /**
  * 관리자 여부 확인
@@ -48,9 +47,6 @@ export function Header() {
 
         {/* 우측 메뉴 */}
         <div className="flex items-center gap-2 ml-auto">
-
-          {/* 테마 선택 */}
-          <ThemeSelector />
 
           {/* 알림 */}
           <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">

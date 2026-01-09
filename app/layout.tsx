@@ -3,7 +3,6 @@ import { Inter, Noto_Serif_KR } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/contexts/auth-context";
-import { ThemeProvider } from "@/components/theme/theme-provider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const notoSerifKr = Noto_Serif_KR({
@@ -42,6 +41,9 @@ export const viewport: Viewport = {
  * - 미들웨어에서 이미 세션을 갱신하므로, 레이아웃에서는 조회하지 않음
  * - 각 페이지에서 필요할 때만 getCurrentUser() 호출
  * - AuthProvider는 클라이언트에서 onAuthStateChange로 세션 동기화
+ * 
+ * 테마: 숲 테마(forest)로 고정
+ * - html 태그에 직접 "forest" 클래스 적용
  */
 export default function RootLayout({
   children,
@@ -53,19 +55,12 @@ export default function RootLayout({
   const initialUser = null;
 
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang="ko" className="forest">
       <body className={`${inter.variable} ${notoSerifKr.variable} font-sans`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="forest"
-          enableSystem={false}
-          themes={["light", "dark", "forest"]}
-        >
-          <AuthProvider initialUser={initialUser}>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+        <AuthProvider initialUser={initialUser}>
+          {children}
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );
