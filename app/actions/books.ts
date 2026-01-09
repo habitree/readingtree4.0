@@ -602,6 +602,7 @@ export interface BookWithNotes {
   completed_at: string | null;
   completed_dates?: any; // JSONB 배열
   started_at?: string;
+  bookshelf_id?: string | null;
   books: {
     id: string;
     title: string;
@@ -707,6 +708,7 @@ export async function getUserBooksWithNotes(
       completed_dates,
       started_at,
       reading_reason,
+      bookshelf_id,
       books (
         id,
         title,
