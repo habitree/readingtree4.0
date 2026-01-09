@@ -14,16 +14,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Pencil, Calendar, Plus, X } from "lucide-react";
+import { Pencil, Calendar, Plus, X, BookOpen } from "lucide-react";
 import { updateBookInfo } from "@/app/actions/books";
+import { moveBookToBookshelf } from "@/app/actions/bookshelves";
+import { getBookshelves } from "@/app/actions/bookshelves";
+import { BookshelfSelector } from "@/components/bookshelves/bookshelf-selector";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Bookshelf } from "@/types/bookshelf";
+import { Label } from "@/components/ui/label";
 
 interface BookInfoEditorProps {
   userBookId: string;
   currentReadingReason?: string | null;
   currentStartedAt?: string | null;
   currentCompletedDates?: string[] | null;
+  currentBookshelfId?: string | null;
 }
 
 /**
@@ -35,6 +42,7 @@ export function BookInfoEditor({
   currentReadingReason,
   currentStartedAt,
   currentCompletedDates,
+  currentBookshelfId,
 }: BookInfoEditorProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -47,7 +55,35 @@ export function BookInfoEditor({
       ? currentCompletedDates.map((date) => new Date(date).toISOString().split("T")[0])
       : []
   );
+  const [selectedBookshelfId, setSelectedBookshelfId] = useState<string>(
+    currentBookshelfId || ""
+  );
+  const [bookshelves, setBookshelves] = useState<Bookshelf[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingBookshelves, setIsLoadingBookshelves] = useState(true);
+
+  useEffect(() => {
+    async function loadBookshelves() {
+      try {
+        const data = await getBookshelves();
+        setBookshelves(data);
+        // 현재 서재가 없으면 메인 서재로 설정
+        if (!selectedBookshelfId && data.length > 0) {
+          const mainBookshelf = data.find((b) => b.is_main);
+          if (mainBookshelf) {
+            setSelectedBookshelfId(mainBookshelf.id);
+          }
+        }
+      } catch (error) {
+        console.error("서재 목록 조회 오류:", error);
+      } finally {
+        setIsLoadingBookshelves(false);
+      }
+    }
+    if (open) {
+      loadBookshelves();
+    }
+  }, [open, selectedBookshelfId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,12 +98,18 @@ export function BookInfoEditor({
         .filter((date) => date.trim() !== "")
         .map((date) => new Date(date).toISOString());
 
+      // 책 정보 업데이트
       await updateBookInfo(
         userBookId,
         readingReason || null,
         startedAtISO,
         completedDatesISO.length > 0 ? completedDatesISO : null
       );
+
+      // 서재 변경 (변경된 경우만)
+      if (selectedBookshelfId && selectedBookshelfId !== currentBookshelfId) {
+        await moveBookToBookshelf(userBookId, selectedBookshelfId);
+      }
 
       toast.success("책 정보가 업데이트되었습니다.");
       setOpen(false);
@@ -110,10 +152,25 @@ export function BookInfoEditor({
           <DialogHeader>
             <DialogTitle>책 정보 수정</DialogTitle>
             <DialogDescription>
-              읽는 이유, 시작일, 완독일자를 수정할 수 있습니다.
+              읽는 이유, 시작일, 완독일자, 서재를 수정할 수 있습니다.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="bookshelf">서재</Label>
+              {isLoadingBookshelves ? (
+                <div className="h-10 bg-muted animate-pulse rounded-md" />
+              ) : (
+                <BookshelfSelector
+                  value={selectedBookshelfId}
+                  onValueChange={setSelectedBookshelfId}
+                  placeholder="서재를 선택하세요"
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                이 책이 속한 서재를 선택하세요.
+              </p>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="reading-reason">읽는 이유</Label>
               <Textarea

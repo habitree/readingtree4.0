@@ -148,6 +148,18 @@ export async function createBookshelf(
     throw new Error("로그인이 필요합니다.");
   }
 
+  // 서재 개수 확인 (메인 서재 제외, 최대 5개)
+  const { data: existingBookshelves } = await supabase
+    .from("bookshelves")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_main", false);
+
+  const subBookshelfCount = existingBookshelves?.length || 0;
+  if (subBookshelfCount >= 5) {
+    throw new Error("서재는 최대 5개까지 등록할 수 있습니다.");
+  }
+
   // 사용자의 최대 order 값 조회
   const { data: maxOrderData } = await supabase
     .from("bookshelves")
