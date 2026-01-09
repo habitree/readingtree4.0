@@ -72,8 +72,8 @@ export default async function BookshelfDetailPage({
       bookshelfId
     );
 
-    // BookList/BookTable이 기대하는 형식으로 변환
-    const formattedBooks = books.map((book) => ({
+    // BookList가 기대하는 형식으로 변환 (BookTable은 BookWithNotes를 직접 사용)
+    const formattedBooksForList = books.map((book) => ({
       id: book.id,
       status: book.status,
       books: {
@@ -126,7 +126,7 @@ export default async function BookshelfDetailPage({
             </span>
           </div>
 
-          {formattedBooks.length === 0 ? (
+          {books.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">이 서재에 책이 없습니다.</p>
               <Button asChild className="mt-4">
@@ -134,9 +134,9 @@ export default async function BookshelfDetailPage({
               </Button>
             </div>
           ) : view === "grid" ? (
-            <BookList books={formattedBooks} />
+            <BookList books={formattedBooksForList} />
           ) : (
-            <BookTable books={formattedBooks} />
+            <BookTable books={books} />
           )}
         </div>
       </div>
