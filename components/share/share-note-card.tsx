@@ -118,17 +118,17 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
             <div className="w-8 h-8 bg-forest-600 dark:bg-forest-500 rounded-lg flex items-center justify-center shadow-md shadow-forest-200 dark:shadow-forest-900/20 transition-transform hover:scale-105 shrink-0">
                 <Trees className="w-4 h-4 text-white" />
             </div>
-            <div className="flex flex-col justify-center gap-0.5 overflow-visible">
-                <span className={cn(
-                    "text-sm font-black tracking-tight text-slate-900 dark:text-slate-100",
-                    hideActions ? "leading-tight translate-y-[-1.5px]" : "leading-none"
-                )}>
-                    Habitree
-                </span>
-                <span className={cn(
-                    "text-[10px] font-bold text-slate-400 uppercase tracking-tight",
-                    hideActions ? "leading-tight translate-y-[-2px]" : "leading-none"
-                )}>Your Intelligence Forest</span>
+            <div className="flex flex-col justify-center gap-0 overflow-visible h-8">
+                <div className="block h-[18px] leading-[18px] overflow-visible">
+                    <span className="text-sm font-black tracking-tight text-slate-900 dark:text-slate-100 italic">
+                        Habitree
+                    </span>
+                </div>
+                <div className="block h-[12px] leading-[12px] overflow-visible">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                        Your Intelligence Forest
+                    </span>
+                </div>
             </div>
         </div>
     );
@@ -185,12 +185,9 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                     {book?.author || "저자 미상"}
                                 </p>
                                 {note.page_number && (
-                                    <div className="text-[10px] text-slate-400 font-bold mt-2 flex items-center gap-1.5 uppercase tracking-widest overflow-visible">
-                                        <BookOpen className="w-3 h-3 text-forest-400 shrink-0" />
-                                        <span className={cn(
-                                            "inline-block",
-                                            hideActions ? "leading-tight translate-y-[-1.5px]" : "leading-none"
-                                        )}>
+                                    <div className="h-4 leading-4 mt-2 overflow-visible">
+                                        <BookOpen className="w-3 h-3 text-forest-400 shrink-0 inline-block align-middle mr-1.5" />
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest inline-block align-middle">
                                             {note.page_number}P Record
                                         </span>
                                     </div>
@@ -281,21 +278,15 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
 
                         <div className="relative z-10 flex-1 flex flex-col h-full">
                             {/* 헤더: 타입 & 날짜 */}
-                            <div className="flex justify-between items-center mb-10 pb-4 border-b border-slate-100 dark:border-slate-800 overflow-visible">
-                                <Badge variant="outline" className="px-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 overflow-visible min-w-fit h-auto flex items-center justify-center py-1">
-                                    <span className={cn(
-                                        "text-[10px] font-black uppercase tracking-widest whitespace-nowrap",
-                                        hideActions ? "leading-tight translate-y-[-2px]" : "leading-none"
-                                    )}>
+                            <div className="flex justify-between items-center mb-10 pb-4 border-b border-slate-100 dark:border-slate-800 overflow-visible h-10">
+                                <Badge variant="outline" className="px-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 overflow-visible min-w-fit h-6 py-0 flex items-center justify-center">
+                                    <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap leading-[24px] h-6 block">
                                         {typeLabel}
                                     </span>
                                 </Badge>
-                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 overflow-visible">
-                                    <Calendar className="w-3.5 h-3.5 text-forest-500 shrink-0" />
-                                    <span className={cn(
-                                        "inline-block whitespace-nowrap",
-                                        hideActions ? "leading-tight translate-y-[-1.5px]" : "leading-none"
-                                    )}>
+                                <div className="h-6 leading-6 overflow-visible">
+                                    <Calendar className="w-3.5 h-3.5 text-forest-500 shrink-0 inline-block align-middle mr-2" />
+                                    <span className="text-xs font-bold text-slate-400 whitespace-nowrap inline-block align-middle">
                                         {formattedDate}
                                     </span>
                                 </div>
@@ -322,12 +313,11 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                 {/* 내 생각 (Reflection) Main */}
                                 {hasMemo && (
                                     <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-2 overflow-visible">
-                                            <span className="h-px w-6 bg-forest-500 shrink-0"></span>
+                                        <div className="flex items-center gap-2 mb-2 overflow-visible h-6 leading-6">
+                                            <span className="h-px w-6 bg-forest-500 shrink-0 inline-block align-middle"></span>
                                             <span className={cn(
-                                                "font-black text-forest-500 uppercase tracking-widest whitespace-nowrap",
-                                                hasImage ? "text-xs" : "text-sm md:text-base",
-                                                hideActions ? "leading-tight translate-y-[-1.5px]" : "leading-none"
+                                                "font-black text-forest-500 uppercase tracking-widest whitespace-nowrap inline-block align-middle",
+                                                hasImage ? "text-xs" : "text-sm md:text-base"
                                             )}>My Reflection</span>
                                         </div>
                                         <ExpandableText
@@ -377,17 +367,20 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                         </Avatar>
                                     )}
 
-                                    <div className="flex flex-col justify-center min-w-0 gap-0.5 overflow-visible pb-1">
-                                        <span className={cn(
-                                            "text-[10px] text-slate-400 font-medium",
-                                            hideActions ? "leading-tight translate-y-[-2px]" : "leading-none"
-                                        )}>Record by</span>
-                                        <span className={cn(
-                                            "font-bold text-slate-700 dark:text-slate-200 text-xs",
-                                            hideActions ? "leading-tight translate-y-[-2px]" : "leading-none truncate max-w-[100px]"
-                                        )}>
-                                            {user?.name || "익명"}
-                                        </span>
+                                    <div className="flex flex-col justify-center min-w-0 gap-0 overflow-visible h-10">
+                                        <div className="block h-[14px] leading-[14px] overflow-visible">
+                                            <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                                                Record by
+                                            </span>
+                                        </div>
+                                        <div className="block h-[18px] leading-[18px] overflow-visible">
+                                            <span className={cn(
+                                                "font-bold text-slate-700 dark:text-slate-200 text-xs whitespace-nowrap",
+                                                !hideActions && "truncate max-w-[100px]"
+                                            )}>
+                                                {user?.name || "익명"}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
