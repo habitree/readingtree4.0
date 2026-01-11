@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { BookStatusBadge } from "./book-status-badge";
+import { BookTitle } from "./book-title";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
@@ -104,7 +105,9 @@ export function BookCard({ book, userBookId, status, groupBooks }: BookCardProps
           </div>
           <div className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
             <div className="flex items-start justify-between gap-1.5 sm:gap-2">
-              <h3 className="font-semibold text-xs sm:text-sm line-clamp-2 flex-1 leading-tight">{book.title}</h3>
+              <h3 className="font-semibold text-xs sm:text-sm line-clamp-2 flex-1 leading-tight">
+                <BookTitle title={book.title} />
+              </h3>
               <BookStatusBadge status={status} className="shrink-0 scale-75 sm:scale-90" />
             </div>
             {book.author && (

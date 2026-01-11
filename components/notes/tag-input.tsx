@@ -334,11 +334,11 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
                         e.stopPropagation();
                         // preventDefault 제거 - AlertDialog 트리거를 위해 필요
                       }}
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-destructive/80 shadow-sm z-10"
+                      className="absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-destructive/90 shadow-md z-10 border-2 border-white dark:border-slate-900"
                       aria-label={`${tag} 태그 완전 삭제`}
                       title="클릭하여 완전 삭제"
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -387,11 +387,23 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
               <Badge 
                 key={index} 
                 variant="secondary"
-                className="cursor-pointer hover:bg-destructive/20 hover:border-destructive/50 transition-all px-3 py-1.5"
+                className="cursor-pointer hover:bg-destructive/20 hover:border-destructive/50 transition-all px-2.5 py-1.5 pr-1.5 flex items-center gap-1.5 group/tag"
                 onClick={() => handleTagRemove(tag)}
                 title="클릭하여 삭제"
               >
-                {tag}
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTagRemove(tag);
+                  }}
+                  className="ml-0.5 h-4 w-4 rounded-full hover:bg-destructive/30 flex items-center justify-center transition-colors shrink-0"
+                  aria-label={`${tag} 태그 제거`}
+                  title="태그 제거"
+                >
+                  <X className="h-3 w-3 text-muted-foreground group-hover/tag:text-destructive" />
+                </button>
               </Badge>
             ))}
           </div>

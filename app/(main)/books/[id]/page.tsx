@@ -16,6 +16,7 @@ import { NotesList } from "@/components/notes/notes-list";
 import { isValidUUID } from "@/lib/utils/validation";
 import { sanitizeErrorForLogging } from "@/lib/utils/validation";
 import { BookScrollHandler } from "@/components/books/book-scroll-handler";
+import { BookTitle } from "@/components/books/book-title";
 
 interface BookDetailPageProps {
   params: {
@@ -85,7 +86,13 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
         {/* 책 정보 */}
         <div className="flex-1 space-y-4 text-center sm:text-left">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{book.title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              <BookTitle 
+                title={book.title}
+                mainTitleClassName="text-2xl sm:text-3xl"
+                subtitleClassName="text-lg sm:text-xl text-muted-foreground mt-1"
+              />
+            </h1>
             {book.author && (
               <p className="text-lg text-muted-foreground mt-2">
                 {book.author}
