@@ -214,20 +214,30 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
             }
           });
 
-          // 모든 요소의 스타일 강제 적용 (정확한 렌더링 보장)
-          const allElements = clonedDoc.querySelectorAll("*");
-          allElements.forEach((el) => {
+          // 캡처 대상 요소만 스타일 강제 적용 (성능 최적화 및 오류 방지)
+          // 전체 요소에 적용하면 querySelector 오류가 발생할 수 있으므로
+          // 캡처 대상 요소와 그 자식 요소만 처리
+          const targetElements = [element, ...Array.from(element.querySelectorAll("*"))];
+          
+          targetElements.forEach((el) => {
             const htmlEl = el as HTMLElement;
             
             try {
-              // 원본 요소 찾기 (가능한 경우)
-              const originalEl = document.querySelector(
-                el.getAttribute("data-capture-id") 
-                  ? `[data-capture-id="${el.getAttribute("data-capture-id")}"]`
-                  : el.tagName + (el.className ? "." + el.className.split(" ").join(".") : "")
-              ) || el;
+              // 원본 요소 찾기 (data 속성 또는 직접 매칭)
+              let originalEl: Element | null = null;
               
-              const computedStyle = window.getComputedStyle(originalEl as Element);
+              // data-capture-id가 있으면 사용
+              const captureId = htmlEl.getAttribute("data-capture-id");
+              if (captureId) {
+                originalEl = document.querySelector(`[data-capture-id="${captureId}"]`);
+              }
+              
+              // 원본 요소를 찾지 못했으면 현재 요소 사용
+              if (!originalEl) {
+                originalEl = el as Element;
+              }
+              
+              const computedStyle = window.getComputedStyle(originalEl);
               
               // 중요한 스타일 속성 강제 적용
               htmlEl.style.fontFamily = computedStyle.fontFamily || "inherit";
@@ -255,8 +265,8 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
                 htmlEl.style.justifyContent = computedStyle.justifyContent;
               }
             } catch (error) {
-              // 스타일 적용 실패 시 무시하고 계속 진행
-              console.warn("스타일 적용 실패:", error);
+              // 스타일 적용 실패 시 무시하고 계속 진행 (오류 로그 제거)
+              // console.warn("스타일 적용 실패:", error);
             }
           });
         },
