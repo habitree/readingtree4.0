@@ -6,7 +6,7 @@
     "doc": "doc"
   },
   "scripts": {
-    "dev": "NODE_OPTIONS=--no-experimental-fetch next dev",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

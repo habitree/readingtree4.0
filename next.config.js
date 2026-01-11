@@ -1,8 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Turbopack 비활성화 (webpack 사용)
+  // Turbopack 활성화 (성능 향상)
   experimental: {
-    turbo: false,
+    turbo: {
+      // Turbopack 최적화 설정
+      resolveAlias: {
+        // 필요한 경우 별칭 설정
+      },
+      // 메모리 사용량 제한 (필요한 경우)
+      // memoryLimit: 4096,
+    },
   },
   images: {
     remotePatterns: [
