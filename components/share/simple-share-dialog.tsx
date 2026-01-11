@@ -14,7 +14,8 @@ import { Share2, Check, Image as ImageIcon, Download, Link as LinkIcon } from "l
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getImageUrl } from "@/lib/utils/image";
-import { isClipboardSupported, isMobile, downloadImage } from "@/lib/utils/device";
+import { isClipboardSupported, isMobile, isIOS, downloadImage } from "@/lib/utils/device";
+import { copyImageToClipboard, isMobileClipboardSupported } from "@/lib/utils/clipboard";
 import { ShareNoteCard } from "./share-note-card";
 import type { NoteWithBook } from "@/types/note";
 import { getUserById } from "@/app/actions/profile";
@@ -89,7 +90,12 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
   };
 
   // 2. 카드 복사 (디자인 캡처)
-  const handleCopyCardImage = async () => {
+  const handleCopyCardImage = async (e?: React.MouseEvent) => {
+    // 중복 클릭 방지
+    if (isCapturing) {
+      return;
+    }
+
     // [UPDATE] 모바일/PC 모두 captureRef(가로 고정 숨김 요소)를 우선 사용
     const targetElement = captureRef.current || cardRef.current;
 
@@ -154,26 +160,32 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           // 스탬프 적용 실패 시 원본 사용
         }
 
-        // 모바일에서도 클립보드 복사를 우선 시도
-        try {
-          // Clipboard API를 직접 시도 (isClipboardSupported 체크를 우회하여 실제 작동 여부 확인)
-          const item = new ClipboardItem({ [finalBlob.type]: finalBlob });
-          await navigator.clipboard.write([item]);
-          setCardCopied(true);
-          toast.success("카드 이미지가 클립보드에 복사되었습니다.");
+        // 모바일에서 클립보드 복사 시도
+        const clipboardSuccess = await copyImageToClipboard(finalBlob, {
+          onSuccess: () => {
+            setCardCopied(true);
+            toast.success("카드 이미지가 클립보드에 복사되었습니다.");
+            setTimeout(() => {
+              setCardCopied(false);
+            }, 2000);
+          },
+          onError: (error) => {
+            console.log("클립보드 복사 실패, 다운로드로 fallback:", error);
+          }
+        });
 
-          setTimeout(() => {
-            setCardCopied(false);
-          }, 2000);
-        } catch (clipboardError) {
-          console.log("클립보드 복사 실패, 다운로드로 fallback:", clipboardError);
-
-          // 클립보드 복사 실패 시 다운로드로 fallback
+        // 클립보드 복사 실패 시 다운로드로 fallback
+        if (!clipboardSuccess) {
           try {
             const filename = `habitree-card-${note.id}-${Date.now()}.png`;
             downloadImage(finalBlob, filename);
             setCardCopied(true);
-            toast.success("카드 이미지가 다운로드되었습니다.");
+            const isMobileDevice = isMobile();
+            toast.success(
+              isMobileDevice 
+                ? "카드 이미지가 다운로드되었습니다. 갤러리에서 확인하세요." 
+                : "카드 이미지가 다운로드되었습니다."
+            );
 
             setTimeout(() => {
               setCardCopied(false);
@@ -243,26 +255,32 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
           // 스탬프 적용 실패 시 원본 사용
         }
 
-        // 모바일에서도 클립보드 복사를 우선 시도
-        try {
-          // Clipboard API를 직접 시도 (isClipboardSupported 체크를 우회하여 실제 작동 여부 확인)
-          const item = new ClipboardItem({ [finalBlob.type]: finalBlob });
-          await navigator.clipboard.write([item]);
-          setPhotoCopied(true);
-          toast.success("원본 이미지가 클립보드에 복사되었습니다.");
+        // 모바일에서 클립보드 복사 시도
+        const clipboardSuccess = await copyImageToClipboard(finalBlob, {
+          onSuccess: () => {
+            setPhotoCopied(true);
+            toast.success("원본 이미지가 클립보드에 복사되었습니다.");
+            setTimeout(() => {
+              setPhotoCopied(false);
+            }, 2000);
+          },
+          onError: (error) => {
+            console.log("클립보드 복사 실패, 다운로드로 fallback:", error);
+          }
+        });
 
-          setTimeout(() => {
-            setPhotoCopied(false);
-          }, 2000);
-        } catch (clipboardError) {
-          console.log("클립보드 복사 실패, 다운로드로 fallback:", clipboardError);
-
-          // 클립보드 복사 실패 시 다운로드로 fallback
+        // 클립보드 복사 실패 시 다운로드로 fallback
+        if (!clipboardSuccess) {
           try {
             const filename = `habitree-image-${note.id}-${Date.now()}.png`;
             downloadImage(finalBlob, filename);
             setPhotoCopied(true);
-            toast.success("원본 이미지가 다운로드되었습니다.");
+            const isMobileDevice = isMobile();
+            toast.success(
+              isMobileDevice 
+                ? "원본 이미지가 다운로드되었습니다. 갤러리에서 확인하세요." 
+                : "원본 이미지가 다운로드되었습니다."
+            );
 
             setTimeout(() => {
               setPhotoCopied(false);
