@@ -42,7 +42,7 @@ const noteEditFormSchema = z.object({
   quoteContent: z.string().max(5000, "인상깊은 구절은 5000자 이하여야 합니다.").optional(),
   memoContent: z.string().max(10000, "내 생각은 10000자 이하여야 합니다.").optional(),
   uploadType: z.enum(["photo", "transcription"]).optional(),
-  pageNumber: z.number().min(1, "페이지 번호는 1 이상이어야 합니다.").optional(),
+  pageNumber: z.string().max(200, "페이지 정보는 200자 이하여야 합니다.").optional(),
   tags: z.string().optional().refine(
     (val) => {
       if (!val) return true;
@@ -87,7 +87,7 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
       title: note.title || "",
       quoteContent: quote || "",
       memoContent: memo || "",
-      pageNumber: note.page_number || undefined,
+      pageNumber: note.page_number ? String(note.page_number) : "",
       tags: note.tags?.join(", ") || "",
       isPublic: note.is_public ?? true,
       uploadType: initialUploadType,
@@ -181,7 +181,7 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
         memo_content: data.memoContent?.trim() || undefined,
         image_url: imageUrl || undefined,
         upload_type: uploadType,
-        page_number: data.pageNumber || undefined,
+        page_number: data.pageNumber?.trim() || undefined,
         tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
         is_public: data.isPublic,
       });
@@ -344,32 +344,30 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
         )}
 
         {/* 페이지 번호 */}
-        <div className="space-y-2">
-          <Label htmlFor="pageNumber">페이지 번호</Label>
-          <Input
-            id="pageNumber"
-            type="number"
-            min="1"
-            {...register("pageNumber", {
-              setValueAs: (v) => {
-                // 빈 값, null, undefined를 undefined로 변환
-                if (v === "" || v === null || v === undefined) {
-                  return undefined;
-                }
-                const num = Number(v);
-                // NaN이거나 1 미만이면 undefined 반환 (빈 값으로 처리)
-                if (isNaN(num) || num < 1) {
-                  return undefined;
-                }
-                return num;
-              }
-            })}
-            placeholder="선택사항"
-          />
-          {errors.pageNumber && (
-            <p className="text-sm text-destructive">{errors.pageNumber.message}</p>
+        <FormField
+          control={form.control}
+          name="pageNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                페이지 번호 <span className="text-muted-foreground text-xs font-normal">(선택)</span>
+              </FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="예: 123 또는 10-20 또는 10, 15, 20"
+                  {...field}
+                  value={field.value || ""}
+                  rows={2}
+                  className="resize-none"
+                />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                페이지 번호, 페이지 범위, 또는 여러 페이지를 입력할 수 있습니다.
+              </p>
+              <FormMessage />
+            </FormItem>
           )}
-        </div>
+        />
 
         {/* 태그 */}
         <TagInput

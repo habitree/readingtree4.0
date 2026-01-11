@@ -237,7 +237,8 @@ export function BookMentionTextarea({
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
-      } else if (e.key === "Enter" || e.key === "Tab") {
+      } else if (e.key === "Tab") {
+        // Tab 키로만 책 선택 (Enter는 줄바꿈으로 사용)
         e.preventDefault();
         handleBookSelect(suggestions[selectedIndex]);
       } else if (e.key === "Escape") {
@@ -245,6 +246,7 @@ export function BookMentionTextarea({
         setMentionStart(null);
         setSearchQuery("");
       }
+      // Enter 키는 줄바꿈으로 자연스럽게 동작하도록 함
     }
   };
 

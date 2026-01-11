@@ -36,21 +36,7 @@ const noteFormSchema = z.object({
   quoteContent: z.string().max(5000, "인상깊은 구절은 5000자 이하여야 합니다.").optional(),
   memoContent: z.string().max(10000, "내 생각은 10000자 이하여야 합니다.").optional(),
   uploadType: z.enum(["photo", "transcription"]).optional(),
-  pageNumbers: z.string().optional().refine(
-    (val) => {
-      if (!val || val.trim() === "") return true;
-      // 여러 줄의 페이지 번호를 파싱하여 검증
-      const lines = val.split("\n").map((line) => line.trim()).filter(Boolean);
-      for (const line of lines) {
-        const num = Number(line);
-        if (isNaN(num) || num < 1 || !Number.isInteger(num)) {
-          return false;
-        }
-      }
-      return true;
-    },
-    { message: "페이지 번호는 1 이상의 정수여야 합니다. 여러 줄로 입력 가능합니다." }
-  ),
+  pageNumbers: z.string().max(1500).optional(),
   tags: z.string().optional().refine(
     (val) => {
       if (!val) return true;
@@ -259,129 +245,114 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
         ? (uploadType === "photo" ? "photo" : "transcription")
         : "memo";
 
-      // 페이지 번호 파싱 (여러 줄 입력 지원)
-      const pageNumbers: number[] = [];
-      if (data.pageNumbers && data.pageNumbers.trim()) {
-        const lines = data.pageNumbers.split("\n").map((line) => line.trim()).filter(Boolean);
-        for (const line of lines) {
-          const num = Number(line);
-          if (!isNaN(num) && num >= 1 && Number.isInteger(num)) {
-            pageNumbers.push(num);
-          }
-        }
-      }
+      // 페이지 번호 (텍스트로 저장)
+      const pageNumber = data.pageNumbers?.trim() || undefined;
 
-      // 페이지 번호가 여러 개인 경우 각 페이지별로 기록 생성
-      const pagesToCreate = pageNumbers.length > 0 ? pageNumbers : [undefined];
       let createdCount = 0;
 
-      // 다중 이미지 업로드 시 각 이미지와 페이지 조합으로 기록 생성
+      // 다중 이미지 업로드 시 각 이미지별로 기록 생성
       if (images.length > 0) {
         for (const imageUrl of images) {
-          for (const pageNumber of pagesToCreate) {
-            const result = await createNote({
-              book_id: bookId,
-              title: data.title,
-              type: noteType,
-              quote_content: data.quoteContent?.trim() || undefined,
-              memo_content: data.memoContent?.trim() || undefined,
-              image_url: imageUrl,
-              upload_type: uploadType || undefined,
-              page_number: pageNumber,
-              tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
-              is_public: data.isPublic,
-            });
-
-            createdCount++;
-
-            // transcription 타입이면 OCR 처리 요청
-            if (noteType === "transcription" && result.noteId) {
-              try {
-                console.log("[OCR Client] OCR 요청 시작:", {
-                  noteId: result.noteId,
-                  imageUrl: imageUrl?.substring(0, 100) + "...",
-                  noteType,
-                });
-
-                // OCR 처리 시작 알림
-                toast.info("필사 이미지에서 텍스트를 추출하는 중입니다...", {
-                  description: "OCR 처리가 완료되면 필사 테이블에 자동으로 저장됩니다.",
-                  duration: 5000,
-                });
-
-                const ocrResponse = await fetch("/api/ocr", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    noteId: result.noteId,
-                    imageUrl,
-                  }),
-                });
-
-                console.log("[OCR Client] OCR 응답 수신:", {
-                  status: ocrResponse.status,
-                  statusText: ocrResponse.statusText,
-                  ok: ocrResponse.ok,
-                });
-
-                if (ocrResponse.ok) {
-                  const responseData = await ocrResponse.json().catch(() => ({}));
-                  console.log("[OCR Client] OCR 요청 성공:", responseData);
-
-                  // OCR 요청 성공 (비동기 처리 시작)
-                  toast.success("OCR 처리가 시작되었습니다.", {
-                    description: "처리가 완료되면 자동으로 업데이트됩니다.",
-                    duration: 3000,
-                  });
-                } else {
-                  const errorData = await ocrResponse.json().catch(() => ({}));
-                  console.error("[OCR Client] OCR 요청 실패:", {
-                    status: ocrResponse.status,
-                    statusText: ocrResponse.statusText,
-                    error: errorData,
-                  });
-
-                  toast.warning("OCR 처리 요청에 실패했습니다.", {
-                    description: errorData.error || "나중에 다시 시도해주세요.",
-                  });
-                }
-              } catch (error) {
-                console.error("[OCR Client] OCR 요청 오류:", {
-                  error: error instanceof Error ? error.message : String(error),
-                  stack: error instanceof Error ? error.stack : undefined,
-                  noteId: result.noteId,
-                });
-                toast.error("OCR 처리 요청 중 오류가 발생했습니다.", {
-                  description: error instanceof Error ? error.message : "알 수 없는 오류",
-                });
-              }
-            } else {
-              console.log("[OCR Client] OCR 요청 건너뜀:", {
-                noteType,
-                hasNoteId: !!result.noteId,
-                reason: noteType !== "transcription" ? "타입이 transcription이 아님" : "noteId가 없음",
-              });
-            }
-          }
-        }
-      } else {
-        // 이미지 없이 페이지 번호만 여러 개인 경우 각 페이지별로 기록 생성
-        for (const pageNumber of pagesToCreate) {
-          await createNote({
+          const result = await createNote({
             book_id: bookId,
             title: data.title,
             type: noteType,
             quote_content: data.quoteContent?.trim() || undefined,
             memo_content: data.memoContent?.trim() || undefined,
+            image_url: imageUrl,
             upload_type: uploadType || undefined,
             page_number: pageNumber,
             tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
             is_public: data.isPublic,
           });
+
           createdCount++;
+
+          // transcription 타입이면 OCR 처리 요청
+          if (noteType === "transcription" && result.noteId) {
+            try {
+              console.log("[OCR Client] OCR 요청 시작:", {
+                noteId: result.noteId,
+                imageUrl: imageUrl?.substring(0, 100) + "...",
+                noteType,
+              });
+
+              // OCR 처리 시작 알림
+              toast.info("필사 이미지에서 텍스트를 추출하는 중입니다...", {
+                description: "OCR 처리가 완료되면 필사 테이블에 자동으로 저장됩니다.",
+                duration: 5000,
+              });
+
+              const ocrResponse = await fetch("/api/ocr", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  noteId: result.noteId,
+                  imageUrl,
+                }),
+              });
+
+              console.log("[OCR Client] OCR 응답 수신:", {
+                status: ocrResponse.status,
+                statusText: ocrResponse.statusText,
+                ok: ocrResponse.ok,
+              });
+
+              if (ocrResponse.ok) {
+                const responseData = await ocrResponse.json().catch(() => ({}));
+                console.log("[OCR Client] OCR 요청 성공:", responseData);
+
+                // OCR 요청 성공 (비동기 처리 시작)
+                toast.success("OCR 처리가 시작되었습니다.", {
+                  description: "처리가 완료되면 자동으로 업데이트됩니다.",
+                  duration: 3000,
+                });
+              } else {
+                const errorData = await ocrResponse.json().catch(() => ({}));
+                console.error("[OCR Client] OCR 요청 실패:", {
+                  status: ocrResponse.status,
+                  statusText: ocrResponse.statusText,
+                  error: errorData,
+                });
+
+                toast.warning("OCR 처리 요청에 실패했습니다.", {
+                  description: errorData.error || "나중에 다시 시도해주세요.",
+                });
+              }
+            } catch (error) {
+              console.error("[OCR Client] OCR 요청 오류:", {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+                noteId: result.noteId,
+              });
+              toast.error("OCR 처리 요청 중 오류가 발생했습니다.", {
+                description: error instanceof Error ? error.message : "알 수 없는 오류",
+              });
+            }
+          } else {
+            console.log("[OCR Client] OCR 요청 건너뜀:", {
+              noteType,
+              hasNoteId: !!result.noteId,
+              reason: noteType !== "transcription" ? "타입이 transcription이 아님" : "noteId가 없음",
+            });
+          }
         }
+      } else {
+        // 이미지가 없는 경우: 텍스트 기록만 생성
+        await createNote({
+          book_id: bookId,
+          title: data.title,
+          type: noteType,
+          quote_content: data.quoteContent?.trim() || undefined,
+          memo_content: data.memoContent?.trim() || undefined,
+          upload_type: uploadType || undefined,
+          page_number: pageNumber,
+          tags: data.tags ? data.tags.split(",").map((t) => t.trim()).filter(Boolean) : undefined,
+          is_public: data.isPublic,
+        });
+        createdCount++;
       }
 
       // 생성된 기록 수에 따라 메시지 표시
