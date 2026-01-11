@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Turbopack 비활성화 (webpack 사용)
+  experimental: {
+    turbo: false,
+  },
   images: {
     remotePatterns: [
       {
