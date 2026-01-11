@@ -108,10 +108,50 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
       // 캡처 모드 활성화 (UI 피드백용)
       setIsCapturing(true);
 
-      // 상태 반영 및 이미지 로딩 확보를 위해 잠깐 대기
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // 이미지와 폰트가 완전히 로드될 때까지 대기
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       const element = targetElement;
+
+      // 모든 이미지가 로드되었는지 확인
+      const images = element.querySelectorAll("img");
+      const imagePromises = Array.from(images).map((img) => {
+        if (img.complete) {
+          return Promise.resolve();
+        }
+        return new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("이미지 로드 타임아웃"));
+          }, 5000);
+          img.onload = () => {
+            clearTimeout(timeout);
+            resolve();
+          };
+          img.onerror = () => {
+            clearTimeout(timeout);
+            // 이미지 로드 실패해도 계속 진행
+            resolve();
+          };
+        });
+      });
+
+      try {
+        await Promise.all(imagePromises);
+      } catch (error) {
+        console.warn("일부 이미지 로드 실패, 계속 진행:", error);
+      }
+
+      // 폰트 로딩 확인
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (error) {
+          console.warn("폰트 로딩 확인 실패:", error);
+        }
+      }
+
+      // 추가 대기 시간 (렌더링 안정화)
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // html2canvas 동적 import 및 타입 우회
       // html2canvas 타입 정의가 불완전하여 any로 타입 단언
@@ -121,24 +161,105 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
       // 모바일에서는 scale을 낮춰서 성능 개선
       const isMobileDevice = isMobile();
       // 가로 고정 레이아웃이므로 모바일에서도 조금 더 높은 해상도 유지 가능하나 성능 고려
-      const scale = isMobileDevice ? 1.5 : 2;
+      const scale = isMobileDevice ? 2 : 3; // 해상도 향상
 
-      // 캡처 전용 옵션 설정 (잘림 방지 및 고화질)
+      // 캡처 전용 옵션 설정 (잘림 방지 및 고화질, 정확한 렌더링)
       // html2canvas 타입 정의가 완전하지 않아 any로 타입 단언
       const options: any = {
-        scale: scale, // 모바일에서는 낮은 해상도로 성능 개선
+        scale: scale, // 해상도 향상
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false, // 보안을 위해 false로 설정하고 useCORS 사용
         width: element.offsetWidth,
         height: element.offsetHeight,
         x: 0,
         y: 0,
-        scrollX: -window.scrollX,
-        scrollY: -window.scrollY,
-        backgroundColor: null, // CSS 배경색 사용
-        logging: false, // 모바일에서 로깅 비활성화로 성능 개선
-        // [UPDATE] onclone을 통해 캡처 시점에만 강제 스타일 적용 가능하지만,
-        // 별도 hidden element를 사용하는 방식이 더 안정적이므로 hidden element 사용.
+        scrollX: 0,
+        scrollY: 0,
+        backgroundColor: "#ffffff", // 배경색 명시
+        logging: false,
+        removeContainer: false,
+        imageTimeout: 15000, // 이미지 로드 타임아웃 증가
+        foreignObjectRendering: false, // SVG 렌더링 문제 방지
+        // onclone: 캡처 시점에 스타일 강제 적용
+        onclone: (clonedDoc: Document, element: HTMLElement) => {
+          // 모든 이미지 처리 (Next.js Image 컴포넌트 포함)
+          const clonedImages = clonedDoc.querySelectorAll("img");
+          clonedImages.forEach((img) => {
+            const htmlImg = img as HTMLImageElement;
+            
+            // crossOrigin 속성 추가 (CORS 문제 해결)
+            if (!htmlImg.crossOrigin) {
+              htmlImg.crossOrigin = "anonymous";
+            }
+            
+            // 이미지가 로드되지 않았으면 다시 로드 시도
+            if (!htmlImg.complete || htmlImg.naturalWidth === 0) {
+              const originalSrc = htmlImg.src;
+              htmlImg.src = "";
+              htmlImg.src = originalSrc;
+            }
+            
+            // 이미지 스타일 강제 적용
+            htmlImg.style.display = "block";
+            htmlImg.style.maxWidth = "100%";
+            htmlImg.style.height = "auto";
+            htmlImg.style.objectFit = htmlImg.style.objectFit || "cover";
+            
+            // Next.js Image 컴포넌트의 span 래퍼 처리
+            const parent = htmlImg.parentElement;
+            if (parent && parent.tagName === "SPAN" && parent.style.position === "relative") {
+              parent.style.display = "block";
+              parent.style.width = "100%";
+              parent.style.height = "100%";
+            }
+          });
+
+          // 모든 요소의 스타일 강제 적용 (정확한 렌더링 보장)
+          const allElements = clonedDoc.querySelectorAll("*");
+          allElements.forEach((el) => {
+            const htmlEl = el as HTMLElement;
+            
+            try {
+              // 원본 요소 찾기 (가능한 경우)
+              const originalEl = document.querySelector(
+                el.getAttribute("data-capture-id") 
+                  ? `[data-capture-id="${el.getAttribute("data-capture-id")}"]`
+                  : el.tagName + (el.className ? "." + el.className.split(" ").join(".") : "")
+              ) || el;
+              
+              const computedStyle = window.getComputedStyle(originalEl as Element);
+              
+              // 중요한 스타일 속성 강제 적용
+              htmlEl.style.fontFamily = computedStyle.fontFamily || "inherit";
+              htmlEl.style.fontSize = computedStyle.fontSize || "inherit";
+              htmlEl.style.fontWeight = computedStyle.fontWeight || "inherit";
+              htmlEl.style.color = computedStyle.color || "inherit";
+              htmlEl.style.backgroundColor = computedStyle.backgroundColor || "transparent";
+              htmlEl.style.border = computedStyle.border || "none";
+              htmlEl.style.borderRadius = computedStyle.borderRadius || "0";
+              htmlEl.style.padding = computedStyle.padding || "0";
+              htmlEl.style.margin = computedStyle.margin || "0";
+              htmlEl.style.boxSizing = computedStyle.boxSizing || "border-box";
+              
+              // 레이아웃 관련 스타일
+              if (computedStyle.display) {
+                htmlEl.style.display = computedStyle.display;
+              }
+              if (computedStyle.flexDirection) {
+                htmlEl.style.flexDirection = computedStyle.flexDirection;
+              }
+              if (computedStyle.alignItems) {
+                htmlEl.style.alignItems = computedStyle.alignItems;
+              }
+              if (computedStyle.justifyContent) {
+                htmlEl.style.justifyContent = computedStyle.justifyContent;
+              }
+            } catch (error) {
+              // 스타일 적용 실패 시 무시하고 계속 진행
+              console.warn("스타일 적용 실패:", error);
+            }
+          });
+        },
       };
 
       const canvas = await html2canvas(element, options);

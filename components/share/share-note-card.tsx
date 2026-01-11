@@ -135,16 +135,18 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                     <div className="w-full md:w-[400px] bg-slate-50 dark:bg-slate-900/50 p-5 md:p-8 flex flex-col border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800">
                         {/* 상단: 책 정보 요약 (항상 표시) */}
                         <div className="flex items-start gap-3 md:gap-4 mb-5 md:mb-8">
-                            <ImageLightbox src={book?.cover_image_url || "/placeholder-book.png"} alt={book?.title || "Book"}>
-                                <div className="relative w-18 h-24 shrink-0 shadow-lg rounded-sm overflow-hidden border border-white dark:border-slate-700 bg-white">
-                                    <Image
-                                        src={book?.cover_image_url || "/placeholder-book.png"}
-                                        alt={book?.title || "Book"}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                </div>
-                            </ImageLightbox>
+                                    <ImageLightbox src={book?.cover_image_url || "/placeholder-book.png"} alt={book?.title || "Book"}>
+                                        <div className="relative w-18 h-24 shrink-0 shadow-lg rounded-sm overflow-hidden border border-white dark:border-slate-700 bg-white">
+                                            <Image
+                                                src={book?.cover_image_url || "/placeholder-book.png"}
+                                                alt={book?.title || "Book"}
+                                                fill
+                                                className="object-cover"
+                                                crossOrigin="anonymous"
+                                                unoptimized={hideActions} // 캡처 시 최적화 비활성화로 정확한 렌더링
+                                            />
+                                        </div>
+                                    </ImageLightbox>
                             <div className="flex-1 min-w-0 pt-0.5">
                                 <h3 className="font-black text-lg text-slate-900 dark:text-slate-100 leading-[1.2] tracking-tighter break-keep">
                                     {book?.title || "제목 없음"}
@@ -173,6 +175,8 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                                 fill
                                                 className="object-contain"
                                                 priority
+                                                crossOrigin="anonymous"
+                                                unoptimized={hideActions} // 캡처 시 최적화 비활성화로 정확한 렌더링
                                             />
                                             {showTimestamp && (
                                                 <div className="absolute bottom-3 left-3 z-20">
@@ -199,6 +203,8 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                                 fill
                                                 className="object-cover rounded-sm"
                                                 priority
+                                                crossOrigin="anonymous"
+                                                unoptimized={hideActions} // 캡처 시 최적화 비활성화로 정확한 렌더링
                                             />
                                             <div className="absolute inset-0 rounded-sm ring-1 ring-inset ring-black/10" />
                                         </div>
