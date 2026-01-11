@@ -6,7 +6,7 @@
     "doc": "doc"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo=false",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
