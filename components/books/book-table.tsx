@@ -380,7 +380,7 @@ export function BookTable({ books }: BookTableProps) {
 
                   {/* 기록 (모바일에서 숨김) */}
                   <td className="hidden md:table-cell px-4 py-4">
-                    <Link href={`/books/${item.id}`}>
+                    <Link href={`/books/${item.id}#book-info`}>
                       <Button variant="outline" size="sm" className="w-full min-h-[36px]">
                         <FileText className="w-4 h-4 mr-2" aria-hidden="true" />
                         기록
