@@ -46,10 +46,15 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
     notFound();
   }
 
-  const noteWithBook = note as NoteWithBook;
+  const noteWithBook = note as NoteWithBook & { user_book_id?: string | null };
 
   // 사용자 정보 가져오기
   const user = noteWithBook.user_id ? await getUserById(noteWithBook.user_id) : null;
+  
+  // 책 정보 페이지로 돌아갈 URL 결정
+  const backUrl = noteWithBook.user_book_id 
+    ? `/books/${noteWithBook.user_book_id}#book-info` 
+    : "/notes";
 
   // 필사 데이터 상세 조회 (있을 경우)
   let transcription = null;
@@ -67,7 +72,7 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild className="group">
-            <Link href="/notes">
+            <Link href={backUrl}>
               <ChevronLeft className="h-4 w-4 mr-1 transition-transform group-hover:-translate-x-1" />
               목록으로
             </Link>
