@@ -83,6 +83,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
   const [applyStamp, setApplyStamp] = useState(false);
   const transcriptionInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const isSubmittingRef = useRef<boolean>(false); // 중복 제출 방지 플래그
 
   const form = useForm<NoteFormValues>({
     resolver: zodResolver(noteFormSchema),
@@ -225,6 +226,15 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
   };
 
   const onSubmit = async (data: NoteFormValues) => {
+    // 중복 제출 방지: 이미 제출 중이면 즉시 리턴
+    if (isSubmittingRef.current) {
+      console.warn("기록 저장 중복 제출 방지: 이미 제출 중입니다.");
+      return;
+    }
+
+    // 제출 시작 플래그 설정
+    isSubmittingRef.current = true;
+
     try {
       // bookId 검증
       if (!bookId || typeof bookId !== "string" || bookId.trim() === "") {
@@ -387,12 +397,27 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
       toast.error(
         error instanceof Error ? error.message : "기록 저장에 실패했습니다."
       );
+    } finally {
+      // 제출 완료 후 플래그 리셋 (에러 발생 시에도 리셋)
+      isSubmittingRef.current = false;
     }
+  };
+
+  // 폼 제출 핸들러 (중복 제출 방지)
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    // 이미 제출 중이면 기본 동작 방지
+    if (isSubmittingRef.current || isSubmitting || uploading) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    // handleSubmit 호출
+    handleSubmit(onSubmit)(e);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleFormSubmit} className="space-y-6">
         {/* 제목 입력 */}
         <FormField
           control={form.control}
