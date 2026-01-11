@@ -89,15 +89,15 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
     }
   };
 
-  // 2. 카드 복사 (디자인 캡처)
+  // 2. 카드 복사 (디자인 캡처) - 완전 재구현
   const handleCopyCardImage = async (e?: React.MouseEvent) => {
     // 중복 클릭 방지
     if (isCapturing) {
       return;
     }
 
-    // [UPDATE] 모바일/PC 모두 captureRef(가로 고정 숨김 요소)를 우선 사용
-    const targetElement = captureRef.current || cardRef.current;
+    // PC 버전 레이아웃 (captureRef) 사용
+    const targetElement = captureRef.current;
 
     if (!targetElement) {
       toast.error("카드를 찾을 수 없습니다.");
@@ -105,232 +105,124 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
     }
 
     try {
-      // 캡처 모드 활성화 (UI 피드백용)
+      // 캡처 모드 활성화
       setIsCapturing(true);
+      toast.info("카드를 생성하는 중...");
 
-      // 이미지와 폰트가 완전히 로드될 때까지 대기
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Step 0: 폰트 로딩 대기 (텍스트 레이아웃 안정화)
+      await document.fonts.ready;
 
-      const element = targetElement;
+      // Step 1: 모든 이미지가 로드될 때까지 대기
+      const images = Array.from(targetElement.querySelectorAll("img")) as HTMLImageElement[];
 
-      // 모든 이미지가 로드되었는지 확인
-      const images = element.querySelectorAll("img");
-      const imagePromises = Array.from(images).map((img) => {
-        if (img.complete) {
-          return Promise.resolve();
-        }
-        return new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error("이미지 로드 타임아웃"));
-          }, 5000);
-          img.onload = () => {
-            clearTimeout(timeout);
-            resolve();
-          };
-          img.onerror = () => {
-            clearTimeout(timeout);
-            // 이미지 로드 실패해도 계속 진행
-            resolve();
-          };
-        });
-      });
+      console.log(`[카드 복사] ${images.length}개의 이미지 로드 대기 중...`);
 
-      try {
-        await Promise.all(imagePromises);
-      } catch (error) {
-        console.warn("일부 이미지 로드 실패, 계속 진행:", error);
-      }
+      // 이미지 로드 확인 (타임아웃 5초로 증가)
+      await Promise.all(
+        images.map((img, index) => {
+          return new Promise<void>((resolve) => {
+            // 이미 로드된 이미지
+            if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+              console.log(`[카드 복사] 이미지 ${index + 1}/${images.length} 이미 로드됨:`, img.src);
+              resolve();
+              return;
+            }
 
-      // 폰트 로딩 확인
-      if (document.fonts && document.fonts.ready) {
-        try {
-          await document.fonts.ready;
-        } catch (error) {
-          console.warn("폰트 로딩 확인 실패:", error);
-        }
-      }
+            console.log(`[카드 복사] 이미지 ${index + 1}/${images.length} 로드 대기 중:`, img.src);
 
-      // 추가 대기 시간 (렌더링 안정화)
-      await new Promise((resolve) => setTimeout(resolve, 200));
+            const timeout = setTimeout(() => {
+              console.warn(`[카드 복사] 이미지 ${index + 1}/${images.length} 타임아웃:`, img.src);
+              resolve();
+            }, 5000);
 
-      // html2canvas 동적 import 및 타입 우회
-      // html2canvas 타입 정의가 불완전하여 any로 타입 단언
+            img.onload = () => {
+              console.log(`[카드 복사] 이미지 ${index + 1}/${images.length} 로드 완료:`, img.src);
+              clearTimeout(timeout);
+              resolve();
+            };
+
+            img.onerror = (e) => {
+              console.error(`[카드 복사] 이미지 ${index + 1}/${images.length} 로드 실패:`, img.src, e);
+              clearTimeout(timeout);
+              resolve();
+            };
+          });
+        })
+      );
+
+      console.log(`[카드 복사] 모든 이미지 로드 완료`);
+
+      // Step 2: 렌더링 안정화 대기 (1000ms로 증가 - 레이아웃 및 폰트 안착)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Step 3: html2canvas로 캡처
+      console.log("[카드 복사] html2canvas 시작 (Scale: 3.0)...");
       const html2canvasModule = await import("html2canvas");
       const html2canvas = html2canvasModule.default as any;
 
-      // 모바일에서는 scale을 낮춰서 성능 개선
-      const isMobileDevice = isMobile();
-      // 가로 고정 레이아웃이므로 모바일에서도 조금 더 높은 해상도 유지 가능하나 성능 고려
-      const scale = isMobileDevice ? 2 : 3; // 해상도 향상
-
-      // 캡처 전용 옵션 설정 (잘림 방지 및 고화질, 정확한 렌더링)
-      // html2canvas 타입 정의가 완전하지 않아 any로 타입 단언
-      const options: any = {
-        scale: scale, // 해상도 향상
+      const canvas = await html2canvas(targetElement, {
+        scale: 3.0,
         useCORS: true,
-        allowTaint: false, // 보안을 위해 false로 설정하고 useCORS 사용
-        width: element.offsetWidth,
-        height: element.offsetHeight,
-        x: 0,
-        y: 0,
+        allowTaint: false,
+        backgroundColor: "#ffffff",
+        logging: true,
+        imageTimeout: 0,
+        windowWidth: 1200, // 뷰포트 크기 고정으로 반응형 오차 차단
         scrollX: 0,
         scrollY: 0,
-        backgroundColor: "#ffffff", // 배경색 명시
-        logging: false,
-        removeContainer: false,
-        imageTimeout: 15000, // 이미지 로드 타임아웃 증가
-        foreignObjectRendering: false, // SVG 렌더링 문제 방지
-        // onclone: 캡처 시점에 스타일 강제 적용
-        onclone: (clonedDoc: Document, element: HTMLElement) => {
-          // 모든 이미지 처리 (Next.js Image 컴포넌트 포함)
-          const clonedImages = clonedDoc.querySelectorAll("img");
-          clonedImages.forEach((img) => {
-            const htmlImg = img as HTMLImageElement;
-            
-            // crossOrigin 속성 추가 (CORS 문제 해결)
-            if (!htmlImg.crossOrigin) {
-              htmlImg.crossOrigin = "anonymous";
-            }
-            
-            // 이미지가 로드되지 않았으면 다시 로드 시도
-            if (!htmlImg.complete || htmlImg.naturalWidth === 0) {
-              const originalSrc = htmlImg.src;
-              htmlImg.src = "";
-              htmlImg.src = originalSrc;
-            }
-            
-            // 이미지 스타일 강제 적용
-            htmlImg.style.display = "block";
-            htmlImg.style.maxWidth = "100%";
-            htmlImg.style.height = "auto";
-            htmlImg.style.objectFit = htmlImg.style.objectFit || "cover";
-            
-            // Next.js Image 컴포넌트의 span 래퍼 처리
-            const parent = htmlImg.parentElement;
-            if (parent && parent.tagName === "SPAN" && parent.style.position === "relative") {
-              parent.style.display = "block";
-              parent.style.width = "100%";
-              parent.style.height = "100%";
-            }
-          });
-
-          // 캡처 대상 요소만 스타일 강제 적용 (성능 최적화 및 오류 방지)
-          // 전체 요소에 적용하면 querySelector 오류가 발생할 수 있으므로
-          // 캡처 대상 요소와 그 자식 요소만 처리
-          const targetElements = [element, ...Array.from(element.querySelectorAll("*"))];
-          
-          targetElements.forEach((el) => {
-            const htmlEl = el as HTMLElement;
-            
-            try {
-              // 원본 요소 찾기 (data 속성 또는 직접 매칭)
-              let originalEl: Element | null = null;
-              
-              // data-capture-id가 있으면 사용
-              const captureId = htmlEl.getAttribute("data-capture-id");
-              if (captureId) {
-                originalEl = document.querySelector(`[data-capture-id="${captureId}"]`);
-              }
-              
-              // 원본 요소를 찾지 못했으면 현재 요소 사용
-              if (!originalEl) {
-                originalEl = el as Element;
-              }
-              
-              const computedStyle = window.getComputedStyle(originalEl);
-              
-              // 중요한 스타일 속성 강제 적용
-              htmlEl.style.fontFamily = computedStyle.fontFamily || "inherit";
-              htmlEl.style.fontSize = computedStyle.fontSize || "inherit";
-              htmlEl.style.fontWeight = computedStyle.fontWeight || "inherit";
-              htmlEl.style.color = computedStyle.color || "inherit";
-              htmlEl.style.backgroundColor = computedStyle.backgroundColor || "transparent";
-              htmlEl.style.border = computedStyle.border || "none";
-              htmlEl.style.borderRadius = computedStyle.borderRadius || "0";
-              htmlEl.style.padding = computedStyle.padding || "0";
-              htmlEl.style.margin = computedStyle.margin || "0";
-              htmlEl.style.boxSizing = computedStyle.boxSizing || "border-box";
-              
-              // 레이아웃 관련 스타일
-              if (computedStyle.display) {
-                htmlEl.style.display = computedStyle.display;
-              }
-              if (computedStyle.flexDirection) {
-                htmlEl.style.flexDirection = computedStyle.flexDirection;
-              }
-              if (computedStyle.alignItems) {
-                htmlEl.style.alignItems = computedStyle.alignItems;
-              }
-              if (computedStyle.justifyContent) {
-                htmlEl.style.justifyContent = computedStyle.justifyContent;
-              }
-            } catch (error) {
-              // 스타일 적용 실패 시 무시하고 계속 진행 (오류 로그 제거)
-              // console.warn("스타일 적용 실패:", error);
-            }
-          });
-        },
-      };
-
-      const canvas = await html2canvas(element, options);
-
-      canvas.toBlob(async (blob: Blob | null) => {
-        setIsCapturing(false); // 캡처 모드 해제
-
-        if (!blob) {
-          toast.error("이미지 생성에 실패했습니다.");
-          return;
+        foreignObjectRendering: false, // 호환성 위해 false 유지
+        onclone: (clonedDoc: Document) => {
+          // 클론된 문서에서 추가적인 캡처 최적화가 필요하다면 여기서 수행
+          console.log("[카드 복사] 클론 생성 완료");
         }
+      });
 
-        // 스템프 적용
-        let finalBlob = blob;
-        try {
-          finalBlob = await addStampToBlob(blob, new Date(note.created_at));
-        } catch (stampError) {
-          console.error("스탬프 적용 실패, 원본 이미지 사용:", stampError);
-          // 스탬프 적용 실패 시 원본 사용
-        }
+      console.log("[카드 복사] 캔버스 생성 완료:", canvas.width, "x", canvas.height);
 
-        // 모바일에서 클립보드 복사 시도
-        const clipboardSuccess = await copyImageToClipboard(finalBlob, {
-          onSuccess: () => {
-            setCardCopied(true);
-            toast.success("카드 이미지가 클립보드에 복사되었습니다.");
-            setTimeout(() => {
-              setCardCopied(false);
-            }, 2000);
+      // Step 4: Canvas를 Blob으로 변환
+      console.log("[카드 복사] Blob 변환 시작...");
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (blob: Blob | null) => {
+            if (blob) {
+              console.log("[카드 복사] Blob 변환 성공:", blob.size, "bytes");
+              resolve(blob);
+            } else {
+              console.error("[카드 복사] Blob 변환 실패");
+              reject(new Error("이미지 변환 실패"));
+            }
           },
-          onError: (error) => {
-            console.log("클립보드 복사 실패, 다운로드로 fallback:", error);
-          }
-        });
+          "image/png",
+          0.95
+        );
+      });
 
-        // 클립보드 복사 실패 시 다운로드로 fallback
-        if (!clipboardSuccess) {
-          try {
-            const filename = `habitree-card-${note.id}-${Date.now()}.png`;
-            downloadImage(finalBlob, filename);
-            setCardCopied(true);
-            const isMobileDevice = isMobile();
-            toast.success(
-              isMobileDevice 
-                ? "카드 이미지가 다운로드되었습니다. 갤러리에서 확인하세요." 
-                : "카드 이미지가 다운로드되었습니다."
-            );
-
-            setTimeout(() => {
-              setCardCopied(false);
-            }, 2000);
-          } catch (downloadError) {
-            console.error("다운로드도 실패:", downloadError);
-            toast.error("이미지 복사에 실패했습니다. 브라우저를 확인해주세요.");
-          }
-        }
-      }, "image/png");
+      // Step 5: 클립보드에 복사
+      console.log("[카드 복사] 클립보드 복사 시도...");
+      if (navigator.clipboard && ClipboardItem) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "image/png": blob,
+          }),
+        ]);
+        console.log("[카드 복사] 클립보드 복사 성공!");
+        toast.success("카드가 클립보드에 복사되었습니다!");
+      } else {
+        // Fallback: Blob URL로 다운로드
+        console.log("[카드 복사] 클립보드 미지원, 다운로드로 전환");
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `habitree-card-${note.id}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success("카드 이미지가 다운로드되었습니다!");
+      }
     } catch (error) {
+      console.error("카드 복사 오류:", error);
+      toast.error("카드 복사에 실패했습니다. 다시 시도해주세요.");
+    } finally {
       setIsCapturing(false);
-      console.error("카드 이미지 복사 실패:", error);
-      toast.error("카드 이미지 복사에 실패했습니다.");
     }
   };
 
@@ -408,8 +300,8 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
             setPhotoCopied(true);
             const isMobileDevice = isMobile();
             toast.success(
-              isMobileDevice 
-                ? "원본 이미지가 다운로드되었습니다. 갤러리에서 확인하세요." 
+              isMobileDevice
+                ? "원본 이미지가 다운로드되었습니다. 갤러리에서 확인하세요."
                 : "원본 이미지가 다운로드되었습니다."
             );
 
@@ -528,9 +420,9 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
               </div>
             </div>
 
-            {/* [NEW] 캡처용 Hidden Card (항상 가로 모드 Force, 화면 밖 배치) */}
-            <div style={{ position: "absolute", left: "-99999px", top: 0, width: "960px" }}>
-              <div ref={captureRef} className="rounded-3xl overflow-hidden shadow-2xl bg-white">
+            {/* [NEW] 캡처용 Hidden Card (항상 가로 모드 Force, 화면 밖 배치) - 화면 왜곡 방지를 위해 fixed 및 style 조정 */}
+            <div style={{ position: "fixed", left: "200vw", top: "0", pointerEvents: "none", zIndex: "-50" }}>
+              <div ref={captureRef} className="rounded-3xl overflow-hidden shadow-2xl bg-white w-[960px] transform-gpu">
                 {/* fixedHorizontal=true로 가로 강제, hideActions=true로 버튼 숨김 */}
                 <ShareNoteCard note={note} hideActions={true} showTimestamp={false} user={user} fixedHorizontal={true} />
               </div>
