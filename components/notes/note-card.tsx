@@ -13,15 +13,18 @@ import { useOCRStatus } from "@/hooks/use-ocr-status";
 import type { NoteWithBook } from "@/types/note";
 import { FileText, Image as ImageIcon, PenTool, Camera } from "lucide-react";
 import { BookLinkRenderer } from "./book-link-renderer";
+import { NoteDeleteButton } from "./note-delete-button";
 
 interface NoteCardProps {
   note: NoteWithBook;
+  showDeleteButton?: boolean;
+  onDelete?: () => void;
 }
 
 /**
  * 기록 카드 컴포넌트
  */
-export function NoteCard({ note }: NoteCardProps) {
+export function NoteCard({ note, showDeleteButton = false, onDelete }: NoteCardProps) {
   const typeIcons = {
     quote: FileText,
     transcription: PenTool,
@@ -40,11 +43,16 @@ export function NoteCard({ note }: NoteCardProps) {
     pollInterval: 3000,
   });
 
-  return (
-    <Link href={`/notes/${note.id}`}>
-      <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-        <CardContent className="p-4">
-          <div className="flex gap-4">
+  const handleDelete = async () => {
+    if (onDelete) {
+      onDelete();
+    }
+  };
+
+  const cardContent = (
+    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative group">
+      <CardContent className="p-4">
+        <div className="flex gap-4">
             {/* UX 원칙 05: 깊이감 부여를 위한 이미지 레이어링 */}
             {/* 이미지 또는 아이콘 */}
             {note.image_url ? (
@@ -105,8 +113,104 @@ export function NoteCard({ note }: NoteCardProps) {
             </div>
           </div>
         </CardContent>
+        {/* 삭제 버튼 (우측 상단) */}
+        {showDeleteButton && (
+          <div 
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <NoteDeleteButtonWithCallback noteId={note.id} onDelete={handleDelete} />
+          </div>
+        )}
       </Card>
+  );
+
+  if (showDeleteButton) {
+    return cardContent;
+  }
+
+  return (
+    <Link href={`/notes/${note.id}`}>
+      {cardContent}
     </Link>
   );
 }
 
+/**
+ * 삭제 후 콜백을 지원하는 삭제 버튼 래퍼
+ */
+function NoteDeleteButtonWithCallback({ 
+  noteId, 
+  onDelete 
+}: { 
+  noteId: string; 
+  onDelete?: () => void;
+}) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const { deleteNote } = await import("@/app/actions/notes");
+      await deleteNote(noteId);
+      const { toast } = await import("sonner");
+      toast.success("기록이 삭제되었습니다.");
+      setIsOpen(false);
+      if (onDelete) {
+        onDelete();
+      } else {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("기록 삭제 오류:", error);
+      const { toast } = await import("sonner");
+      toast.error(
+        error instanceof Error ? error.message : "기록 삭제에 실패했습니다."
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="destructive" size="sm" disabled={isDeleting} className="h-7 w-7 p-0">
+          {isDeleting ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Trash2 className="h-3 w-3" />
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>기록 삭제 확인</AlertDialogTitle>
+          <AlertDialogDescription>
+            정말로 이 기록을 삭제하시겠습니까?
+            <br />
+            이 작업은 되돌릴 수 없습니다.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>취소</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                삭제 중...
+              </>
+            ) : (
+              "삭제"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

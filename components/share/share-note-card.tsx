@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ImageLightbox } from "@/components/notes/image-lightbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { BookLinkRenderer } from "@/components/notes/book-link-renderer";
+import { BookTitle } from "@/components/books/book-title";
 
 interface ShareNoteCardProps {
     note: NoteWithBook;
@@ -136,7 +137,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                         {/* 상단: 책 정보 요약 (항상 표시) */}
                         <div className="flex items-start gap-3 md:gap-4 mb-5 md:mb-8">
                                     <ImageLightbox src={book?.cover_image_url || "/placeholder-book.png"} alt={book?.title || "Book"}>
-                                        <div className="relative w-18 h-24 shrink-0 shadow-lg rounded-sm overflow-hidden border border-white dark:border-slate-700 bg-white">
+                                        <div className="relative w-18 h-24 shrink-0 shadow-lg rounded-sm overflow-hidden border border-white dark:border-slate-700 bg-white aspect-[3/4]">
                                             <Image
                                                 src={book?.cover_image_url || "/placeholder-book.png"}
                                                 alt={book?.title || "Book"}
@@ -149,7 +150,11 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                     </ImageLightbox>
                             <div className="flex-1 min-w-0 pt-0.5">
                                 <h3 className="font-black text-lg text-slate-900 dark:text-slate-100 leading-[1.2] tracking-tighter break-keep">
-                                    {book?.title || "제목 없음"}
+                                    <BookTitle 
+                                      title={book?.title || "제목 없음"}
+                                      mainTitleClassName="text-slate-900 dark:text-slate-100"
+                                      subtitleClassName="text-slate-600 dark:text-slate-400 text-sm font-normal"
+                                    />
                                 </h3>
                                 <p className="text-sm text-forest-600 font-bold mt-2">
                                     {book?.author || "저자 미상"}
@@ -196,12 +201,12 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                             ) : (
                                 <div className="flex flex-col items-center justify-center py-6">
                                     <ImageLightbox src={book?.cover_image_url || "/placeholder-book.png"} alt={book?.title || "Book"}>
-                                        <div className="relative w-56 h-80 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.3)] transition-transform duration-500 hover:scale-[1.03]">
+                                        <div className="relative w-56 aspect-[3/4] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.3)] transition-transform duration-500 hover:scale-[1.03]">
                                             <Image
                                                 src={book?.cover_image_url || "/placeholder-book.png"}
                                                 alt={book?.title || "Book"}
                                                 fill
-                                                className="object-cover rounded-sm"
+                                                className="object-contain rounded-sm"
                                                 priority
                                                 crossOrigin="anonymous"
                                                 unoptimized={hideActions} // 캡처 시 최적화 비활성화로 정확한 렌더링
@@ -267,21 +272,27 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                 {/* Habitree 로고와 사용자 정보를 한 줄로 배치 */}
                                 <div className="flex items-center justify-between gap-4">
                                     <FooterLogo />
-                                    {user && (
+                                    {user ? (
                                         <div className="flex items-center gap-2 text-sm">
                                             <span className="text-slate-400 font-medium text-xs">by</span>
-                                            <Avatar className="h-7 w-7">
+                                            <Avatar className="h-7 w-7 shrink-0">
                                                 <AvatarImage
-                                                    src={user.avatar_url ? getImageUrl(user.avatar_url) : "/images/default-avatar.png"}
+                                                    src={user.avatar_url ? getImageUrl(user.avatar_url) : undefined}
                                                     crossOrigin="anonymous" // html2canvas 캡처 시 CORS 문제 해결
+                                                    alt={user.name}
                                                 />
                                                 <AvatarFallback className="bg-forest-100 text-forest-700 text-xs font-bold">
-                                                    {user.name[0]?.toUpperCase() || "U"}
+                                                    {user.name?.[0]?.toUpperCase() || "U"}
                                                 </AvatarFallback>
                                             </Avatar>
-                                            <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm">
-                                                {user.name}
+                                            <span className="font-semibold text-slate-700 dark:text-slate-300 text-sm truncate">
+                                                {user.name || "사용자"}
                                             </span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 text-sm text-slate-400">
+                                            <span className="text-xs">by</span>
+                                            <span className="text-xs">익명</span>
                                         </div>
                                     )}
                                 </div>

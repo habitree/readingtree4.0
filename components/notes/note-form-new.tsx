@@ -615,15 +615,23 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
         />
 
         {/* 공개 설정 */}
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="isPublic"
-            checked={!isPublic} // 반대로: 체크하면 비공개
-            onCheckedChange={(checked) => setValue("isPublic", !checked)}
-          />
-          <Label htmlFor="isPublic" className="cursor-pointer">
-            {isPublic ? "공개" : "비공개"}
-          </Label>
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
+            <Switch
+              id="isPublic"
+              checked={!isPublic} // 반대로: 체크하면 비공개
+              onCheckedChange={(checked) => setValue("isPublic", !checked)}
+              className="scale-100 md:scale-125"
+            />
+            <Label htmlFor="isPublic" className="cursor-pointer text-sm md:text-base font-medium">
+              {isPublic ? "공개" : "비공개"}
+            </Label>
+          </div>
+          <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
+            {isPublic 
+              ? "다른 사용자도 이 기록을 볼 수 있습니다." 
+              : "이 기록은 나만 볼 수 있습니다."}
+          </p>
         </div>
 
         {/* 제출 버튼 */}

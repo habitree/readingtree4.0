@@ -55,7 +55,7 @@ export function NoteList({ notes, isLoading }: NoteListProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {notes.map((note) => (
-        <NoteCard key={note.id} note={note} />
+        <NoteCard key={note.id} note={note} showDeleteButton={true} />
       ))}
     </div>
   );
