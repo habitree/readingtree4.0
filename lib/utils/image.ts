@@ -108,3 +108,19 @@ export function formatFileSize(bytes: number): string {
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 }
 
+/**
+ * 이미지 URL을 Next.js 이미지 최적화 API를 통해 프록시 처리된 URL로 변환
+ * CORS 문제를 우회하기 위해 사용 (Next.js 서버가 대신 이미지를 가져옴)
+ */
+export function getProxiedImageUrl(url: string | null | undefined): string {
+  const originalUrl = getImageUrl(url);
+
+  // 데이터 URI나 로컬 경로는 그대로 반환
+  if (originalUrl.startsWith("data:") || originalUrl.startsWith("/")) {
+    return originalUrl;
+  }
+
+  // Next.js Image Optimization API URL 구성
+  // w=640, q=75는 적절한 기본값
+  return `/_next/image?url=${encodeURIComponent(originalUrl)}&w=640&q=75`;
+}

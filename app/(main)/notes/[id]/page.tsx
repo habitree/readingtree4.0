@@ -40,9 +40,15 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
   try {
     // 2. 데이터 소유권 및 접근 권한 검증 (Server Action 내부에서 수행)
     note = await getNoteDetail(noteId);
-  } catch (error) {
-    const safeError = sanitizeErrorForLogging(error);
-    console.error("기록 상세 조회 보안 오류:", { noteId, error: safeError });
+  } catch (error: any) {
+    // 404 또는 권한 없음 에러인 경우 조용히 처리
+    if (error?.message === "기록을 찾을 수 없거나 권한이 없습니다." || error?.message?.includes("참조 무결성")) {
+      console.warn(`[NoteDetailPage] Record not found or access denied: ${noteId}`);
+    } else {
+      // 그 외 실제 런타임 에러는 상세 로깅
+      const safeError = sanitizeErrorForLogging(error);
+      console.error(`[NoteDetailPage] Unexpected error for ${noteId}:`, safeError);
+    }
     notFound();
   }
 
@@ -50,10 +56,10 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 
   // 사용자 정보 가져오기
   const user = noteWithBook.user_id ? await getUserById(noteWithBook.user_id) : null;
-  
+
   // 책 정보 페이지로 돌아갈 URL 결정
-  const backUrl = noteWithBook.user_book_id 
-    ? `/books/${noteWithBook.user_book_id}#book-info` 
+  const backUrl = noteWithBook.user_book_id
+    ? `/books/${noteWithBook.user_book_id}#book-info`
     : "/notes";
 
   // 필사 데이터 상세 조회 (있을 경우)

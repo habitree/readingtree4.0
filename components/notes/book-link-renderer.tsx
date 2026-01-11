@@ -1,7 +1,7 @@
 "use client";
 
 import { parseBookLinkParts } from "@/lib/utils/book-link";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface BookLinkRendererProps {
   text: string;
@@ -14,19 +14,26 @@ interface BookLinkRendererProps {
  */
 export function BookLinkRenderer({ text, className }: BookLinkRendererProps) {
   const parts = parseBookLinkParts(text);
+  const router = useRouter();
+
+  const handleBookLinkClick = (e: React.MouseEvent, userBookId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/books/${userBookId}`);
+  };
 
   return (
     <span className={className}>
       {parts.map((part, index) => {
         if (part.type === "link" && part.userBookId) {
           return (
-            <Link
+            <button
               key={`book-link-${index}`}
-              href={`/books/${part.userBookId}`}
-              className="text-primary hover:underline font-medium underline decoration-primary/50"
+              onClick={(e) => handleBookLinkClick(e, part.userBookId!)}
+              className="text-primary hover:underline font-medium underline decoration-primary/50 cursor-pointer"
             >
               {part.content}
-            </Link>
+            </button>
           );
         }
         return <span key={`text-${index}`}>{part.content}</span>;

@@ -1,9 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatSmartDate } from "@/lib/utils/date";
 import { getNoteTypeLabel } from "@/lib/utils/note";
@@ -11,9 +24,8 @@ import { NoteContentViewer } from "./note-content-viewer";
 import { OCRStatusBadge } from "./ocr-status-badge";
 import { useOCRStatus } from "@/hooks/use-ocr-status";
 import type { NoteWithBook } from "@/types/note";
-import { FileText, Image as ImageIcon, PenTool, Camera } from "lucide-react";
+import { FileText, Image as ImageIcon, PenTool, Camera, Trash2, Loader2 } from "lucide-react";
 import { BookLinkRenderer } from "./book-link-renderer";
-import { NoteDeleteButton } from "./note-delete-button";
 
 interface NoteCardProps {
   note: NoteWithBook;
@@ -50,16 +62,38 @@ export function NoteCard({ note, showDeleteButton = false, onDelete }: NoteCardP
   };
 
   const cardContent = (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative group">
-      <CardContent className="p-4">
-        <div className="flex gap-4">
+    <Link 
+      href={`/notes/${note.id}`}
+      className="block h-full"
+      onClick={(e) => {
+        // 삭제 버튼 영역 클릭 시 링크 이동 방지
+        const target = e.target as HTMLElement;
+        if (target.closest('button') || target.closest('[role="button"]') || target.closest('[data-delete-button]')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+    >
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full relative group">
+        <CardContent className="p-4">
+          <div className="flex gap-4">
             {/* UX 원칙 05: 깊이감 부여를 위한 이미지 레이어링 */}
-            {/* 이미지 또는 아이콘 */}
+            {/* 이미지 또는 책 표지 */}
             {note.image_url ? (
               <div className="relative w-20 h-28 sm:w-24 sm:h-32 shrink-0 overflow-hidden rounded bg-muted">
                 <Image
                   src={getImageUrl(note.image_url)}
                   alt={note.type}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 80px, 96px"
+                />
+              </div>
+            ) : note.book?.cover_image_url ? (
+              <div className="relative w-20 h-28 sm:w-24 sm:h-32 shrink-0 overflow-hidden rounded bg-muted">
+                <Image
+                  src={getImageUrl(note.book.cover_image_url)}
+                  alt={note.book.title || "Book cover"}
                   fill
                   className="object-cover"
                   sizes="(max-width: 640px) 80px, 96px"
@@ -116,24 +150,21 @@ export function NoteCard({ note, showDeleteButton = false, onDelete }: NoteCardP
         {/* 삭제 버튼 (우측 상단) */}
         {showDeleteButton && (
           <div 
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-            onClick={(e) => e.stopPropagation()}
+            data-delete-button
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
           >
             <NoteDeleteButtonWithCallback noteId={note.id} onDelete={handleDelete} />
           </div>
         )}
       </Card>
-  );
-
-  if (showDeleteButton) {
-    return cardContent;
-  }
-
-  return (
-    <Link href={`/notes/${note.id}`}>
-      {cardContent}
     </Link>
   );
+
+  return cardContent;
 }
 
 /**
