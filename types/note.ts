@@ -12,7 +12,7 @@ export interface Note {
   type: NoteType;
   content: string | null;
   image_url: string | null;
-  page_number: number | null;
+  page_number: string | null;
   is_public: boolean;
   tags: string[] | null;
   created_at: string;
@@ -37,7 +37,7 @@ export interface CreateNoteInput {
   memo_content?: string; // 내 생각
   image_url?: string;
   upload_type?: "photo" | "transcription"; // 사진 또는 필사
-  page_number?: number;
+  page_number?: string;
   is_public?: boolean; // 기본값: true (공개)
   tags?: string[];
 }
@@ -49,7 +49,7 @@ export interface UpdateNoteInput {
   memo_content?: string; // 내 생각
   image_url?: string;
   upload_type?: "photo" | "transcription"; // 사진 또는 필사
-  page_number?: number;
+  page_number?: string;
   is_public?: boolean;
   tags?: string[];
 }
