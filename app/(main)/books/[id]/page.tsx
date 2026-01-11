@@ -15,6 +15,7 @@ import type { ReadingStatus } from "@/types/book";
 import { NotesList } from "@/components/notes/notes-list";
 import { isValidUUID } from "@/lib/utils/validation";
 import { sanitizeErrorForLogging } from "@/lib/utils/validation";
+import { BookScrollHandler } from "@/components/books/book-scroll-handler";
 
 interface BookDetailPageProps {
   params: {
@@ -66,7 +67,8 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-6">
+      <BookScrollHandler />
+      <div id="book-info" className="flex flex-col sm:flex-row gap-6 scroll-mt-4">
         {/* 책 표지 */}
         <div className="relative w-48 h-64 shrink-0 overflow-hidden rounded-lg bg-muted mx-auto sm:mx-0">
           <Image
