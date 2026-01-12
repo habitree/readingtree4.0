@@ -64,6 +64,19 @@ interface ApiIntegrationInfoProps {
     };
     
     // OCR
+    cloudRunOcr: {
+      provider: string;
+      enabled: boolean;
+      configured: boolean;
+      url: string;
+      urlStatus: string;
+      authTokenStatus: string;
+      priority: number;
+      description: string;
+      apiReference: string;
+      features: string[];
+      notes: string;
+    };
     gemini: {
       provider: string;
       enabled: boolean;
@@ -96,6 +109,11 @@ interface ApiIntegrationInfoProps {
         action: string;
       };
       step2: {
+        title: string;
+        status: string;
+        action: string;
+      };
+      step3: {
         title: string;
         status: string;
         action: string;
@@ -134,6 +152,7 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
     supabase, 
     kakaoSdk, 
     naver, 
+    cloudRunOcr,
     gemini, 
     vision, 
     ocrFlow, 
@@ -486,13 +505,13 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[ocrFlow.step1, ocrFlow.step2].map((step, index) => (
+              {[ocrFlow.step1, ocrFlow.step2, ocrFlow.step3].filter(Boolean).map((step, index) => (
                 <div key={index}>
                   <div className="flex items-center gap-4 p-4 border rounded-lg">
                     <div className="flex-shrink-0">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center font-bold text-white",
-                        index === 0 ? "bg-primary" : "bg-secondary"
+                        index === 0 ? "bg-primary" : index === 1 ? "bg-secondary" : "bg-muted"
                       )}>
                         {index + 1}
                       </div>
@@ -512,7 +531,7 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
                       <XCircle className="h-5 w-5 text-muted-foreground" />
                     )}
                   </div>
-                  {index === 0 && (
+                  {index < 2 && (
                     <div className="flex justify-center py-2">
                       <ArrowRight className="h-6 w-6 text-muted-foreground" />
                     </div>
@@ -527,6 +546,64 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
           </CardContent>
         </Card>
 
+        {/* Cloud Run OCR */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className={cn("h-5 w-5", cloudRunOcr.enabled ? "text-green-500" : "text-red-500")} />
+                  {cloudRunOcr.provider}
+                  <Badge variant="outline" className="text-xs">1순위</Badge>
+                </CardTitle>
+                <CardDescription className="mt-2">{cloudRunOcr.description}</CardDescription>
+              </div>
+              <Badge variant={cloudRunOcr.enabled ? "default" : "destructive"}>
+                {cloudRunOcr.enabled ? "활성화됨" : "비활성화됨"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="col-span-2">
+                <div className="font-medium text-muted-foreground mb-1">서비스 URL</div>
+                <div className="font-mono text-xs break-all">{cloudRunOcr.url}</div>
+              </div>
+              <div>
+                <div className="font-medium text-muted-foreground mb-1">URL 상태</div>
+                <div className="font-mono text-xs">{cloudRunOcr.urlStatus}</div>
+              </div>
+              <div>
+                <div className="font-medium text-muted-foreground mb-1">인증 토큰 상태</div>
+                <div className="font-mono text-xs">{cloudRunOcr.authTokenStatus}</div>
+              </div>
+            </div>
+            
+            <div>
+              <div className="font-medium mb-2">주요 기능</div>
+              <ul className="space-y-1 text-sm">
+                {cloudRunOcr.features.map((feature, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="pt-2 border-t">
+              <a 
+                href={cloudRunOcr.apiReference} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-blue-500 hover:underline flex items-center gap-1"
+              >
+                공식 문서 보기 <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Gemini API */}
         <Card>
           <CardHeader>
@@ -535,7 +612,7 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
                 <CardTitle className="flex items-center gap-2">
                   <Zap className={cn("h-5 w-5", gemini.enabled ? "text-green-500" : "text-red-500")} />
                   {gemini.provider}
-                  <Badge variant="outline" className="text-xs">1순위</Badge>
+                  <Badge variant="outline" className="text-xs">2순위 (폴백)</Badge>
                 </CardTitle>
                 <CardDescription className="mt-2">{gemini.description}</CardDescription>
               </div>
@@ -593,7 +670,7 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
                 <CardTitle className="flex items-center gap-2">
                   <FileKey className={cn("h-5 w-5", vision.enabled ? "text-green-500" : "text-red-500")} />
                   {vision.provider}
-                  <Badge variant="outline" className="text-xs">2순위 (폴백)</Badge>
+                  <Badge variant="outline" className="text-xs">3순위 (최종 폴백)</Badge>
                 </CardTitle>
                 <CardDescription className="mt-2">{vision.description}</CardDescription>
               </div>
