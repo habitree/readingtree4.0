@@ -32,11 +32,14 @@ yarn-error.log*
 # Google service account keys
 service-account-key.json
 *-service-account*.json
+habitree-f49e1-*.json
+gen-lang-client-*.json
 *.json
 !package.json
 !package-lock.json
 !tsconfig.json
 !tsconfig.*.json
+!components.json
 
 # vercel
 .vercel
