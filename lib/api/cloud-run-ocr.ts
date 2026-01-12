@@ -6,8 +6,8 @@
 import { GoogleAuth } from "google-auth-library";
 
 const CLOUD_RUN_OCR_URL = process.env.CLOUD_RUN_OCR_URL || 
-  "https://us-central1-habitree-f49e1.cloudfunctions.net/extractTextFromImage";
-
+  "https://extracttextfromimage-236647437750.us-central1.run.app";
+  
 /**
  * 인증 토큰 캐시 (메모리)
  * 토큰은 약 1시간 동안 유효하므로 캐싱하여 성능 최적화
@@ -25,34 +25,56 @@ let tokenCache: TokenCache | null = null;
  * @returns 인증 토큰
  */
 async function getAuthToken(): Promise<string | null> {
+  console.log("[Cloud Run OCR] getAuthToken 호출");
+  
   // 1. 정적 토큰이 환경 변수에 있는 경우 (하위 호환성)
   if (process.env.CLOUD_RUN_OCR_AUTH_TOKEN) {
+    console.log("[Cloud Run OCR] 정적 토큰 사용");
     return process.env.CLOUD_RUN_OCR_AUTH_TOKEN;
   }
 
   // 2. 서비스 계정 키가 환경 변수에 있는 경우 (동적 토큰 생성)
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  console.log("[Cloud Run OCR] 서비스 계정 키 확인:", {
+    hasServiceAccountKey: !!serviceAccountKey,
+    keyLength: serviceAccountKey?.length || 0,
+    keyPreview: serviceAccountKey ? serviceAccountKey.substring(0, 50) + "..." : null,
+  });
+  
   if (serviceAccountKey) {
     try {
       // 캐시된 토큰이 있고 아직 유효한 경우 재사용 (1분 여유)
       if (tokenCache && tokenCache.expiresAt > Date.now() + 60000) {
+        console.log("[Cloud Run OCR] 캐시된 토큰 재사용");
         return tokenCache.token;
       }
 
+      console.log("[Cloud Run OCR] 새 토큰 생성 시작");
+      
       // 서비스 계정 키 파싱
       let credentials;
       try {
         credentials = typeof serviceAccountKey === 'string' 
           ? JSON.parse(serviceAccountKey) 
           : serviceAccountKey;
+        console.log("[Cloud Run OCR] 서비스 계정 키 파싱 성공:", {
+          projectId: credentials.project_id,
+          clientEmail: credentials.client_email,
+        });
       } catch (parseError) {
-        throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY 환경 변수가 유효한 JSON 형식이 아닙니다.");
+        const parseErrorMessage = parseError instanceof Error ? parseError.message : "알 수 없는 오류";
+        console.error("[Cloud Run OCR] 서비스 계정 키 파싱 실패:", parseErrorMessage);
+        throw new Error(`GOOGLE_SERVICE_ACCOUNT_KEY 환경 변수가 유효한 JSON 형식이 아닙니다: ${parseErrorMessage}`);
       }
 
       // Google Auth 클라이언트 생성 및 ID 토큰 생성
+      console.log("[Cloud Run OCR] GoogleAuth 클라이언트 생성 중...");
       const auth = new GoogleAuth({ credentials });
+      console.log("[Cloud Run OCR] ID 토큰 클라이언트 생성 중, 대상 URL:", CLOUD_RUN_OCR_URL);
       const idTokenClient = await auth.getIdTokenClient(CLOUD_RUN_OCR_URL);
+      console.log("[Cloud Run OCR] ID 토큰 가져오기 중...");
       const token = await idTokenClient.idTokenProvider.fetchIdToken(CLOUD_RUN_OCR_URL);
+      console.log("[Cloud Run OCR] ID 토큰 생성 성공, 토큰 길이:", token.length);
 
       // 토큰 캐싱 (55분 유효)
       tokenCache = {
@@ -63,12 +85,17 @@ async function getAuthToken(): Promise<string | null> {
       return token;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
-      console.error("[Cloud Run OCR] 동적 토큰 생성 실패:", errorMessage);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error("[Cloud Run OCR] 동적 토큰 생성 실패:", {
+        error: errorMessage,
+        stack: errorStack,
+      });
       return null;
     }
   }
 
   // 3. 인증 정보가 없는 경우 (공개 함수 가정)
+  console.warn("[Cloud Run OCR] 인증 정보가 없습니다. 공개 함수로 가정합니다.");
   return null;
 }
 
@@ -84,7 +111,7 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
 
     // 1. 이미지 다운로드
     const imageResponse = await fetch(imageUrl, {
-      signal: AbortSignal.timeout(30000), // 30초 타임아웃1
+      signal: AbortSignal.timeout(30000), // 30초 타임아웃
     });
 
     if (!imageResponse.ok) {
@@ -117,7 +144,19 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
     };
     
     // 4. 인증 토큰 가져오기
+    console.log("[Cloud Run OCR] 인증 토큰 가져오기 시작");
     const authToken = await getAuthToken();
+    
+    if (authToken) {
+      console.log("[Cloud Run OCR] 인증 토큰 생성 성공, 토큰 길이:", authToken.length);
+    } else {
+      console.warn("[Cloud Run OCR] 인증 토큰이 없습니다. 공개 함수로 시도합니다.");
+      console.log("[Cloud Run OCR] 환경 변수 확인:", {
+        hasStaticToken: !!process.env.CLOUD_RUN_OCR_AUTH_TOKEN,
+        hasServiceAccountKey: !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY,
+        serviceAccountKeyLength: process.env.GOOGLE_SERVICE_ACCOUNT_KEY?.length || 0,
+      });
+    }
     
     // 5. 요청 헤더 준비
     const headers: Record<string, string> = {
@@ -126,14 +165,29 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
     
     if (authToken) {
       headers["Authorization"] = `Bearer ${authToken}`;
+      console.log("[Cloud Run OCR] Authorization 헤더 추가됨");
+    } else {
+      console.warn("[Cloud Run OCR] Authorization 헤더 없이 요청 전송");
     }
     
     // 6. Cloud Run OCR API 호출
+    console.log("[Cloud Run OCR] API 호출 시작:", {
+      url: CLOUD_RUN_OCR_URL,
+      hasAuthToken: !!authToken,
+      requestBodySize: JSON.stringify(requestBody).length,
+    });
+    
     const response = await fetch(CLOUD_RUN_OCR_URL, {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(60000), // 60초 타임아웃
+    });
+    
+    console.log("[Cloud Run OCR] API 응답 수신:", {
+      status: response.status,
+      statusText: response.statusText,
+      hasAuthHeader: !!headers["Authorization"],
     });
 
     if (!response.ok) {
