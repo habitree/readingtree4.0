@@ -883,7 +883,7 @@ export async function createOrUpdateTranscription(
     .maybeSingle();
 
   if (existingTranscription) {
-    // 기존 transcription 업데이트
+    // 기존 transcription 업데이트2
     // OCR 결과는 extracted_text에만 저장하고, quote_content는 null로 유지 (사용자가 나중에 편집 가능)
     const { error: updateError } = await supabase
       .from("transcriptions")
