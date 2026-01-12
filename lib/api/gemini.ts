@@ -35,10 +35,9 @@ function getGeminiClient() {
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
   try {
     const genAI = getGeminiClient();
-    // gemini-1.5-pro 사용 (안정적이고 OCR에 적합한 모델)
-    // 가격 책정 페이지 기준: 무료 등급에서 사용 가능, 이미지 이해 지원
-    // gemini-1.5-flash는 v1beta에서 지원되지 않으므로 gemini-1.5-pro 사용
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    // gemini-pro 사용 (v1beta API에서 안정적으로 지원되는 모델)
+    // gemini-1.5-pro와 gemini-1.5-flash는 v1beta에서 지원되지 않으므로 gemini-pro 사용
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     // 이미지 다운로드
     const response = await fetch(imageUrl, {
