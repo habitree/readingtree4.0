@@ -1,4 +1,4 @@
-import { getApiIntegrationInfo } from "@/app/actions/admin";
+import { getApiIntegrationInfo, getOcrMonthlyUsage, getOcrTotalStats } from "@/app/actions/admin";
 import { ApiIntegrationInfo } from "@/components/admin/api-integration-info";
 import { Metadata } from "next";
 import { isAdmin } from "@/app/actions/auth";
@@ -18,12 +18,20 @@ export default async function ApiInfoPage() {
         redirect("/");
     }
     
-    // API 연동 정보 조회
-    const apiInfo = await getApiIntegrationInfo();
+    // API 연동 정보 및 OCR 사용량 조회
+    const [apiInfo, ocrMonthlyUsage, ocrTotalStats] = await Promise.all([
+        getApiIntegrationInfo(),
+        getOcrMonthlyUsage(),
+        getOcrTotalStats(),
+    ]);
 
     return (
         <div className="container py-8 max-w-7xl mx-auto">
-            <ApiIntegrationInfo apiInfo={apiInfo} />
+            <ApiIntegrationInfo 
+                apiInfo={apiInfo}
+                ocrMonthlyUsage={ocrMonthlyUsage}
+                ocrTotalStats={ocrTotalStats}
+            />
         </div>
     );
 }

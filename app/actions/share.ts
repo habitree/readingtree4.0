@@ -66,8 +66,8 @@ export async function getBookNotesForShare(
     )
     .eq("book_id", actualBookId)
     .or(`is_public.eq.true,user_id.eq.${currentUser.id}`)
-    .order("page_number", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("page_number", { ascending: true, nullsFirst: false });
 
   if (error) {
     throw new Error(sanitizeErrorMessage(error));
@@ -99,8 +99,8 @@ async function getPublicNotesByBook(
     )
     .eq("book_id", bookId)
     .eq("is_public", true)
-    .order("page_number", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("page_number", { ascending: true, nullsFirst: false });
 
   if (error) {
     throw new Error(sanitizeErrorMessage(error));
@@ -194,8 +194,8 @@ export async function getNotesForShare(
         )
         .in("id", noteIds)
         .eq("is_public", true)
-        .order("page_number", { ascending: true, nullsFirst: false })
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .order("page_number", { ascending: true, nullsFirst: false });
 
       if (error) {
         throw new Error(sanitizeErrorMessage(error));
@@ -223,8 +223,8 @@ export async function getNotesForShare(
     )
     .in("id", noteIds)
     .or(`is_public.eq.true,user_id.eq.${currentUser.id}`)
-    .order("page_number", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("page_number", { ascending: true, nullsFirst: false });
 
   if (error) {
     throw new Error(sanitizeErrorMessage(error));

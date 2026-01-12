@@ -241,7 +241,10 @@ export async function getReadingStats(user?: User | null) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5)
       .map((item) => ({
-        book: item.book,
+        book: {
+          ...item.book,
+          id: `sample-${item.book.id}`, // 샘플 데이터 ID 형식 통일
+        },
         noteCount: item.count,
       }));
 
@@ -298,6 +301,17 @@ export async function getReadingStats(user?: User | null) {
     )
     .eq("user_id", currentUser.id);
 
+  // 사용자의 user_books ID 가져오기 (매핑용)
+  const { data: userBooksData } = await supabase
+    .from("user_books")
+    .select("id, book_id")
+    .eq("user_id", currentUser.id);
+
+  const userBookIdMap = new Map<string, string>();
+  if (userBooksData) {
+    userBooksData.forEach((ub) => userBookIdMap.set(ub.book_id, ub.id));
+  }
+
   // 책별 기록 수 집계
   const bookCounts = new Map<string, { count: number; book: any }>();
   if (topBooksData) {
@@ -306,10 +320,14 @@ export async function getReadingStats(user?: User | null) {
       const book = (note.books as any);
       if (book) {
         const existing = bookCounts.get(bookId);
+        // user_books ID가 있는지 확인하여 교체 (상세 페이지 링크 호환성)
+        const userBookId = userBookIdMap.get(bookId) || bookId;
+        const bookWithUserBookId = { ...book, id: userBookId };
+
         if (existing) {
           existing.count++;
         } else {
-          bookCounts.set(bookId, { count: 1, book });
+          bookCounts.set(bookId, { count: 1, book: bookWithUserBookId });
         }
       }
     });
@@ -431,7 +449,7 @@ export async function getMonthlyStats(user?: User | null) {
   }
 
   const now = new Date();
-  
+
   // 6개월 쿼리를 모두 준비
   const monthQueries: Array<{ month: string; query: any }> = [];
   for (let i = 5; i >= 0; i--) {

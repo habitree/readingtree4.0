@@ -453,12 +453,13 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
   }
 
   // notes 쿼리 구성 및 실행
+  // 최신 등록된 기록이 상단에 오도록 created_at을 우선 정렬 기준으로 설정
   let query = supabase
     .from("notes")
     .select(selectQuery)
     .eq("user_id", currentUser.id)
-    .order("page_number", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("page_number", { ascending: true, nullsFirst: false });
 
   if (actualBookId) {
     query = query.eq("book_id", actualBookId);

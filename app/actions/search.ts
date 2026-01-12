@@ -158,10 +158,10 @@ export async function searchNotes(params: SearchParams, user?: User | null): Pro
   const to = from + ITEMS_PER_PAGE - 1;
   supabaseQuery = supabaseQuery.range(from, to);
 
-  // 정렬: 페이지 번호 순, 그 다음 생성일 순
+  // 정렬: 최신 등록 순(created_at 내림차순), 그 다음 페이지 번호 순
   supabaseQuery = supabaseQuery
-    .order("page_number", { ascending: true, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("page_number", { ascending: true, nullsFirst: false });
 
   const { data, error, count } = await supabaseQuery;
 

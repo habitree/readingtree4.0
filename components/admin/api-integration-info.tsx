@@ -105,9 +105,24 @@ interface ApiIntegrationInfoProps {
       status: string;
     };
   };
+  ocrMonthlyUsage?: Array<{
+    month: string;
+    year: number;
+    fullDate: string;
+    total: number;
+    success: number;
+    failure: number;
+  }>;
+  ocrTotalStats?: {
+    total: number;
+    success: number;
+    failure: number;
+    thisMonth: number;
+    successRate: number;
+  };
 }
 
-export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
+export function ApiIntegrationInfo({ apiInfo, ocrMonthlyUsage, ocrTotalStats }: ApiIntegrationInfoProps) {
   const { 
     supabase, 
     kakaoSdk, 
@@ -520,6 +535,63 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
                   >
                     가격 책정 상세 보기 <ExternalLink className="h-3 w-3" />
                   </a>
+                </div>
+              </div>
+            )}
+
+            {/* OCR 사용량 통계 */}
+            {ocrTotalStats && (
+              <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <div className="font-medium mb-3 text-sm">실제 사용량 통계</div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-muted-foreground text-xs mb-1">전체 처리</div>
+                    <div className="text-lg font-bold">{ocrTotalStats.total.toLocaleString()}건</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground text-xs mb-1">이번 달</div>
+                    <div className="text-lg font-bold text-blue-600">{ocrTotalStats.thisMonth.toLocaleString()}건</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground text-xs mb-1">성공률</div>
+                    <div className="text-lg font-bold text-green-600">{ocrTotalStats.successRate}%</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground text-xs mb-1">성공/실패</div>
+                    <div className="text-xs">
+                      <span className="text-green-600">{ocrTotalStats.success.toLocaleString()}</span>
+                      {" / "}
+                      <span className="text-red-600">{ocrTotalStats.failure.toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 월별 사용량 차트 */}
+            {ocrMonthlyUsage && ocrMonthlyUsage.length > 0 && (
+              <div className="p-3 bg-muted/50 rounded-lg border">
+                <div className="font-medium mb-3 text-sm">월별 사용량 추이 (최근 6개월)</div>
+                <div className="h-[200px] flex items-end justify-between gap-2">
+                  {ocrMonthlyUsage.map((item, i) => {
+                    const maxUsage = Math.max(...ocrMonthlyUsage.map(m => m.total), 1);
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                        <div
+                          className="w-full bg-blue-500/30 hover:bg-blue-500/50 transition-all rounded-t-md relative flex items-end justify-center border border-blue-500/20"
+                          style={{ height: `${Math.max((item.total / maxUsage) * 150, 10)}px` }}
+                        >
+                          <span className="absolute -top-12 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-background px-2 py-1 rounded border shadow-sm z-10">
+                            {item.month}<br />
+                            총 {item.total}건<br />
+                            성공 {item.success}건<br />
+                            실패 {item.failure}건
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-medium">{item.month}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

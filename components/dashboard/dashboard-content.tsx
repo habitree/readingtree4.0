@@ -121,7 +121,7 @@ export default async function DashboardContent() {
             ) : (
               <div className="text-center py-6 space-y-4">
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {isGuest 
+                  {isGuest
                     ? "로그인하여 독서 목표를 설정하세요"
                     : "프로필에서 독서 목표를 설정하세요"}
                 </p>
@@ -180,6 +180,63 @@ export default async function DashboardContent() {
           </Card>
         </div>
 
+        {/* 최근 기록한 책: 표지 이미지 기반 (사용자 요청) */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start gap-3">
+              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="mb-2">최근 기록한 책</CardTitle>
+                <CardDescription>가장 최근에 기록을 남긴 책들입니다.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {readingStats && readingStats.topBooks.length > 0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {readingStats.topBooks.map((item) => (
+                  <Link
+                    key={item.book.id}
+                    href={`/books/${item.book.id}`}
+                    className="group space-y-2"
+                  >
+                    <div className="aspect-[3/4] relative overflow-hidden rounded-lg border shadow-sm group-hover:shadow-md group-hover:ring-2 group-hover:ring-primary/20 transition-all">
+                      {item.book.cover_image_url ? (
+                        <img
+                          src={item.book.cover_image_url}
+                          alt={item.book.title}
+                          className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center">
+                          <BookOpen className="h-8 w-8 text-muted-foreground/50" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold truncate group-hover:text-primary transition-colors">
+                        {item.book.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {item.noteCount}개 기록
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  기록한 책이 없습니다. 책을 추가하고 첫 기록을 남겨보세요!
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* 월별 통계 차트: 아이콘으로 시각적 계층 강화 */}
         <Card>
           <CardHeader>
@@ -232,12 +289,12 @@ export default async function DashboardContent() {
           </CardContent>
         </Card>
 
-        {/* 인기 책: 아이콘과 색상으로 시각적 계층 강화 */}
+        {/* 가장 많이 기록한 책 (리스트 형태 유지) */}
         <Card>
           <CardHeader>
             <div className="flex items-start gap-3">
               <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                <BookOpen className="h-5 w-5 text-primary" />
+                <TrendingUp className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <CardTitle className="mb-2">가장 많이 기록한 책</CardTitle>
@@ -249,12 +306,12 @@ export default async function DashboardContent() {
             {readingStats && readingStats.topBooks.length > 0 ? (
               <div className="space-y-2">
                 {readingStats.topBooks.map((item, index) => (
-                  <div
+                  <Link
                     key={item.book.id}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 hover:border-primary/20 transition-all"
+                    href={`/books/${item.book.id}`}
+                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 hover:border-primary/20 transition-all group"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {/* 순위 배지: 색상으로 시각적 구분 */}
                       <div className={cn(
                         "flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
                         index === 0 && "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
@@ -264,12 +321,14 @@ export default async function DashboardContent() {
                       )}>
                         {index + 1}
                       </div>
-                      <span className="text-sm font-medium truncate">{item.book.title}</span>
+                      <span className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                        {item.book.title}
+                      </span>
                     </div>
                     <span className="text-sm text-muted-foreground shrink-0 ml-4">
                       {item.noteCount}개 기록
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             ) : (

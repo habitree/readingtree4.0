@@ -1,4 +1,4 @@
-import { getAdminStats, getUserGrowthData, getRecentSystemActivity } from "@/app/actions/admin";
+import { getAdminStats, getUserGrowthData, getRecentSystemActivity, getOcrMonthlyUsage, getOcrTotalStats } from "@/app/actions/admin";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
 import { Metadata } from "next";
 import { isAdmin } from "@/app/actions/auth";
@@ -19,10 +19,12 @@ export default async function AdminPage() {
     }
     
     // 데이터 페칭 (서버 컴포넌트)
-    const [stats, growth, activity] = await Promise.all([
+    const [stats, growth, activity, ocrMonthlyUsage, ocrTotalStats] = await Promise.all([
         getAdminStats(),
         getUserGrowthData(),
         getRecentSystemActivity(),
+        getOcrMonthlyUsage(),
+        getOcrTotalStats(),
     ]);
 
     return (
@@ -31,6 +33,8 @@ export default async function AdminPage() {
                 stats={stats}
                 growth={growth}
                 activity={activity}
+                ocrMonthlyUsage={ocrMonthlyUsage}
+                ocrTotalStats={ocrTotalStats}
             />
         </div>
     );

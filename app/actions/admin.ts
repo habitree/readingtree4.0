@@ -137,6 +137,102 @@ export async function getRecentSystemActivity() {
 }
 
 /**
+ * 월별 OCR 사용량 조회 (최근 6개월)
+ * @returns 월별 OCR 처리 횟수 (성공/실패 포함)
+ */
+export async function getOcrMonthlyUsage() {
+    await requireAdmin();
+    
+    const supabase = await createServerSupabaseClient();
+    const now = new Date();
+    const monthlyData = [];
+
+    for (let i = 5; i >= 0; i--) {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+
+        // 해당 월의 전체 OCR 처리 횟수
+        const { count: totalCount } = await supabase
+            .from("ocr_logs")
+            .select("*", { count: "exact", head: true })
+            .gte("created_at", startOfMonth.toISOString())
+            .lte("created_at", endOfMonth.toISOString());
+
+        // 해당 월의 성공한 OCR 처리 횟수
+        const { count: successCount } = await supabase
+            .from("ocr_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("status", "success")
+            .gte("created_at", startOfMonth.toISOString())
+            .lte("created_at", endOfMonth.toISOString());
+
+        // 해당 월의 실패한 OCR 처리 횟수
+        const { count: failureCount } = await supabase
+            .from("ocr_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("status", "failed")
+            .gte("created_at", startOfMonth.toISOString())
+            .lte("created_at", endOfMonth.toISOString());
+
+        monthlyData.push({
+            month: `${startOfMonth.getMonth() + 1}월`,
+            year: startOfMonth.getFullYear(),
+            fullDate: startOfMonth.toISOString(),
+            total: totalCount || 0,
+            success: successCount || 0,
+            failure: failureCount || 0,
+        });
+    }
+
+    return monthlyData;
+}
+
+/**
+ * OCR 전체 통계 조회
+ * @returns 전체 OCR 처리 통계 (총 처리 횟수, 성공/실패 횟수 등)
+ */
+export async function getOcrTotalStats() {
+    await requireAdmin();
+    
+    const supabase = await createServerSupabaseClient();
+
+    // 전체 OCR 처리 횟수
+    const { count: totalCount } = await supabase
+        .from("ocr_logs")
+        .select("*", { count: "exact", head: true });
+
+    // 성공한 OCR 처리 횟수
+    const { count: successCount } = await supabase
+        .from("ocr_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "success");
+
+    // 실패한 OCR 처리 횟수
+    const { count: failureCount } = await supabase
+        .from("ocr_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "failed");
+
+    // 이번 달 OCR 처리 횟수
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const { count: thisMonthCount } = await supabase
+        .from("ocr_logs")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", startOfMonth.toISOString());
+
+    return {
+        total: totalCount || 0,
+        success: successCount || 0,
+        failure: failureCount || 0,
+        thisMonth: thisMonthCount || 0,
+        successRate: totalCount && totalCount > 0 
+            ? Math.round((successCount || 0) / totalCount * 100) 
+            : 0,
+    };
+}
+
+/**
  * API 연동 정보 조회
  * 현재 설정된 모든 외부 API 정보 및 상태 확인
  */
