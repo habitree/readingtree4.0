@@ -125,7 +125,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                     </span>
                 </div>
                 <div className="block h-[12px] leading-[12px] overflow-visible">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">
                         Your Intelligence Forest
                     </span>
                 </div>
@@ -187,7 +187,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                 {note.page_number && (
                                     <div className="h-4 leading-4 mt-2 overflow-visible">
                                         <BookOpen className="w-3 h-3 text-forest-400 shrink-0 inline-block align-middle mr-1.5" />
-                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest inline-block align-middle">
+                                        <span className="text-[11px] text-slate-400 font-bold uppercase tracking-widest inline-block align-middle">
                                             {note.page_number}P Record
                                         </span>
                                     </div>
@@ -213,7 +213,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                             />
                                             {showTimestamp && (
                                                 <div className="absolute bottom-3 left-3 z-20">
-                                                    <p className="text-[10px] font-bold text-white drop-shadow-md bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                                    <p className="text-[11px] font-bold text-white drop-shadow-md bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
                                                         {formatDateTime(note.created_at)}
                                                     </p>
                                                 </div>
@@ -233,7 +233,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                                 />
                                                 {showTimestamp && (
                                                     <div className="absolute bottom-3 left-3 z-20">
-                                                        <p className="text-[10px] font-bold text-white drop-shadow-md bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                                                        <p className="text-[11px] font-bold text-white drop-shadow-md bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
                                                             {formatDateTime(note.created_at)}
                                                         </p>
                                                     </div>
@@ -242,7 +242,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
                                         </ImageLightbox>
                                     )}
                                     <div className="mt-4 text-center">
-                                        <p className="text-[10px] font-black tracking-[0.4em] text-slate-300 dark:text-slate-600 uppercase">
+                                        <p className="text-[11px] font-black tracking-[0.4em] text-slate-300 dark:text-slate-600 uppercase">
                                             Captured Moment
                                         </p>
                                     </div>
@@ -369,7 +369,7 @@ export function ShareNoteCard({ note, className, isPublicView = false, hideActio
 
                                     <div className="flex flex-col justify-center min-w-0 gap-0 overflow-visible h-10">
                                         <div className="block h-[14px] leading-[14px] overflow-visible">
-                                            <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                                            <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
                                                 Record by
                                             </span>
                                         </div>

@@ -50,6 +50,11 @@ export interface Database {
           publisher: string | null;
           published_date: string | null;
           cover_image_url: string | null;
+          category: string | null;
+          total_pages: number | null;
+          summary: string | null;
+          external_link: string | null;
+          is_sample: boolean | null;
           created_at: string;
           updated_at: string;
         };
@@ -61,6 +66,11 @@ export interface Database {
           publisher?: string | null;
           published_date?: string | null;
           cover_image_url?: string | null;
+          category?: string | null;
+          total_pages?: number | null;
+          summary?: string | null;
+          external_link?: string | null;
+          is_sample?: boolean | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -72,6 +82,11 @@ export interface Database {
           publisher?: string | null;
           published_date?: string | null;
           cover_image_url?: string | null;
+          category?: string | null;
+          total_pages?: number | null;
+          summary?: string | null;
+          external_link?: string | null;
+          is_sample?: boolean | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -81,10 +96,13 @@ export interface Database {
           id: string;
           user_id: string;
           book_id: string;
-          status: "reading" | "completed" | "paused";
+          bookshelf_id: string | null;
+          status: "reading" | "completed" | "paused" | "not_started" | "rereading";
           started_at: string;
           completed_at: string | null;
           completed_dates?: any; // JSONB 배열
+          reading_reason: string | null;
+          book_format: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -92,10 +110,13 @@ export interface Database {
           id?: string;
           user_id: string;
           book_id: string;
-          status?: "reading" | "completed" | "paused";
+          bookshelf_id?: string | null;
+          status?: "reading" | "completed" | "paused" | "not_started" | "rereading";
           started_at?: string;
           completed_at?: string | null;
           completed_dates?: any; // JSONB 배열
+          reading_reason?: string | null;
+          book_format?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -103,10 +124,13 @@ export interface Database {
           id?: string;
           user_id?: string;
           book_id?: string;
-          status?: "reading" | "completed" | "paused";
+          bookshelf_id?: string | null;
+          status?: "reading" | "completed" | "paused" | "not_started" | "rereading";
           started_at?: string;
           completed_at?: string | null;
           completed_dates?: any; // JSONB 배열
+          reading_reason?: string | null;
+          book_format?: string | null;
           created_at?: string;
           updated_at?: string;
         };

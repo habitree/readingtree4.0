@@ -186,6 +186,10 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 - `publisher` (VARCHAR(200)): 출판사
 - `published_date` (DATE): 출판일
 - `cover_image_url` (TEXT): 표지 이미지 URL
+- `category` (VARCHAR(100)): 도서 분류 (소설, 자기계발, 인문 등)
+- `total_pages` (INTEGER): 도서의 전체 페이지 수
+- `summary` (TEXT): 출판사 제공 또는 사용자가 기록한 책 소개
+- `external_link` (TEXT): 네이버 링크 (도서 검색 및 구매 페이지 연결용 URL)
 - `is_sample` (BOOLEAN, DEFAULT FALSE): 샘플 데이터 플래그 (게스트 사용자용)
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
 
@@ -198,6 +202,8 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 - `idx_books_isbn`: ISBN 조회용 (NULL 제외)
 - `idx_books_title`: 제목 조회용
 - `idx_books_author`: 저자 조회용
+- `idx_books_category`: 분류별 필터링용 (NULL 제외)
+- `idx_books_total_pages`: 페이지 수 범위 검색용 (NULL 제외)
 - `idx_books_is_sample`: 샘플 데이터 조회용
 - `idx_books_title_fts`: 제목 전문 검색용 (GIN)
 - `idx_books_author_fts`: 저자 전문 검색용 (GIN)
@@ -222,6 +228,7 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 - `started_at` (TIMESTAMP WITH TIME ZONE, DEFAULT NOW()): 시작일
 - `completed_at` (TIMESTAMP WITH TIME ZONE): 완독일
 - `reading_reason` (TEXT): 사용자가 책을 읽는 이유 (선택 사항)
+- `book_format` (VARCHAR(50)): 읽는 책 종류 (종이책, 전자책, 종이+전자 등 독서 매체)
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
 - **UNIQUE 제약**: `(user_id, book_id)` - 한 사용자는 같은 책을 한 번만 추가 가능
 
@@ -235,6 +242,7 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 - `idx_user_books_book_id`: 책별 사용자 목록 조회용
 - `idx_user_books_status`: 상태별 필터링용
 - `idx_user_books_bookshelf_id`: 서재별 책 조회용
+- `idx_user_books_book_format`: 독서 매체별 필터링용 (NULL 제외)
 
 **RLS 정책 요약**:
 - **SELECT**: 자신의 책 또는 샘플 책 조회 가능 (`auth.uid() = user_id OR book.is_sample = TRUE`)
@@ -833,6 +841,26 @@ RLS 정책은 데이터베이스 레벨에서 접근 제어를 강제하므로, 
 - 변경 내용
 - 영향받는 테이블
 - 마이그레이션 파일명
+
+### 2026-01-12 (도서 메타데이터 컬럼 추가)
+
+- **변경 내용**: 기존 시스템에서 관리되던 메타데이터를 새로 추가
+  - `books` 테이블에 메타데이터 컬럼 추가:
+    - `category` (VARCHAR(100)): 도서 분류 (소설, 자기계발, 인문 등)
+    - `total_pages` (INTEGER): 도서의 전체 페이지 수
+    - `summary` (TEXT): 출판사 제공 또는 사용자가 기록한 책 소개
+    - `external_link` (TEXT): 네이버 링크 (도서 검색 및 구매 페이지 연결용 URL)
+  - `user_books` 테이블에 컬럼 추가:
+    - `book_format` (VARCHAR(50)): 읽는 책 종류 (종이책, 전자책, 종이+전자 등 독서 매체)
+  - 인덱스 추가:
+    - `idx_books_category`: 분류별 필터링용
+    - `idx_books_total_pages`: 페이지 수 범위 검색용
+    - `idx_user_books_book_format`: 독서 매체별 필터링용
+- **영향받는 테이블**:
+  - `books`
+  - `user_books`
+- **마이그레이션 파일**: `migration-202601122226__books__add_metadata_columns.sql`
+- **목적**: 기존 시스템의 메타데이터를 새 시스템에 통합 (기능 적용은 이후에 진행 예정)
 
 ### 2026-01-04 (기록 제목 추가)
 

@@ -117,13 +117,19 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
 
       console.log(`[카드 복사] ${images.length}개의 이미지 로드 대기 중...`);
 
-      // 이미지 로드 확인 (타임아웃 5초로 증가)
+      // 이미지 로드 확인 (타임아웃 5초) + img.decode() 추가로 디코딩 완료 보장
       await Promise.all(
         images.map((img, index) => {
-          return new Promise<void>((resolve) => {
-            // 이미 로드된 이미지
+          return new Promise<void>(async (resolve) => {
+            // 이미 로드된 이미지 - decode()로 디코딩 완료 보장
             if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
               console.log(`[카드 복사] 이미지 ${index + 1}/${images.length} 이미 로드됨:`, img.src);
+              try {
+                await img.decode();
+                console.log(`[카드 복사] 이미지 ${index + 1}/${images.length} 디코딩 완료`);
+              } catch (e) {
+                console.warn(`[카드 복사] 이미지 ${index + 1}/${images.length} 디코딩 실패:`, e);
+              }
               resolve();
               return;
             }
@@ -135,9 +141,16 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
               resolve();
             }, 5000);
 
-            img.onload = () => {
+            img.onload = async () => {
               console.log(`[카드 복사] 이미지 ${index + 1}/${images.length} 로드 완료:`, img.src);
               clearTimeout(timeout);
+              // 디코딩 완료 보장
+              try {
+                await img.decode();
+                console.log(`[카드 복사] 이미지 ${index + 1}/${images.length} 디코딩 완료`);
+              } catch (e) {
+                console.warn(`[카드 복사] 이미지 ${index + 1}/${images.length} 디코딩 실패:`, e);
+              }
               resolve();
             };
 
@@ -156,18 +169,26 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Step 3: html2canvas로 캡처
-      console.log("[카드 복사] html2canvas 시작 (Scale: 3.0)...");
+      // [최적화] PC: 2048px 출력 (scale 2.133), 모바일: 1440px 출력 (scale 1.5)
+      const CARD_WIDTH = 960;
+      const TARGET_WIDTH_PC = 2048;
+      const TARGET_WIDTH_MOBILE = 1440;
+      const isMobileDevice = isMobile();
+      const targetWidth = isMobileDevice ? TARGET_WIDTH_MOBILE : TARGET_WIDTH_PC;
+      const calculatedScale = targetWidth / CARD_WIDTH; // PC: 2.133, 모바일: 1.5
+
+      console.log(`[카드 복사] html2canvas 시작 (${isMobileDevice ? '모바일' : 'PC'} 모드 - Scale: ${calculatedScale.toFixed(3)}, 출력 너비: ${targetWidth}px)...`);
       const html2canvasModule = await import("html2canvas");
       const html2canvas = html2canvasModule.default as any;
 
       const canvas = await html2canvas(targetElement, {
-        scale: 3.0,
+        scale: calculatedScale,
         useCORS: true,
         allowTaint: false,
         backgroundColor: "#ffffff",
         logging: true,
-        imageTimeout: 0,
-        windowWidth: 1200, // 뷰포트 크기 고정으로 반응형 오차 차단
+        imageTimeout: 15000, // 무한 대기 방지 (15초 타임아웃)
+        windowWidth: CARD_WIDTH, // 실제 카드 너비와 일치
         scrollX: 0,
         scrollY: 0,
         foreignObjectRendering: false, // 호환성 위해 false 유지
@@ -421,8 +442,13 @@ export function SimpleShareDialog({ note }: SimpleShareDialogProps) {
             </div>
 
             {/* [NEW] 캡처용 Hidden Card (항상 가로 모드 Force, 화면 밖 배치) - 화면 왜곡 방지를 위해 fixed 및 style 조정 */}
+            {/* [최적화] 높이 유연 조정 - 최소 높이 620px (960 / 1.55 비율), 콘텐츠에 따라 자동 증가 */}
             <div style={{ position: "fixed", left: "200vw", top: "0", pointerEvents: "none", zIndex: "-50" }}>
-              <div ref={captureRef} className="rounded-3xl overflow-hidden shadow-2xl bg-white w-[960px] transform-gpu">
+              <div
+                ref={captureRef}
+                className="rounded-3xl overflow-hidden shadow-2xl bg-white w-[960px] transform-gpu"
+                style={{ minHeight: "620px" }} // 비율 1.55:1 유지, 콘텐츠 넘침 시 자동 확장
+              >
                 {/* fixedHorizontal=true로 가로 강제, hideActions=true로 버튼 숨김 */}
                 <ShareNoteCard note={note} hideActions={true} showTimestamp={false} user={user} fixedHorizontal={true} />
               </div>
