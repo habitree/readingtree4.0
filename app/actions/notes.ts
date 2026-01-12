@@ -72,7 +72,8 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
   }
 
   if (data.page_number !== null && data.page_number !== undefined) {
-    if (!Number.isInteger(data.page_number) || data.page_number < 1) {
+    const pageNum = typeof data.page_number === 'string' ? parseInt(data.page_number, 10) : data.page_number;
+    if (!Number.isInteger(pageNum) || pageNum < 1) {
       throw new Error("페이지 번호는 1 이상의 정수여야 합니다.");
     }
   }
