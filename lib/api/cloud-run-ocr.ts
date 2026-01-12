@@ -52,26 +52,42 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
 
     // 3. Cloud Run OCR API 호출
     // 요청 본문 형식: { image: base64Image } (문서 기준)
-    // 실제 API 구현에 따라 다른 형식일 수 있으므로 여러 형식 시도
-    const requestBody = {
+    // 참고: 실제 API 구현에 따라 다른 형식일 수 있음
+    // 가능한 형식:
+    // 1. { image: base64Image }
+    // 2. { image: base64Image, mimeType: "image/jpeg" }
+    // 3. { image: { data: base64Image, mimeType: "image/jpeg" } }
+    const requestBody: { image: string; mimeType?: string } = {
       image: base64Image,
     };
+    
+    // MIME 타입을 명시적으로 포함 (일부 API가 요구할 수 있음)
+    // 문서에는 명시되지 않았지만, 명시적으로 포함하는 것이 안전함
+    requestBody.mimeType = mimeType;
     
     console.log("[Cloud Run OCR] 요청 본문 준비 완료:", {
       imageLength: base64Image.length,
       mimeType,
       requestBodyKeys: Object.keys(requestBody),
+      requestBodySize: JSON.stringify(requestBody).length,
     });
+    
+    // 요청 헤더 준비
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    
+    // 인증 토큰이 설정된 경우 Authorization 헤더 추가
+    if (process.env.CLOUD_RUN_OCR_AUTH_TOKEN) {
+      headers["Authorization"] = `Bearer ${process.env.CLOUD_RUN_OCR_AUTH_TOKEN}`;
+      console.log("[Cloud Run OCR] 인증 토큰 포함하여 호출");
+    } else {
+      console.log("[Cloud Run OCR] 인증 토큰 없이 호출 (공개 함수 가정)");
+    }
     
     const response = await fetch(CLOUD_RUN_OCR_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // 인증이 필요한 경우 Authorization 헤더 추가
-        ...(process.env.CLOUD_RUN_OCR_AUTH_TOKEN && {
-          Authorization: `Bearer ${process.env.CLOUD_RUN_OCR_AUTH_TOKEN}`,
-        }),
-      },
+      headers,
       body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(60000), // 60초 타임아웃 (OCR 처리 시간 고려)
     });
