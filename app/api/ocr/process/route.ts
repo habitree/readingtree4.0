@@ -64,8 +64,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // OCR 처리 (비동기)
-    // Gemini API를 우선 사용하고, 실패 시 Vision API로 폴백
+    // OCR 처리 (Google Cloud Run OCR)
     console.log("[OCR Process] OCR API 호출 시작");
     const extractedText = await extractTextFromImage(imageUrl);
     console.log("[OCR Process] OCR API 호출 완료, 추출된 텍스트 길이:", extractedText.length);

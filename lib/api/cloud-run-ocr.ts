@@ -3,8 +3,74 @@
  * extractTextFromImage Cloud Function을 사용한 OCR 처리
  */
 
+import { GoogleAuth } from "google-auth-library";
+
 const CLOUD_RUN_OCR_URL = process.env.CLOUD_RUN_OCR_URL || 
   "https://us-central1-habitree-f49e1.cloudfunctions.net/extractTextFromImage";
+
+/**
+ * 인증 토큰 캐시 (메모리)
+ * 토큰은 약 1시간 동안 유효하므로 캐싱하여 성능 최적화
+ */
+interface TokenCache {
+  token: string;
+  expiresAt: number; // 만료 시간 (밀리초)
+}
+
+let tokenCache: TokenCache | null = null;
+
+/**
+ * Cloud Run OCR 인증 토큰 가져오기
+ * 동적으로 토큰을 생성하거나 캐시된 토큰을 반환
+ * @returns 인증 토큰
+ */
+async function getAuthToken(): Promise<string | null> {
+  // 1. 정적 토큰이 환경 변수에 있는 경우 (하위 호환성)
+  if (process.env.CLOUD_RUN_OCR_AUTH_TOKEN) {
+    return process.env.CLOUD_RUN_OCR_AUTH_TOKEN;
+  }
+
+  // 2. 서비스 계정 키가 환경 변수에 있는 경우 (동적 토큰 생성)
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (serviceAccountKey) {
+    try {
+      // 캐시된 토큰이 있고 아직 유효한 경우 재사용 (1분 여유)
+      if (tokenCache && tokenCache.expiresAt > Date.now() + 60000) {
+        return tokenCache.token;
+      }
+
+      // 서비스 계정 키 파싱
+      let credentials;
+      try {
+        credentials = typeof serviceAccountKey === 'string' 
+          ? JSON.parse(serviceAccountKey) 
+          : serviceAccountKey;
+      } catch (parseError) {
+        throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY 환경 변수가 유효한 JSON 형식이 아닙니다.");
+      }
+
+      // Google Auth 클라이언트 생성 및 ID 토큰 생성
+      const auth = new GoogleAuth({ credentials });
+      const idTokenClient = await auth.getIdTokenClient(CLOUD_RUN_OCR_URL);
+      const token = await idTokenClient.idTokenProvider.fetchIdToken(CLOUD_RUN_OCR_URL);
+
+      // 토큰 캐싱 (55분 유효)
+      tokenCache = {
+        token,
+        expiresAt: Date.now() + 3300000,
+      };
+
+      return token;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
+      console.error("[Cloud Run OCR] 동적 토큰 생성 실패:", errorMessage);
+      return null;
+    }
+  }
+
+  // 3. 인증 정보가 없는 경우 (공개 함수 가정)
+  return null;
+}
 
 /**
  * 이미지에서 텍스트 추출 (OCR)
@@ -14,13 +80,11 @@ const CLOUD_RUN_OCR_URL = process.env.CLOUD_RUN_OCR_URL ||
  */
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
   try {
-    console.log("[Cloud Run OCR] ========== Cloud Run OCR 처리 시작 ==========");
-    console.log("[Cloud Run OCR] Image URL:", imageUrl.substring(0, 100) + "...");
-    console.log("[Cloud Run OCR] Service URL:", CLOUD_RUN_OCR_URL);
+    console.log("[Cloud Run OCR] OCR 처리 시작");
 
     // 1. 이미지 다운로드
     const imageResponse = await fetch(imageUrl, {
-      signal: AbortSignal.timeout(30000), // 30초 타임아웃
+      signal: AbortSignal.timeout(30000), // 30초 타임아웃1
     });
 
     if (!imageResponse.ok) {
@@ -31,7 +95,7 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
 
     const buffer = await imageResponse.arrayBuffer();
 
-    // 파일 크기 확인 (최대 10MB - Cloud Run 제한 고려)
+    // 파일 크기 확인 (최대 10MB)
     const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
     if (buffer.byteLength > MAX_IMAGE_SIZE) {
       throw new Error("이미지 크기가 너무 큽니다. (최대 10MB)");
@@ -45,120 +109,71 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
     const mimeType = contentType.startsWith("image/")
       ? contentType
       : "image/jpeg";
-    
-    console.log("[Cloud Run OCR] 이미지 다운로드 완료, 크기:", buffer.byteLength, "bytes");
-    console.log("[Cloud Run OCR] MIME 타입:", mimeType);
-    console.log("[Cloud Run OCR] Base64 길이:", base64Image.length);
 
-    // 3. Cloud Run OCR API 호출
-    // 요청 본문 형식: { image: base64Image } (문서 기준)
-    // 참고: 실제 API 구현에 따라 다른 형식일 수 있음
-    // 가능한 형식:
-    // 1. { image: base64Image }
-    // 2. { image: base64Image, mimeType: "image/jpeg" }
-    // 3. { image: { data: base64Image, mimeType: "image/jpeg" } }
-    const requestBody: { image: string; mimeType?: string } = {
+    // 3. 요청 본문 준비
+    const requestBody: { image: string; mimeType: string } = {
       image: base64Image,
+      mimeType,
     };
     
-    // MIME 타입을 명시적으로 포함 (일부 API가 요구할 수 있음)
-    // 문서에는 명시되지 않았지만, 명시적으로 포함하는 것이 안전함
-    requestBody.mimeType = mimeType;
+    // 4. 인증 토큰 가져오기
+    const authToken = await getAuthToken();
     
-    console.log("[Cloud Run OCR] 요청 본문 준비 완료:", {
-      imageLength: base64Image.length,
-      mimeType,
-      requestBodyKeys: Object.keys(requestBody),
-      requestBodySize: JSON.stringify(requestBody).length,
-    });
-    
-    // 요청 헤더 준비
+    // 5. 요청 헤더 준비
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
     
-    // 인증 토큰이 설정된 경우 Authorization 헤더 추가
-    if (process.env.CLOUD_RUN_OCR_AUTH_TOKEN) {
-      headers["Authorization"] = `Bearer ${process.env.CLOUD_RUN_OCR_AUTH_TOKEN}`;
-      console.log("[Cloud Run OCR] 인증 토큰 포함하여 호출");
-    } else {
-      console.log("[Cloud Run OCR] 인증 토큰 없이 호출 (공개 함수 가정)");
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
     }
     
+    // 6. Cloud Run OCR API 호출
     const response = await fetch(CLOUD_RUN_OCR_URL, {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(60000), // 60초 타임아웃 (OCR 처리 시간 고려)
+      signal: AbortSignal.timeout(60000), // 60초 타임아웃
     });
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
       let errorData: any = null;
       
-      // JSON 형식의 에러 메시지 파싱 시도
       try {
         errorData = JSON.parse(errorText);
       } catch {
         // JSON 파싱 실패 시 원본 텍스트 사용
       }
       
+      const errorMessage = errorData?.error?.message || errorData?.message || errorText || "알 수 없는 오류";
+      
       console.error("[Cloud Run OCR] API 호출 실패:", {
         status: response.status,
         statusText: response.statusText,
-        error: errorText,
-        errorData,
-        requestBodySize: JSON.stringify(requestBody).length,
-        base64ImageLength: base64Image.length,
+        error: errorMessage,
+        requestSize: JSON.stringify(requestBody).length,
       });
       
-      // 400 Bad Request인 경우 더 자세한 정보 제공
-      if (response.status === 400) {
-        const detailedError = errorData?.error?.message || errorData?.message || errorText || "알 수 없는 오류";
-        console.error("[Cloud Run OCR] 400 Bad Request 상세 정보:", {
-          errorData,
-          errorText,
-          requestBodySize: JSON.stringify(requestBody).length,
-          base64ImageLength: base64Image.length,
-          mimeType,
-        });
-        throw new Error(
-          `Cloud Run OCR API 호출 실패 (400 Bad Request): 요청 형식이 올바르지 않습니다. ${detailedError}\n` +
-          `요청 본문 크기: ${JSON.stringify(requestBody).length} bytes\n` +
-          `Base64 이미지 길이: ${base64Image.length} chars\n` +
-          `MIME 타입: ${mimeType}\n` +
-          `API URL: ${CLOUD_RUN_OCR_URL}`
-        );
-      }
-      
       throw new Error(
-        `Cloud Run OCR API 호출 실패: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ""}`
+        `Cloud Run OCR API 호출 실패 (${response.status}): ${errorMessage}`
       );
     }
 
-    // 4. 응답 파싱
+    // 7. 응답 파싱
     const data = await response.json();
-    
-    // 응답 형식 확인 (문서에 따르면 response.data.text)
     const extractedText = data.text || data.extractedText || data.result || "";
     
     if (!extractedText || extractedText.trim().length === 0) {
-      console.warn("[Cloud Run OCR] 추출된 텍스트가 비어있습니다.");
       throw new Error("Cloud Run OCR에서 텍스트를 추출하지 못했습니다.");
     }
 
-    console.log("[Cloud Run OCR] OCR 처리 성공!");
-    console.log("[Cloud Run OCR] 추출된 텍스트 길이:", extractedText.length);
-    console.log("[Cloud Run OCR] ================================================");
+    console.log("[Cloud Run OCR] OCR 처리 성공, 텍스트 길이:", extractedText.length);
 
     return extractedText.trim();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "알 수 없는 오류";
-    console.error("[Cloud Run OCR] OCR 처리 오류:", {
-      message: errorMessage,
-      imageUrl: imageUrl.substring(0, 100) + "...",
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    throw new Error(`Cloud Run OCR 텍스트 추출 실패: ${errorMessage}`);
+    console.error("[Cloud Run OCR] OCR 처리 실패:", errorMessage);
+    throw new Error(`Cloud Run OCR 처리 실패: ${errorMessage}`);
   }
 }

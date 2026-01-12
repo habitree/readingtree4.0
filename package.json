@@ -26,8 +26,6 @@
   "homepage": "https://github.com/habitree/readingtree4.0#readme",
   "description": "",
   "dependencies": {
-    "@google-cloud/vision": "^5.3.4",
-    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -50,6 +48,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "google-auth-library": "^10.5.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",
     "next": "^16.1.1",

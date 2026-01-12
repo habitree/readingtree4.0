@@ -10,12 +10,10 @@ import {
   Info, 
   Zap, 
   Shield,
-  ArrowRight,
   Settings,
   Search,
   Key,
   Globe,
-  FileKey,
   ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,55 +68,17 @@ interface ApiIntegrationInfoProps {
       configured: boolean;
       url: string;
       urlStatus: string;
-      authTokenStatus: string;
-      priority: number;
-      description: string;
-      apiReference: string;
-      features: string[];
-      notes: string;
-    };
-    gemini: {
-      provider: string;
-      enabled: boolean;
-      configured: boolean;
-      model: string;
-      apiVersion: string;
-      keyStatus: string;
-      priority: number;
-      description: string;
-      apiReference: string;
-      features: string[];
-      notes: string;
-    };
-    vision: {
-      provider: string;
-      enabled: boolean;
-      configured: boolean;
       authMethod: string;
-      credentialsPath: string;
-      priority: number;
+      authStatus: string;
       description: string;
       apiReference: string;
       features: string[];
       notes: string;
-    };
-    ocrFlow: {
-      step1: {
-        title: string;
-        status: string;
-        action: string;
+      pricing?: {
+        freeTier: string;
+        costPerRequest: string;
+        pricingLink: string;
       };
-      step2: {
-        title: string;
-        status: string;
-        action: string;
-      };
-      step3: {
-        title: string;
-        status: string;
-        action: string;
-      };
-      currentStrategy: string;
     };
     
     // 기타
@@ -153,9 +113,6 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
     kakaoSdk, 
     naver, 
     cloudRunOcr,
-    gemini, 
-    vision, 
-    ocrFlow, 
     app, 
     recommendations, 
     summary 
@@ -497,55 +454,6 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
           OCR API
         </h2>
 
-        {/* OCR 처리 흐름 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>OCR 처리 흐름</CardTitle>
-            <CardDescription>이미지 텍스트 추출 시도 순서</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[ocrFlow.step1, ocrFlow.step2, ocrFlow.step3].filter(Boolean).map((step, index) => (
-                <div key={index}>
-                  <div className="flex items-center gap-4 p-4 border rounded-lg">
-                    <div className="flex-shrink-0">
-                      <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center font-bold text-white",
-                        index === 0 ? "bg-primary" : index === 1 ? "bg-secondary" : "bg-muted"
-                      )}>
-                        {index + 1}
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold">{step.title}</h3>
-                        <Badge variant={step.status === "사용 가능" ? "default" : "secondary"}>
-                          {step.status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{step.action}</p>
-                    </div>
-                    {step.status === "사용 가능" ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  {index < 2 && (
-                    <div className="flex justify-center py-2">
-                      <ArrowRight className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 p-3 bg-muted rounded-lg">
-              <div className="text-sm font-medium mb-1">현재 전략</div>
-              <div className="text-sm">{ocrFlow.currentStrategy}</div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Cloud Run OCR */}
         <Card>
           <CardHeader>
@@ -554,7 +462,6 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
                 <CardTitle className="flex items-center gap-2">
                   <Globe className={cn("h-5 w-5", cloudRunOcr.enabled ? "text-green-500" : "text-red-500")} />
                   {cloudRunOcr.provider}
-                  <Badge variant="outline" className="text-xs">1순위</Badge>
                 </CardTitle>
                 <CardDescription className="mt-2">{cloudRunOcr.description}</CardDescription>
               </div>
@@ -574,8 +481,12 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
                 <div className="font-mono text-xs">{cloudRunOcr.urlStatus}</div>
               </div>
               <div>
-                <div className="font-medium text-muted-foreground mb-1">인증 토큰 상태</div>
-                <div className="font-mono text-xs">{cloudRunOcr.authTokenStatus}</div>
+                <div className="font-medium text-muted-foreground mb-1">인증 방법</div>
+                <div className="font-mono text-xs">{cloudRunOcr.authMethod}</div>
+              </div>
+              <div className="col-span-2">
+                <div className="font-medium text-muted-foreground mb-1">인증 상태</div>
+                <div className="font-mono text-xs">{cloudRunOcr.authStatus}</div>
               </div>
             </div>
             
@@ -591,121 +502,31 @@ export function ApiIntegrationInfo({ apiInfo }: ApiIntegrationInfoProps) {
               </ul>
             </div>
 
+            {cloudRunOcr.pricing && (
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="font-medium mb-2 text-sm">비용 정보</div>
+                <div className="space-y-1 text-sm">
+                  <div>
+                    <span className="font-medium">무료 등급:</span> {cloudRunOcr.pricing.freeTier}
+                  </div>
+                  <div>
+                    <span className="font-medium">유료 요금:</span> {cloudRunOcr.pricing.costPerRequest}
+                  </div>
+                  <a 
+                    href={cloudRunOcr.pricing.pricingLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-2"
+                  >
+                    가격 책정 상세 보기 <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            )}
+
             <div className="pt-2 border-t">
               <a 
                 href={cloudRunOcr.apiReference} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm text-blue-500 hover:underline flex items-center gap-1"
-              >
-                공식 문서 보기 <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Gemini API */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className={cn("h-5 w-5", gemini.enabled ? "text-green-500" : "text-red-500")} />
-                  {gemini.provider}
-                  <Badge variant="outline" className="text-xs">2순위 (폴백)</Badge>
-                </CardTitle>
-                <CardDescription className="mt-2">{gemini.description}</CardDescription>
-              </div>
-              <Badge variant={gemini.enabled ? "default" : "destructive"}>
-                {gemini.enabled ? "활성화됨" : "비활성화됨"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="font-medium text-muted-foreground mb-1">모델</div>
-                <div className="font-mono text-xs">{gemini.model}</div>
-              </div>
-              <div>
-                <div className="font-medium text-muted-foreground mb-1">API 버전</div>
-                <div className="font-mono text-xs">{gemini.apiVersion}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="font-medium text-muted-foreground mb-1">API 키 상태</div>
-                <div className="font-mono text-xs break-all">{gemini.keyStatus}</div>
-              </div>
-            </div>
-            
-            <div>
-              <div className="font-medium mb-2">주요 기능</div>
-              <ul className="space-y-1 text-sm">
-                {gemini.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="pt-2 border-t">
-              <a 
-                href={gemini.apiReference} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-sm text-blue-500 hover:underline flex items-center gap-1"
-              >
-                공식 문서 보기 <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Vision API */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileKey className={cn("h-5 w-5", vision.enabled ? "text-green-500" : "text-red-500")} />
-                  {vision.provider}
-                  <Badge variant="outline" className="text-xs">3순위 (최종 폴백)</Badge>
-                </CardTitle>
-                <CardDescription className="mt-2">{vision.description}</CardDescription>
-              </div>
-              <Badge variant={vision.enabled ? "default" : "destructive"}>
-                {vision.enabled ? "활성화됨" : "비활성화됨"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="font-medium text-muted-foreground mb-1">인증 방법</div>
-                <div className="font-mono text-xs">{vision.authMethod}</div>
-              </div>
-              <div className="col-span-2">
-                <div className="font-medium text-muted-foreground mb-1">서비스 계정 파일 경로</div>
-                <div className="font-mono text-xs break-all">{vision.credentialsPath}</div>
-              </div>
-            </div>
-            
-            <div>
-              <div className="font-medium mb-2">주요 기능</div>
-              <ul className="space-y-1 text-sm">
-                {vision.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="pt-2 border-t">
-              <a 
-                href={vision.apiReference} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-sm text-blue-500 hover:underline flex items-center gap-1"

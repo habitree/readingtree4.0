@@ -144,10 +144,6 @@ export async function getApiIntegrationInfo() {
     await requireAdmin();
     
     // ========== 환경 변수 확인 ==========
-    // OCR 관련
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    const visionCredentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    
     // 인증 관련
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -229,9 +225,12 @@ export async function getApiIntegrationInfo() {
         notes: "책 검색 기능에 필수",
     };
     
-    // ========== 3. OCR API (Cloud Run, Gemini & Vision) ==========
+    // ========== 3. OCR API (Cloud Run OCR) ==========
     const cloudRunOcrUrl = process.env.CLOUD_RUN_OCR_URL || 
       "https://us-central1-habitree-f49e1.cloudfunctions.net/extractTextFromImage";
+    
+    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    const staticAuthToken = process.env.CLOUD_RUN_OCR_AUTH_TOKEN;
     
     const cloudRunOcrInfo = {
         provider: "Google Cloud Run OCR",
@@ -241,100 +240,32 @@ export async function getApiIntegrationInfo() {
         urlStatus: process.env.CLOUD_RUN_OCR_URL 
             ? `설정됨 (${process.env.CLOUD_RUN_OCR_URL.substring(0, 50)}...)` 
             : "기본값 사용",
-        authTokenStatus: process.env.CLOUD_RUN_OCR_AUTH_TOKEN 
-            ? "설정됨" 
-            : "미설정 (공개 함수인 경우 불필요)",
-        priority: 1,
-        description: "Google Cloud Run OCR 서비스를 사용한 OCR 처리 (1순위)",
+        authMethod: serviceAccountKey 
+            ? "동적 토큰 생성 (서비스 계정 키)" 
+            : staticAuthToken 
+            ? "정적 토큰 (환경 변수)" 
+            : "인증 없음 (공개 함수)",
+        authStatus: serviceAccountKey 
+            ? "동적 토큰 생성 (자동 갱신)" 
+            : staticAuthToken 
+            ? "정적 토큰 설정됨 (1시간마다 수동 갱신 필요)" 
+            : "미설정 (공개 함수 가정)",
+        description: "Google Cloud Run OCR 서비스를 사용한 OCR 처리",
         apiReference: "https://cloud.google.com/run",
         features: [
             "서버리스 자동 확장",
             "매월 200만 건 무료 요청",
-            "매월 1,000개 이미지 무료 (Vision API 포함)",
-            "1회 처리(3매)당 약 7원",
+            "매월 1,000개 이미지 무료",
+            "1회 처리(3매)당 약 7원 (무료 한도 초과 시)",
             "이미지 최대 크기: 10MB",
+            "동적 토큰 자동 갱신 (권장)",
         ],
-        notes: "OCR 처리의 1순위 API (가장 경제적이고 안정적)",
-    };
-    
-    const geminiInfo = {
-        provider: "Google Gemini API",
-        enabled: !!geminiApiKey,
-        configured: !!geminiApiKey,
-        model: "gemini-1.5-flash",
-        apiVersion: "v1",
-        keyStatus: geminiApiKey 
-            ? `설정됨 (${geminiApiKey.substring(0, 10)}...${geminiApiKey.substring(geminiApiKey.length - 4)})`
-            : "미설정",
-        priority: 2,
-        description: "구글 Gemini API를 사용한 OCR 처리 (2순위, 폴백용)",
-        apiReference: "https://ai.google.dev/models/gemini",
-        features: [
-            "무료 한도: 1,500건/일",
-            "빠른 응답 속도",
-            "한글/영어 모두 지원",
-            "이미지 최대 크기: 20MB",
-            "v1 API 사용 (안정적)",
-        ],
-        notes: "OCR 처리의 2순위 API (폴백용). v1 API를 사용하여 안정성 향상",
-    };
-    
-    const visionInfo = {
-        provider: "Google Cloud Vision API",
-        enabled: !!visionCredentialsPath,
-        configured: !!visionCredentialsPath,
-        authMethod: "서비스 계정 파일 경로",
-        credentialsPath: visionCredentialsPath || "미설정",
-        priority: 3,
-        description: "Google Vision API를 사용한 OCR 처리 (3순위, 최종 폴백용)",
-        apiReference: "https://cloud.google.com/vision",
-        features: [
-            "Cloud Run & Gemini 실패 시 자동 폴백",
-            "서비스 계정 기반 인증",
-            "높은 정확도",
-            "다양한 언어 지원",
-        ],
-        notes: "OCR 처리의 3순위 API (최종 폴백용)",
-    };
-    
-    // OCR 처리 흐름
-    const ocrFlow = {
-        step1: {
-            title: "1순위: Cloud Run OCR",
-            status: cloudRunOcrInfo.enabled ? "사용 가능" : "미설정",
-            action: cloudRunOcrInfo.enabled 
-                ? "Cloud Run OCR로 OCR 처리 시도" 
-                : "건너뛰고 2순위로 이동"
+        notes: "OCR 처리의 단일 제공자 (가장 경제적이고 안정적)",
+        pricing: {
+            freeTier: "매월 200만 건 요청 무료, 매월 1,000개 이미지 무료",
+            costPerRequest: "1회 처리(3매)당 약 7원 (무료 한도 초과 시)",
+            pricingLink: "https://cloud.google.com/run/pricing?hl=ko",
         },
-        step2: {
-            title: "2순위: Gemini API (폴백)",
-            status: geminiInfo.enabled ? "사용 가능" : "미설정",
-            action: geminiInfo.enabled 
-                ? "Gemini API로 OCR 처리 시도" 
-                : "건너뛰고 3순위로 이동"
-        },
-        step3: {
-            title: "3순위: Vision API (최종 폴백)",
-            status: visionInfo.enabled ? "사용 가능" : "미설정",
-            action: visionInfo.enabled
-                ? "Vision API로 OCR 처리 시도"
-                : "OCR 처리 실패"
-        },
-        currentStrategy: cloudRunOcrInfo.enabled && geminiInfo.enabled && visionInfo.enabled
-            ? "삼중 폴백 전략 (Cloud Run → Gemini → Vision)"
-            : cloudRunOcrInfo.enabled && geminiInfo.enabled
-            ? "이중 폴백 전략 (Cloud Run → Gemini)"
-            : cloudRunOcrInfo.enabled && visionInfo.enabled
-            ? "이중 폴백 전략 (Cloud Run → Vision)"
-            : cloudRunOcrInfo.enabled
-            ? "Cloud Run OCR 단독 사용"
-            : geminiInfo.enabled && visionInfo.enabled
-            ? "이중 폴백 전략 (Gemini → Vision)"
-            : geminiInfo.enabled
-            ? "Gemini API 단독 사용"
-            : visionInfo.enabled
-            ? "Vision API 단독 사용"
-            : "OCR 사용 불가"
     };
     
     // ========== 4. 기타 설정 ==========
@@ -377,38 +308,27 @@ export async function getApiIntegrationInfo() {
             priority: "긴급",
             category: "OCR",
         });
-    }
-    if (!geminiInfo.enabled) {
+    } else if (!serviceAccountKey && !staticAuthToken) {
         recommendations.push({
-            type: "info",
-            message: "Gemini API 키가 설정되지 않았습니다. (선택 사항)",
-            action: "폴백 기능을 위해 Vercel 환경 변수에 GEMINI_API_KEY를 추가하세요.",
-            priority: "중간",
+            type: "warning",
+            message: "Cloud Run OCR 인증 토큰이 설정되지 않았습니다.",
+            action: "비공개 함수인 경우 GOOGLE_SERVICE_ACCOUNT_KEY 또는 CLOUD_RUN_OCR_AUTH_TOKEN을 설정하세요.",
+            priority: "높음",
             category: "OCR",
         });
-    }
-    if (!visionInfo.enabled) {
-        recommendations.push({
-            type: "info",
-            message: "Vision API가 설정되지 않았습니다. (선택 사항)",
-            action: "최종 폴백 기능을 위해 GOOGLE_APPLICATION_CREDENTIALS 설정을 권장합니다.",
-            priority: "낮음",
-            category: "OCR",
-        });
-    }
-    if (cloudRunOcrInfo.enabled && geminiInfo.enabled && visionInfo.enabled) {
+    } else if (serviceAccountKey) {
         recommendations.push({
             type: "success",
-            message: "모든 OCR API가 정상적으로 설정되었습니다!",
-            action: "삼중 폴백 전략으로 매우 안정적인 OCR 서비스를 제공합니다.",
+            message: "Cloud Run OCR이 정상적으로 설정되었습니다! (동적 토큰 생성)",
+            action: "자동 토큰 갱신으로 안정적인 OCR 서비스를 제공합니다.",
             priority: "정상",
             category: "OCR",
         });
-    } else if (cloudRunOcrInfo.enabled) {
+    } else {
         recommendations.push({
-            type: "success",
-            message: "Cloud Run OCR이 정상적으로 설정되었습니다!",
-            action: "가장 경제적이고 안정적인 OCR 서비스를 제공합니다.",
+            type: "info",
+            message: "Cloud Run OCR이 정상적으로 설정되었습니다! (정적 토큰)",
+            action: "토큰 만료 시 수동 갱신이 필요합니다. GOOGLE_SERVICE_ACCOUNT_KEY 사용을 권장합니다.",
             priority: "정상",
             category: "OCR",
         });
@@ -420,8 +340,6 @@ export async function getApiIntegrationInfo() {
         { name: "Kakao SDK", enabled: kakaoSdkInfo.enabled },
         { name: "Naver Search", enabled: naverInfo.enabled },
         { name: "Cloud Run OCR", enabled: cloudRunOcrInfo.enabled },
-        { name: "Gemini API", enabled: geminiInfo.enabled },
-        { name: "Vision API", enabled: visionInfo.enabled },
     ];
     
     const enabledApis = allApis.filter(api => api.enabled).length;
@@ -441,9 +359,6 @@ export async function getApiIntegrationInfo() {
         
         // OCR
         cloudRunOcr: cloudRunOcrInfo,
-        gemini: geminiInfo,
-        vision: visionInfo,
-        ocrFlow,
         
         // 기타
         app: appInfo,
