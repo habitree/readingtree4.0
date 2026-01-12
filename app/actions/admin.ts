@@ -234,7 +234,7 @@ export async function getApiIntegrationInfo() {
         provider: "Google Gemini API",
         enabled: !!geminiApiKey,
         configured: !!geminiApiKey,
-        model: "gemini-1.5-flash",
+        model: "gemini-1.5-pro",
         apiVersion: "v1beta",
         keyStatus: geminiApiKey 
             ? `설정됨 (${geminiApiKey.substring(0, 10)}...${geminiApiKey.substring(geminiApiKey.length - 4)})`
