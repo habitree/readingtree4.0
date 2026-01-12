@@ -35,9 +35,10 @@ function getGeminiClient() {
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
   try {
     const genAI = getGeminiClient();
-    // gemini-pro 사용 (v1beta API에서 안정적으로 지원되는 모델)
-    // gemini-1.5-pro와 gemini-1.5-flash는 v1beta에서 지원되지 않으므로 gemini-pro 사용
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    // gemini-1.5-flash 사용 (v1 API에서 안정적으로 지원되는 모델)
+    // v1beta에서는 지원되지 않으므로 기본 v1 API 사용
+    // @google/generative-ai SDK는 기본적으로 v1 API를 사용하므로 모델명만 지정
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // 이미지 다운로드
     const response = await fetch(imageUrl, {

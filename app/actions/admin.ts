@@ -261,8 +261,8 @@ export async function getApiIntegrationInfo() {
         provider: "Google Gemini API",
         enabled: !!geminiApiKey,
         configured: !!geminiApiKey,
-        model: "gemini-pro",
-        apiVersion: "v1beta",
+        model: "gemini-1.5-flash",
+        apiVersion: "v1",
         keyStatus: geminiApiKey 
             ? `설정됨 (${geminiApiKey.substring(0, 10)}...${geminiApiKey.substring(geminiApiKey.length - 4)})`
             : "미설정",
@@ -274,8 +274,9 @@ export async function getApiIntegrationInfo() {
             "빠른 응답 속도",
             "한글/영어 모두 지원",
             "이미지 최대 크기: 20MB",
+            "v1 API 사용 (안정적)",
         ],
-        notes: "OCR 처리의 2순위 API (폴백용)",
+        notes: "OCR 처리의 2순위 API (폴백용). v1 API를 사용하여 안정성 향상",
     };
     
     const visionInfo = {

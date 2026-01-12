@@ -51,15 +51,17 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
     console.log("[Cloud Run OCR] Base64 길이:", base64Image.length);
 
     // 3. Cloud Run OCR API 호출
-    // 요청 본문 형식: { image: base64Image } 또는 { image: base64Image, mimeType: "image/jpeg" }
-    const requestBody: { image: string; mimeType?: string } = {
+    // 요청 본문 형식: { image: base64Image } (문서 기준)
+    // 실제 API 구현에 따라 다른 형식일 수 있으므로 여러 형식 시도
+    const requestBody = {
       image: base64Image,
     };
     
-    // MIME 타입이 명확한 경우 추가 (일부 API가 요구할 수 있음)
-    if (mimeType && mimeType !== "image/jpeg") {
-      requestBody.mimeType = mimeType;
-    }
+    console.log("[Cloud Run OCR] 요청 본문 준비 완료:", {
+      imageLength: base64Image.length,
+      mimeType,
+      requestBodyKeys: Object.keys(requestBody),
+    });
     
     const response = await fetch(CLOUD_RUN_OCR_URL, {
       method: "POST",
@@ -96,8 +98,20 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
       
       // 400 Bad Request인 경우 더 자세한 정보 제공
       if (response.status === 400) {
+        const detailedError = errorData?.error?.message || errorData?.message || errorText || "알 수 없는 오류";
+        console.error("[Cloud Run OCR] 400 Bad Request 상세 정보:", {
+          errorData,
+          errorText,
+          requestBodySize: JSON.stringify(requestBody).length,
+          base64ImageLength: base64Image.length,
+          mimeType,
+        });
         throw new Error(
-          `Cloud Run OCR API 호출 실패 (400 Bad Request): 요청 형식이 올바르지 않습니다. ${errorData?.error?.message || errorText || ""}`
+          `Cloud Run OCR API 호출 실패 (400 Bad Request): 요청 형식이 올바르지 않습니다. ${detailedError}\n` +
+          `요청 본문 크기: ${JSON.stringify(requestBody).length} bytes\n` +
+          `Base64 이미지 길이: ${base64Image.length} chars\n` +
+          `MIME 타입: ${mimeType}\n` +
+          `API URL: ${CLOUD_RUN_OCR_URL}`
         );
       }
       
