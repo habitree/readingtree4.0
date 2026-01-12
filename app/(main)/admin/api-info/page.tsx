@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
     title: "API 연동 정보 | 관리자 | ReadingTree",
-    description: "OCR API 연동 상태 및 설정 정보",
+    description: "ReadingTree 서비스의 모든 외부 API 연동 현황 및 설정 정보",
 };
 
 export default async function ApiInfoPage() {
@@ -23,7 +23,7 @@ export default async function ApiInfoPage() {
 
     return (
         <div className="container py-8 max-w-7xl mx-auto">
-            <ApiIntegrationInfo data={apiInfo} />
+            <ApiIntegrationInfo apiInfo={apiInfo} />
         </div>
     );
 }
