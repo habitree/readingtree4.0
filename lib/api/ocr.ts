@@ -16,6 +16,15 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
   // 1. Gemini API 우선 시도
   const geminiApiKey = process.env.GEMINI_API_KEY;
   
+  // 디버깅: 환경 변수 확인
+  console.log("[OCR] 환경 변수 확인:", {
+    hasGeminiApiKey: !!geminiApiKey,
+    geminiApiKeyLength: geminiApiKey?.length || 0,
+    geminiApiKeyPreview: geminiApiKey ? `${geminiApiKey.substring(0, 10)}...` : "없음",
+    hasVisionCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    visionCredentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS || "없음",
+  });
+  
   if (geminiApiKey) {
     try {
       console.log("[OCR] ========== Gemini API로 OCR 처리 시작 ==========");
@@ -46,6 +55,11 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
   const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   
   if (!credentialsPath) {
+    // 환경 변수 상세 확인 (디버깅용)
+    const allEnvKeys = Object.keys(process.env).filter(key => 
+      key.includes("GEMINI") || key.includes("GOOGLE") || key.includes("VISION")
+    );
+    
     const errorMessage =
       "OCR 처리를 위한 인증 정보가 없습니다.\n" +
       "다음 중 하나를 설정해주세요:\n" +
@@ -53,10 +67,23 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
       "2. GOOGLE_APPLICATION_CREDENTIALS (Vision API, 서비스 계정 파일 경로)\n\n" +
       "예시:\n" +
       "- GEMINI_API_KEY=AIzaSy...\n" +
-      "- GOOGLE_APPLICATION_CREDENTIALS=./habitree-f49e1-63991a2f3290.json";
+      "- GOOGLE_APPLICATION_CREDENTIALS=./habitree-f49e1-63991a2f3290.json\n\n" +
+      "현재 환경 변수 상태:\n" +
+      `- GEMINI_API_KEY: ${geminiApiKey ? "설정됨 (길이: " + geminiApiKey.length + ")" : "미설정"}\n` +
+      `- GOOGLE_APPLICATION_CREDENTIALS: ${credentialsPath || "미설정"}\n` +
+      `- 관련 환경 변수 목록: ${allEnvKeys.length > 0 ? allEnvKeys.join(", ") : "없음"}`;
     
     console.error("[OCR] ========== OCR 인증 정보 없음 ==========");
     console.error("[OCR]", errorMessage);
+    console.error("[OCR] 환경 변수 상세:", {
+      geminiApiKey: geminiApiKey ? "설정됨" : "미설정",
+      geminiApiKeyLength: geminiApiKey?.length || 0,
+      credentialsPath: credentialsPath || "미설정",
+      relatedEnvKeys: allEnvKeys,
+      nodeEnv: process.env.NODE_ENV,
+      vercel: process.env.VERCEL,
+      vercelEnv: process.env.VERCEL_ENV,
+    });
     console.error("[OCR] ==========================================");
     
     throw new Error(errorMessage);
