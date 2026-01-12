@@ -35,7 +35,8 @@ function getGeminiClient() {
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
   try {
     const genAI = getGeminiClient();
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // gemini-1.5-flash-latest로 변경 (v1beta 호환성 문제 해결)
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
     // 이미지 다운로드
     const response = await fetch(imageUrl, {
