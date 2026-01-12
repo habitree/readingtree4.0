@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatSmartDate } from "@/lib/utils/date";
-import { getNoteTypeLabel } from "@/lib/utils/note";
+import { getNoteTypeLabel, parsePageNumber } from "@/lib/utils/note";
 import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import type { NoteWithBook } from "@/types/note";
 import { FileText, PenTool, Camera, ImageIcon } from "lucide-react";
@@ -68,7 +68,7 @@ export function SearchResultCard({ note, searchQuery }: SearchResultCardProps) {
 
               <NoteContentViewer
                 content={note.content}
-                pageNumber={note.page_number}
+                pageNumber={parsePageNumber(note.page_number)}
                 maxLength={100}
               />
 

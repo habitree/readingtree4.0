@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatSmartDate } from "@/lib/utils/date";
-import { getNoteTypeLabel } from "@/lib/utils/note";
+import { getNoteTypeLabel, parsePageNumber } from "@/lib/utils/note";
 import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import { FileText, Image, Quote, StickyNote } from "lucide-react";
 import type { NoteWithBook } from "@/types/note";
@@ -57,7 +57,7 @@ export function RecentNotes({ notes }: RecentNotesProps) {
                 <div className="mb-2">
                   <NoteContentViewer
                     content={note.content}
-                    pageNumber={note.page_number}
+                    pageNumber={parsePageNumber(note.page_number)}
                     maxLength={100}
                   />
                 </div>

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getImageUrl } from "@/lib/utils/image";
 import { formatSmartDate } from "@/lib/utils/date";
-import { getNoteTypeLabel } from "@/lib/utils/note";
+import { getNoteTypeLabel, parsePageNumber } from "@/lib/utils/note";
 import { NoteContentViewer } from "./note-content-viewer";
 import { OCRStatusBadge } from "./ocr-status-badge";
 import { useOCRStatus } from "@/hooks/use-ocr-status";
@@ -121,7 +121,7 @@ export function NoteCard({ note, showDeleteButton = false, onDelete }: NoteCardP
 
               <NoteContentViewer
                 content={note.content}
-                pageNumber={note.page_number}
+                pageNumber={parsePageNumber(note.page_number)}
                 maxLength={100}
               />
 

@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 import { cn } from "@/lib/utils";
 import { formatSmartDate } from "@/lib/utils/date";
-import { getNoteTypeLabel } from "@/lib/utils/note";
+import { getNoteTypeLabel, parsePageNumber } from "@/lib/utils/note";
 import { NoteContentViewer } from "@/components/notes/note-content-viewer";
 import type { NoteWithBook } from "@/types/note";
 import { FileText, PenTool, Camera, ImageIcon, BookOpen } from "lucide-react";
@@ -130,7 +130,7 @@ export function TimelineItem({ note }: TimelineItemProps) {
 
               <NoteContentViewer
                 content={note.content}
-                pageNumber={note.page_number}
+                pageNumber={parsePageNumber(note.page_number)}
                 maxLength={100}
               />
 
