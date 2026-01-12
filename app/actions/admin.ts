@@ -135,3 +135,114 @@ export async function getRecentSystemActivity() {
         recentNotes: recentNotes || [],
     };
 }
+
+/**
+ * API 연동 정보 조회
+ * 현재 설정된 OCR API 정보 및 상태 확인
+ */
+export async function getApiIntegrationInfo() {
+    await requireAdmin();
+    
+    // 환경 변수 확인
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const visionCredentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    
+    // Gemini API 정보
+    const geminiInfo = {
+        enabled: !!geminiApiKey,
+        configured: !!geminiApiKey,
+        model: "gemini-1.5-flash-latest",
+        apiVersion: "v1beta",
+        keyStatus: geminiApiKey 
+            ? `설정됨 (${geminiApiKey.substring(0, 10)}...${geminiApiKey.substring(geminiApiKey.length - 4)})`
+            : "미설정",
+        priority: 1,
+        description: "구글 Gemini API를 사용한 OCR 처리 (1순위)",
+        features: [
+            "무료 한도: 1,500건/일",
+            "빠른 응답 속도",
+            "한글/영어 모두 지원",
+            "이미지 최대 크기: 20MB"
+        ]
+    };
+    
+    // Vision API 정보
+    const visionInfo = {
+        enabled: !!visionCredentialsPath,
+        configured: !!visionCredentialsPath,
+        authMethod: "서비스 계정 파일 경로",
+        credentialsPath: visionCredentialsPath || "미설정",
+        priority: 2,
+        description: "Google Vision API를 사용한 OCR 처리 (2순위, 폴백용)",
+        features: [
+            "Gemini API 실패 시 자동 폴백",
+            "서비스 계정 기반 인증",
+            "높은 정확도",
+            "다양한 언어 지원"
+        ]
+    };
+    
+    // OCR 처리 흐름
+    const ocrFlow = {
+        step1: {
+            title: "1순위: Gemini API",
+            status: geminiInfo.enabled ? "사용 가능" : "미설정",
+            action: geminiInfo.enabled 
+                ? "Gemini API로 OCR 처리 시도" 
+                : "건너뛰고 2순위로 이동"
+        },
+        step2: {
+            title: "2순위: Vision API (폴백)",
+            status: visionInfo.enabled ? "사용 가능" : "미설정",
+            action: visionInfo.enabled
+                ? "Vision API로 OCR 처리 시도"
+                : "OCR 처리 실패"
+        },
+        currentStrategy: geminiInfo.enabled && visionInfo.enabled
+            ? "이중 폴백 전략 (Gemini → Vision)"
+            : geminiInfo.enabled
+            ? "Gemini API 단독 사용"
+            : visionInfo.enabled
+            ? "Vision API 단독 사용"
+            : "OCR 사용 불가"
+    };
+    
+    // 권장 설정
+    const recommendations = [];
+    if (!geminiInfo.enabled) {
+        recommendations.push({
+            type: "warning",
+            message: "Gemini API 키가 설정되지 않았습니다.",
+            action: "Vercel 환경 변수에 GEMINI_API_KEY를 추가하세요.",
+            priority: "높음"
+        });
+    }
+    if (!visionInfo.enabled) {
+        recommendations.push({
+            type: "info",
+            message: "Vision API가 설정되지 않았습니다. (선택 사항)",
+            action: "폴백 기능을 위해 GOOGLE_APPLICATION_CREDENTIALS 설정을 권장합니다.",
+            priority: "중간"
+        });
+    }
+    if (geminiInfo.enabled && visionInfo.enabled) {
+        recommendations.push({
+            type: "success",
+            message: "모든 OCR API가 정상적으로 설정되었습니다!",
+            action: "이중 폴백 전략으로 안정적인 OCR 서비스를 제공합니다.",
+            priority: "정상"
+        });
+    }
+    
+    return {
+        gemini: geminiInfo,
+        vision: visionInfo,
+        ocrFlow,
+        recommendations,
+        summary: {
+            totalApis: 2,
+            enabledApis: [geminiInfo.enabled, visionInfo.enabled].filter(Boolean).length,
+            status: geminiInfo.enabled || visionInfo.enabled ? "정상" : "설정 필요"
+        }
+    };
+}

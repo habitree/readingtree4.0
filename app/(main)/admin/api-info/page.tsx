@@ -1,0 +1,29 @@
+import { getApiIntegrationInfo } from "@/app/actions/admin";
+import { ApiIntegrationInfo } from "@/components/admin/api-integration-info";
+import { Metadata } from "next";
+import { isAdmin } from "@/app/actions/auth";
+import { redirect } from "next/navigation";
+
+export const metadata: Metadata = {
+    title: "API 연동 정보 | 관리자 | ReadingTree",
+    description: "OCR API 연동 상태 및 설정 정보",
+};
+
+export default async function ApiInfoPage() {
+    // 관리자 권한 확인
+    const admin = await isAdmin();
+    
+    if (!admin) {
+        // 관리자가 아닌 경우 홈으로 리다이렉트
+        redirect("/");
+    }
+    
+    // API 연동 정보 조회
+    const apiInfo = await getApiIntegrationInfo();
+
+    return (
+        <div className="container py-8 max-w-7xl mx-auto">
+            <ApiIntegrationInfo data={apiInfo} />
+        </div>
+    );
+}

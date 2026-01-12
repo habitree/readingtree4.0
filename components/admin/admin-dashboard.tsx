@@ -2,12 +2,13 @@
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { AdminStatsCard } from "./admin-stats-card";
-import { Users, BookOpen, FileText, LayoutGrid, Clock, UserPlus } from "lucide-react";
+import { Users, BookOpen, FileText, LayoutGrid, Clock, UserPlus, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface AdminDashboardProps {
     stats: any;
@@ -18,9 +19,18 @@ interface AdminDashboardProps {
 export async function AdminDashboard({ stats, growth, activity }: AdminDashboardProps) {
     return (
         <div className="space-y-8 pb-10">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold tracking-tight">시스템 대시보드</h1>
-                <p className="text-muted-foreground">ReadingTree 플랫폼의 전체 현황 및 활동 집계</p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-3xl font-bold tracking-tight">시스템 대시보드</h1>
+                    <p className="text-muted-foreground">ReadingTree 플랫폼의 전체 현황 및 활동 집계</p>
+                </div>
+                <Link 
+                    href="/admin/api-info"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+                >
+                    <Settings className="h-4 w-4" />
+                    API 연동 정보
+                </Link>
             </div>
 
             {/* Stats Overview */}
