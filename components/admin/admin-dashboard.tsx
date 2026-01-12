@@ -21,7 +21,7 @@ export async function AdminDashboard({ stats, growth, activity }: AdminDashboard
         <div className="space-y-8 pb-10">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-bold tracking-tight">시스템 대시보드</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">시스템 대시보드_</h1>
                     <p className="text-muted-foreground">ReadingTree 플랫폼의 전체 현황 및 활동 집계</p>
                 </div>
                 <Link 
