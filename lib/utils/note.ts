@@ -97,16 +97,17 @@ export function parseNoteContentFields(content: string | null): {
 }
 
 /**
- * page_number�?string?�서 number�?변?? * @param pageNumber string | null | number ?�?�의 ?�이지 번호
- * @returns number | null ?�?�의 ?�이지 번호
+ * page_number를 string에서 number로 변환
+ * @param pageNumber string | null | number 타입의 페이지 번호
+ * @returns number | null 타입의 페이지 번호
  */
 export function parsePageNumber(pageNumber: string | null | number): number | null {
   if (pageNumber === null || pageNumber === undefined) return null;
   
-  // ?��? number ?�?�이�?그�?�?반환
+  // 이미 number 타입이면 그대로 반환
   if (typeof pageNumber === 'number') return pageNumber;
   
-  // string ?�?�이�??�싱
+  // string 타입이면 파싱
   const parsed = parseInt(pageNumber, 10);
   return isNaN(parsed) ? null : parsed;
 }
