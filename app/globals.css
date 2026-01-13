@@ -190,10 +190,16 @@
   @media (max-width: 768px) {
     html {
       -webkit-overflow-scrolling: touch;
+      /* 모바일 초기 로딩 시 레이아웃 시프트 방지 */
+      overflow-x: hidden;
     }
     
     body {
       overscroll-behavior-y: contain;
+      /* 모바일 초기 로딩 시 가로 스크롤 방지 */
+      overflow-x: hidden;
+      width: 100%;
+      position: relative;
     }
   }
 }

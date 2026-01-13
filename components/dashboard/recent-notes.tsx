@@ -34,7 +34,7 @@ export function RecentNotes({ notes }: RecentNotesProps) {
           <Link
             key={note.id}
             href={`/notes/${note.id}`}
-            className="block p-4 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 hover:shadow-sm transition-all group"
+            className="block p-3 sm:p-4 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/30 hover:shadow-sm transition-all group"
           >
             <div className="flex items-start gap-4">
               {/* 아이콘: 색상 구분으로 시각적 계층 강화 */}
@@ -50,15 +50,18 @@ export function RecentNotes({ notes }: RecentNotesProps) {
                 </div>
                 {/* 기록 제목 (있는 경우) */}
                 {note.title && (
-                  <h3 className="text-sm font-semibold text-foreground mb-1 line-clamp-1">
+                  <h3 className="text-sm font-semibold text-foreground mb-1.5 line-clamp-1">
                     {note.title}
                   </h3>
                 )}
-                {/* 책 제목 */}
+                {/* 책 제목 - 더 명확하게 표시 */}
                 {note.book && (
-                  <p className="text-xs text-muted-foreground mb-2 truncate">
-                    {note.book.title}
-                  </p>
+                  <div className="mb-2">
+                    <p className="text-xs text-muted-foreground mb-0.5">책</p>
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {note.book.title}
+                    </p>
+                  </div>
                 )}
                 {/* 본문: 적절한 줄 길이 (line-clamp-2) */}
                 <div className="mb-2">
