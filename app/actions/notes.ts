@@ -425,7 +425,18 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
       return [];
     }
 
-    return (sampleNotes || []) as unknown as NoteWithBook[];
+    // Supabase 조인 결과가 배열로 반환될 수 있으므로 객체로 변환
+    const notes = (sampleNotes || []).map((note: any) => {
+      // books가 배열인 경우 첫 번째 요소 사용, 객체인 경우 그대로 사용
+      const book = Array.isArray(note.books) ? note.books[0] : (note.books || note.book);
+      const { books, ...restNote } = note; // books 키 제거
+      return {
+        ...restNote,
+        book: book || undefined, // book (단수)로 변환, 없으면 undefined
+      };
+    }) as NoteWithBook[];
+
+    return notes;
   }
 
   // 인증된 사용자는 기존 로직 사용
@@ -475,7 +486,19 @@ export async function getNotes(bookId?: string, type?: NoteType, user?: User | n
     throw new Error(sanitizeErrorMessage(error));
   }
 
-  return (data || []) as unknown as NoteWithBook[];
+  // Supabase 조인 결과가 배열로 반환될 수 있으므로 객체로 변환
+  // Supabase는 `books` 키로 반환하지만 타입은 `book` (단수)로 정의됨
+  const notes = (data || []).map((note: any) => {
+    // books가 배열인 경우 첫 번째 요소 사용, 객체인 경우 그대로 사용
+    const book = Array.isArray(note.books) ? note.books[0] : (note.books || note.book);
+    const { books, ...restNote } = note; // books 키 제거
+    return {
+      ...restNote,
+      book: book || undefined, // book (단수)로 변환, 없으면 undefined
+    };
+  }) as NoteWithBook[];
+
+  return notes;
 }
 
 /**
