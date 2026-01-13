@@ -374,3 +374,61 @@ export async function moveBookToBookshelf(
   revalidatePath("/books");
   revalidatePath(`/bookshelves/${targetBookshelfId}`);
 }
+
+/**
+ * 서재 순서 변경 (드래그 앤 드롭)
+ * @param bookshelfOrders 서재 ID와 새 순서의 배열
+ */
+export async function updateBookshelfOrder(
+  bookshelfOrders: { id: string; order: number }[]
+): Promise<void> {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    throw new Error("로그인이 필요합니다.");
+  }
+
+  // 모든 서재의 소유권 확인
+  const { data: bookshelves, error: fetchError } = await supabase
+    .from("bookshelves")
+    .select("id")
+    .eq("user_id", user.id)
+    .in(
+      "id",
+      bookshelfOrders.map((bo) => bo.id)
+    );
+
+  if (fetchError) {
+    throw new Error(`서재 조회 실패: ${fetchError.message}`);
+  }
+
+  if (!bookshelves || bookshelves.length !== bookshelfOrders.length) {
+    throw new Error("일부 서재를 찾을 수 없거나 권한이 없습니다.");
+  }
+
+  // 각 서재의 순서 업데이트
+  const updatePromises = bookshelfOrders.map(({ id, order }) =>
+    supabase
+      .from("bookshelves")
+      .update({ order })
+      .eq("id", id)
+      .eq("user_id", user.id)
+  );
+
+  const results = await Promise.all(updatePromises);
+  const errors = results.filter((result) => result.error);
+
+  if (errors.length > 0) {
+    throw new Error(
+      `서재 순서 변경 실패: ${errors.map((e) => e.error?.message).join(", ")}`
+    );
+  }
+
+  revalidatePath("/bookshelves");
+  revalidatePath("/books");
+}
