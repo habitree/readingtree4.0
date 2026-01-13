@@ -47,12 +47,19 @@ export function RecentNotes({ notes }: RecentNotesProps) {
                   <Badge variant="secondary" className="text-xs font-medium">
                     {typeLabel}
                   </Badge>
-                  {note.book && (
-                    <span className="text-sm font-semibold truncate text-foreground">
-                      {note.book.title}
-                    </span>
-                  )}
                 </div>
+                {/* 기록 제목 (있는 경우) */}
+                {note.title && (
+                  <h3 className="text-sm font-semibold text-foreground mb-1 line-clamp-1">
+                    {note.title}
+                  </h3>
+                )}
+                {/* 책 제목 */}
+                {note.book && (
+                  <p className="text-xs text-muted-foreground mb-2 truncate">
+                    {note.book.title}
+                  </p>
+                )}
                 {/* 본문: 적절한 줄 길이 (line-clamp-2) */}
                 <div className="mb-2">
                   <NoteContentViewer
