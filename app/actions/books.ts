@@ -709,6 +709,7 @@ export async function getUserBooksWithNotes(
       started_at,
       reading_reason,
       bookshelf_id,
+      created_at,
       books (
         id,
         title,
@@ -921,11 +922,47 @@ export async function getUserBooksWithNotes(
       noteCount: noteCountMap[bookId] || 0,
       latestNote: latestNoteMap[bookId],
       groupBooks: groupBooksMap[bookId] || [],
+      // 정렬을 위해 created_at 추가 (user_books의 created_at)
+      created_at: userBook.created_at,
     };
   });
 
+  // 4. 정렬 적용
+  // - 완독/재독: 기록 개수(noteCount) 기준 내림차순
+  // - 나머지: 등록일자(created_at) 기준 내림차순
+  const sortedBooks = booksWithNotes.sort((a, b) => {
+    const aStatus = a.status;
+    const bStatus = b.status;
+    
+    // 완독 또는 재독인 경우 기록 개수 기준 정렬
+    if ((aStatus === 'completed' || aStatus === 'rereading') && 
+        (bStatus === 'completed' || bStatus === 'rereading')) {
+      // 기록 개수가 같으면 등록일자 기준 (최근 등록이 위)
+      if (b.noteCount === a.noteCount) {
+        const aDate = new Date(a.created_at || 0).getTime();
+        const bDate = new Date(b.created_at || 0).getTime();
+        return bDate - aDate;
+      }
+      // 기록 개수 기준 내림차순
+      return b.noteCount - a.noteCount;
+    }
+    
+    // 한쪽만 완독/재독인 경우: 완독/재독이 위로
+    if (aStatus === 'completed' || aStatus === 'rereading') {
+      return -1;
+    }
+    if (bStatus === 'completed' || bStatus === 'rereading') {
+      return 1;
+    }
+    
+    // 둘 다 완독/재독이 아닌 경우: 등록일자 기준 내림차순
+    const aDate = new Date(a.created_at || 0).getTime();
+    const bDate = new Date(b.created_at || 0).getTime();
+    return bDate - aDate;
+  });
+
   return {
-    books: booksWithNotes,
+    books: sortedBooks,
     stats,
   };
 }
