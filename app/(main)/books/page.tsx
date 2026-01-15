@@ -43,7 +43,9 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
     const resolvedSearchParams = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams));
     
     const status = (resolvedSearchParams.status as ReadingStatus | undefined) || undefined;
-    const view = resolvedSearchParams.view || "table"; // 기본값을 테이블로 변경
+    // 모바일에서는 항상 그리드 뷰, 데스크톱에서는 기본값 테이블
+    const viewParam = resolvedSearchParams.view as "grid" | "table" | undefined;
+    const view = viewParam || "grid"; // 모바일 우선으로 기본값을 그리드로 변경
     const query = resolvedSearchParams.q || undefined;
     
     // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
@@ -71,7 +73,7 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
     }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 게스트 사용자 안내 */}
       {isGuest && (
         <Card className="border-primary/20 bg-primary/5">
@@ -94,12 +96,12 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
         </Card>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             {isGuest ? "서재 둘러보기" : "내 서재"}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             {isGuest
               ? "샘플 책 목록을 확인해보세요"
               : "내가 읽고 있는 책들을 관리하세요"}
@@ -135,13 +137,20 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
       </div>
 
       {/* 책 목록 (그리드 또는 테이블) */}
+      {/* 모바일에서는 항상 그리드 뷰, 데스크톱에서만 테이블 뷰 선택 가능 */}
       <Suspense fallback={<BookList books={[]} isLoading />}>
-        {view === "grid" && !isGuest ? (
+        {view === "grid" || isGuest ? (
           <BooksListGrid status={status} query={query} user={user} />
-        ) : !isGuest ? (
-          <BookTable books={books} />
         ) : (
-          <BooksListGrid status={status} query={query} user={user} />
+          <>
+            {/* 모바일에서는 그리드 뷰, 데스크톱에서만 테이블 뷰 */}
+            <div className="lg:hidden">
+              <BooksListGrid status={status} query={query} user={user} />
+            </div>
+            <div className="hidden lg:block">
+              <BookTable books={books} />
+            </div>
+          </>
         )}
       </Suspense>
     </div>

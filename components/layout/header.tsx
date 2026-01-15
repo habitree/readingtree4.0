@@ -38,18 +38,18 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4">
-        {/* 로고 - 모바일에서만 표시 */}
-        <Link href="/" className="lg:hidden flex items-center gap-2 font-bold text-base sm:text-lg">
-          <Trees className="w-6 h-6 text-forest-600" />
-          Habitree
+      <div className="container flex h-12 sm:h-16 items-center justify-between px-2 sm:px-4">
+        {/* 로고 - 모바일에서만 표시, 아이콘만 표시하여 공간 절약 */}
+        <Link href="/" className="lg:hidden flex items-center gap-1.5 sm:gap-2 font-bold text-sm sm:text-base">
+          <Trees className="w-5 h-5 sm:w-6 sm:h-6 text-forest-600 shrink-0" />
+          <span className="truncate max-w-[120px] sm:max-w-none">Habitree</span>
         </Link>
 
         {/* 우측 메뉴 */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
 
           {/* 알림 */}
-          <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10">
+          <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-10 sm:w-10">
             <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
             {/* TODO: 알림 배지 표시 */}
           </Button>
@@ -58,10 +58,10 @@ export function Header() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full">
-                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
+                <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full">
+                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
                     <AvatarImage src={userAvatar || undefined} alt={userName} />
-                    <AvatarFallback>
+                    <AvatarFallback className="text-xs sm:text-sm">
                       {userName.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

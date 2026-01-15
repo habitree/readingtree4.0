@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Grid3x3, Table2, Loader2 } from "lucide-react";
@@ -15,12 +15,25 @@ interface ViewModeToggleProps {
 /**
  * 표현 방식 토글 컴포넌트
  * 그리드/테이블 형태 전환
+ * 모바일에서는 테이블 옵션 숨김 (lg 이상에서만 표시)
  */
 export function ViewModeToggle({ className }: ViewModeToggleProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const currentView = (searchParams.get("view") as ViewMode) || "table"; // 기본값을 테이블로 변경
+  const [isMobile, setIsMobile] = useState(true);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024); // lg 브레이크포인트
+    };
+    
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+  
+  const currentView = (searchParams.get("view") as ViewMode) || "grid"; // 모바일 우선으로 기본값을 그리드로 변경
 
   const handleViewChange = (view: ViewMode) => {
     if (view === currentView) return; // 같은 뷰면 변경하지 않음
@@ -52,12 +65,14 @@ export function ViewModeToggle({ className }: ViewModeToggleProps) {
           <Grid3x3 className="h-4 w-4" />
         )}
       </Button>
+      {/* 모바일에서는 테이블 버튼 숨김 (lg 이상에서만 표시) */}
       <Button
         variant={currentView === "table" ? "default" : "outline"}
         size="sm"
         onClick={() => handleViewChange("table")}
         disabled={isPending}
         aria-label="테이블 보기"
+        className="hidden lg:flex"
       >
         {isPending && currentView !== "table" ? (
           <Loader2 className="h-4 w-4 animate-spin" />

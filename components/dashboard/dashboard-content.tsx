@@ -39,8 +39,8 @@ export default async function DashboardContent() {
       {/* 로그인 성공 메시지 (클라이언트 컴포넌트) */}
       <LoginSuccessToast />
 
-      {/* 8dp 그리드 시스템: space-y-6 = 24px 간격 */}
-      <div className="space-y-6">
+      {/* 8dp 그리드 시스템: space-y-6 = 24px 간격, 모바일에서는 space-y-4 = 16px */}
+      <div className="space-y-4 sm:space-y-6">
         {/* 게스트 사용자 안내 배너: 색상 구분으로 시각적 강조 */}
         {isGuest && (
           <Card className="border-primary/30 bg-primary/5 shadow-sm">
@@ -136,44 +136,44 @@ export default async function DashboardContent() {
         </Card>
 
         {/* 통계 카드: 아이콘과 색상으로 시각적 구분 */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
           <Card className="border-l-4 border-l-blue-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="rounded-lg bg-blue-500/10 p-2">
-                  <FileText className="h-4 w-4 text-blue-600" />
+            <CardHeader className="pb-2 sm:pb-3">
+              <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                <div className="rounded-lg bg-blue-500/10 p-1.5 sm:p-2">
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
                 </div>
-                <CardDescription className="text-sm font-medium">이번 주 기록</CardDescription>
+                <CardDescription className="text-xs sm:text-sm font-medium">이번 주 기록</CardDescription>
               </div>
-              <CardTitle className="text-3xl font-bold">
+              <CardTitle className="text-2xl sm:text-3xl font-bold">
                 {readingStats?.thisWeek.notes ?? 0}
               </CardTitle>
             </CardHeader>
           </Card>
 
           <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="rounded-lg bg-green-500/10 p-2">
-                  <Award className="h-4 w-4 text-green-600" />
+            <CardHeader className="pb-2 sm:pb-3">
+              <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                <div className="rounded-lg bg-green-500/10 p-1.5 sm:p-2">
+                  <Award className="h-3 w-3 sm:h-4 sm:w-4 text-green-600" />
                 </div>
-                <CardDescription className="text-sm font-medium">올해 완독</CardDescription>
+                <CardDescription className="text-xs sm:text-sm font-medium">올해 완독</CardDescription>
               </div>
-              <CardTitle className="text-3xl font-bold">
+              <CardTitle className="text-2xl sm:text-3xl font-bold">
                 {readingStats?.thisYear.completedBooks ?? 0}
               </CardTitle>
             </CardHeader>
           </Card>
 
           <Card className="border-l-4 border-l-purple-500">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="rounded-lg bg-purple-500/10 p-2">
-                  <TrendingUp className="h-4 w-4 text-purple-600" />
+            <CardHeader className="pb-2 sm:pb-3">
+              <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+                <div className="rounded-lg bg-purple-500/10 p-1.5 sm:p-2">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-purple-600" />
                 </div>
-                <CardDescription className="text-sm font-medium">올해 기록</CardDescription>
+                <CardDescription className="text-xs sm:text-sm font-medium">올해 기록</CardDescription>
               </div>
-              <CardTitle className="text-3xl font-bold">
+              <CardTitle className="text-2xl sm:text-3xl font-bold">
                 {readingStats?.thisYear.notes ?? 0}
               </CardTitle>
             </CardHeader>
@@ -195,7 +195,7 @@ export default async function DashboardContent() {
           </CardHeader>
           <CardContent>
             {readingStats && readingStats.topBooks.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {readingStats.topBooks.map((item) => (
                   <Link
                     key={item.book.id}
@@ -216,11 +216,11 @@ export default async function DashboardContent() {
                       )}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold truncate group-hover:text-primary transition-colors">
+                    <div className="space-y-0.5 sm:space-y-1">
+                      <p className="text-xs font-semibold truncate group-hover:text-primary transition-colors leading-tight">
                         {item.book.title}
                       </p>
-                      <p className="text-[10px] text-muted-foreground truncate">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                         {item.noteCount}개 기록
                       </p>
                     </div>

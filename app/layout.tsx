@@ -14,6 +14,7 @@ const notoSerifKr = Noto_Serif_KR({
 export const metadata: Metadata = {
   title: "Habitree Reading Hub",
   description: "독서 기록 및 공유 플랫폼",
+  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },
@@ -24,6 +25,14 @@ export const metadata: Metadata = {
       { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Habitree",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export const viewport: Viewport = {
@@ -32,6 +41,10 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#16a34a" },
+    { media: "(prefers-color-scheme: dark)", color: "#16a34a" },
+  ],
 };
 
 /**

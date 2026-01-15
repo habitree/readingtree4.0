@@ -76,7 +76,7 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
   };
 
   return (
-    <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4", className)}>
+    <div className={cn("grid grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3", className)}>
       {statItems.map((item) => {
         const Icon = item.icon;
         const currentStatus = searchParams.get("status");
@@ -126,27 +126,27 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
                 isActive && "ring-2 ring-primary ring-offset-2 shadow-md"
               )}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3 mb-2">
+              <CardHeader className="pb-2 sm:pb-3">
+                <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
                   <div
                     className={cn(
-                      "rounded-lg p-2",
+                      "rounded-lg p-1.5 sm:p-2",
                       iconBgClasses[item.color as keyof typeof iconBgClasses]
                     )}
                   >
                     <Icon
                       className={cn(
-                        "h-4 w-4",
+                        "h-3 w-3 sm:h-4 sm:w-4",
                         iconColorClasses[item.color as keyof typeof iconColorClasses]
                       )}
                       aria-hidden="true"
                     />
                   </div>
-                  <CardDescription className="text-sm font-medium">
+                  <CardDescription className="text-xs sm:text-sm font-medium">
                     {item.label}
                   </CardDescription>
                 </div>
-                <CardTitle className="text-3xl font-bold tracking-tight">
+                <CardTitle className="text-2xl sm:text-3xl font-bold tracking-tight">
                   {item.value}권
                 </CardTitle>
               </CardHeader>

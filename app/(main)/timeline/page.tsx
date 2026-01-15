@@ -18,19 +18,19 @@ export default async function TimelinePage() {
   const isGuest = !user;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 게스트 사용자 안내 */}
       {isGuest && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Badge variant="secondary">샘플 데이터</Badge>
                 <p className="text-sm text-muted-foreground">
                   현재 샘플 타임라인을 보고 계십니다. 로그인하여 나만의 독서 타임라인을 만들어보세요!
                 </p>
               </div>
-              <Button asChild size="sm">
+              <Button asChild size="sm" className="shrink-0">
                 <Link href="/login">
                   <LogIn className="mr-2 h-4 w-4" />
                   로그인
@@ -42,8 +42,8 @@ export default async function TimelinePage() {
       )}
 
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">타임라인</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">타임라인</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           {isGuest
             ? "샘플 독서 기록 타임라인을 확인해보세요"
             : "시간순으로 정리된 독서 기록을 확인하세요"}

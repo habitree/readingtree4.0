@@ -11,15 +11,15 @@ import { Plus } from "lucide-react";
  */
 export default function GroupsPage() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">독서모임</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">독서모임</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             함께 읽고 기록을 공유하는 독서모임에 참여하세요
           </p>
         </div>
-        <Button asChild>
+        <Button asChild className="shrink-0">
           <Link href="/groups/new">
             <Plus className="mr-2 h-4 w-4" />
             모임 만들기
