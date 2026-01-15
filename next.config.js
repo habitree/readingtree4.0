@@ -1,16 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Turbopack 활성화 (성능 향상)
-  experimental: {
-    turbo: {
-      // Turbopack 최적화 설정
-      resolveAlias: {
-        // 필요한 경우 별칭 설정
-      },
-      // 메모리 사용량 제한 (필요한 경우)
-      // memoryLimit: 4096,
-    },
-  },
+  // Next.js 16에서는 Turbopack이 기본적으로 활성화되어 있음
+  // experimental.turbo는 더 이상 지원되지 않음
   images: {
     remotePatterns: [
       {
