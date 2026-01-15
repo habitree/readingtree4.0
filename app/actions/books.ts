@@ -1159,18 +1159,20 @@ export async function getBookDescriptionSummary(
     
     if (summary && summary.trim().length > 0) {
       // 4. DB에 저장 (비동기, 실패해도 반환)
-      supabase
-        .from("books")
-        .update({ description_summary: summary })
-        .eq("id", bookId)
-        .then(({ error: updateError }) => {
+      void (async () => {
+        try {
+          const { error: updateError } = await supabase
+            .from("books")
+            .update({ description_summary: summary })
+            .eq("id", bookId);
+          
           if (updateError) {
             console.error("[getBookDescriptionSummary] DB 저장 오류:", updateError);
           }
-        })
-        .catch((error) => {
+        } catch (error) {
           console.error("[getBookDescriptionSummary] DB 저장 실패:", error);
-        });
+        }
+      })();
     }
 
     return summary;
