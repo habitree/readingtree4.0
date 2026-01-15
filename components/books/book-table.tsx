@@ -67,6 +67,9 @@ export function BookTable({ books }: BookTableProps) {
 
   // 책소개 초기화 및 로드 (PC 버전에서만)
   useEffect(() => {
+    // books가 없으면 스킵
+    if (!books || books.length === 0) return;
+    
     // PC 버전에서만 로드 (lg 이상)
     if (typeof window === "undefined") return;
     if (window.innerWidth < 1024) return;
@@ -74,8 +77,9 @@ export function BookTable({ books }: BookTableProps) {
     // 1. DB에서 가져온 description_summary 먼저 설정
     const initialDescriptions: Record<string, string> = {};
     for (const item of books) {
+      if (!item || !item.books) continue;
       const book = item.books;
-      if (book.description_summary && book.description_summary.trim().length > 0) {
+      if (book && book.description_summary && book.description_summary.trim().length > 0) {
         initialDescriptions[book.id] = book.description_summary;
       }
     }
@@ -86,6 +90,7 @@ export function BookTable({ books }: BookTableProps) {
       const descriptionsToLoad: Array<{ bookId: string; isbn?: string | null; title?: string | null }> = [];
 
       for (const item of books) {
+        if (!item || !item.books) continue;
         const book = item.books;
         // 이미 DB에 있거나 로드되었거나 로딩 중이면 스킵
         if (book.description_summary || bookDescriptions[book.id] || loadingDescriptions[book.id]) {
@@ -202,7 +207,8 @@ export function BookTable({ books }: BookTableProps) {
     }
   };
 
-  if (books.length === 0) {
+  // books가 없거나 유효하지 않은 경우 처리
+  if (!books || books.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         등록된 책이 없습니다.
@@ -241,6 +247,12 @@ export function BookTable({ books }: BookTableProps) {
           </thead>
           <tbody className="divide-y">
             {books.map((item) => {
+              // 데이터 유효성 검사
+              if (!item || !item.books) {
+                console.warn("BookTable: 유효하지 않은 책 데이터", item);
+                return null;
+              }
+              
               const book = item.books;
               const hasValidImage =
                 isValidImageUrl(book.cover_image_url) && book.cover_image_url;

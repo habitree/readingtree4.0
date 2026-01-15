@@ -43,9 +43,9 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
     const resolvedSearchParams = await (searchParams instanceof Promise ? searchParams : Promise.resolve(searchParams));
     
     const status = (resolvedSearchParams.status as ReadingStatus | undefined) || undefined;
-    // 모바일에서는 항상 그리드 뷰, 데스크톱에서는 기본값 테이블
+    // 뷰 모드: URL 파라미터에서 가져오고, 없으면 기본값 "grid"
     const viewParam = resolvedSearchParams.view as "grid" | "table" | undefined;
-    const view = viewParam || "grid"; // 모바일 우선으로 기본값을 그리드로 변경
+    const view = viewParam === "table" ? "table" : "grid"; // 명시적으로 "table"이 아니면 "grid"
     const query = resolvedSearchParams.q || undefined;
     
     // 서버에서 사용자 정보 조회 (쿠키 기반 세션)
@@ -139,11 +139,9 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
       {/* 책 목록 (그리드 또는 테이블) */}
       {/* 모바일에서는 항상 그리드 뷰, 데스크톱에서만 테이블 뷰 선택 가능 */}
       <Suspense fallback={<BookList books={[]} isLoading />}>
-        {view === "grid" || isGuest ? (
-          <BooksListGrid status={status} query={query} user={user} />
-        ) : (
+        {view === "table" && !isGuest ? (
           <>
-            {/* 모바일에서는 그리드 뷰, 데스크톱에서만 테이블 뷰 */}
+            {/* 테이블 뷰: 모바일에서는 그리드 뷰, 데스크톱에서만 테이블 뷰 */}
             <div className="lg:hidden">
               <BooksListGrid status={status} query={query} user={user} />
             </div>
@@ -151,6 +149,9 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
               <BookTable books={books} />
             </div>
           </>
+        ) : (
+          /* 그리드 뷰 또는 게스트 사용자 */
+          <BooksListGrid status={status} query={query} user={user} />
         )}
       </Suspense>
     </div>

@@ -33,17 +33,15 @@ export function ViewModeToggle({ className }: ViewModeToggleProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
   
-  const currentView = (searchParams.get("view") as ViewMode) || "grid"; // 모바일 우선으로 기본값을 그리드로 변경
+  // URL 파라미터에서 view 값을 가져오고, 없으면 기본값 "grid" 사용
+  const currentView = (searchParams.get("view") as ViewMode) || "grid";
 
   const handleViewChange = (view: ViewMode) => {
     if (view === currentView) return; // 같은 뷰면 변경하지 않음
     
     const params = new URLSearchParams(searchParams.toString());
-    if (view === "table") {
-      params.delete("view"); // 기본값이므로 제거
-    } else {
-      params.set("view", view);
-    }
+    // 명시적으로 view 파라미터 설정
+    params.set("view", view);
     
     startTransition(() => {
       router.push(`/books?${params.toString()}`);
