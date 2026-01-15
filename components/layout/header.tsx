@@ -9,11 +9,21 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/app/actions/auth";
+import { getCurrentUserProfile } from "@/app/actions/profile";
+import { getImageUrl } from "@/lib/utils/image";
+import { useEffect, useState } from "react";
 
 /**
  * 관리자 여부 확인
@@ -32,8 +42,27 @@ function isAdminUser(user: any): boolean {
  */
 export function Header() {
   const { user, isLoading } = useAuth();
-  const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "사용자";
-  const userAvatar = user?.user_metadata?.avatar_url || null;
+  const [userProfile, setUserProfile] = useState<{ id: string; name: string; avatar_url: string | null } | null>(null);
+  
+  // 사용자 프로필 정보 가져오기
+  useEffect(() => {
+    if (user) {
+      getCurrentUserProfile()
+        .then((profile) => {
+          if (profile) {
+            setUserProfile(profile);
+          }
+        })
+        .catch((error) => {
+          console.error("프로필 조회 오류:", error);
+        });
+    } else {
+      setUserProfile(null);
+    }
+  }, [user]);
+
+  const userName = userProfile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "사용자";
+  const userAvatar = userProfile?.avatar_url || null;
   const isAdmin = isAdminUser(user);
 
   return (
@@ -47,65 +76,93 @@ export function Header() {
 
         {/* 우측 메뉴 */}
         <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
-
-          {/* 새로운 소식 (보도자료) */}
-          <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-10 sm:w-10" asChild>
-            <Link href="https://habitree.github.io/habitree_pr/#press-release" target="_blank" rel="noopener noreferrer">
-              <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Link>
-          </Button>
-
-          {/* 프로필 메뉴 */}
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full">
-                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-                    <AvatarImage src={userAvatar || undefined} alt={userName} />
-                    <AvatarFallback className="text-xs sm:text-sm">
-                      {userName.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{userName}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      프로필 보기
-                    </p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile">프로필 설정</Link>
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin">관리자 대시보드</Link>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem>설정</DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={async () => {
-                    try {
-                      await signOut();
-                    } catch (error) {
-                      console.error("로그아웃 오류:", error);
-                    }
-                  }}
+          <TooltipProvider>
+            {/* 새로운 소식 (보도자료) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative h-8 w-8 sm:h-10 sm:w-10" 
+                  asChild
+                  aria-label="새로운 소식"
                 >
-                  로그아웃
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button asChild variant="default">
-              <Link href="/login">로그인</Link>
-            </Button>
-          )}
+                  <Link href="https://habitree.github.io/habitree_pr/#press-release" target="_blank" rel="noopener noreferrer">
+                    <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>새로운 소식</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* 프로필 메뉴 */}
+            {user ? (
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+                        aria-label="프로필"
+                      >
+                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
+                          <AvatarImage src={getImageUrl(userAvatar)} alt={userName} />
+                          <AvatarFallback className="text-xs sm:text-sm">
+                            {userName.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>프로필</p>
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{userName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        프로필 보기
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">
+                      프로필 설정
+                      <DropdownMenuShortcut>⌘P</DropdownMenuShortcut>
+                    </Link>
+                  </DropdownMenuItem>
+                  {isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">관리자 대시보드</Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem>설정</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await signOut();
+                      } catch (error) {
+                        console.error("로그아웃 오류:", error);
+                      }
+                    }}
+                  >
+                    로그아웃
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button asChild variant="default">
+                <Link href="/login">로그인</Link>
+              </Button>
+            )}
+          </TooltipProvider>
         </div>
       </div>
     </header>

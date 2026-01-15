@@ -216,6 +216,38 @@ export async function updateProfileImage(imageFile: File) {
 }
 
 /**
+ * 현재 사용자의 프로필 정보 조회 (헤더용)
+ * 클라이언트 컴포넌트에서 사용 가능
+ * @returns 사용자 프로필 정보 (id, name, avatar_url) 또는 null
+ */
+export async function getCurrentUserProfile() {
+  const supabase = await createServerSupabaseClient();
+
+  // 현재 사용자 확인
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return null;
+  }
+
+  // 프로필 조회
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, avatar_url")
+    .eq("id", user.id)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data;
+}
+
+/**
  * 사용자 ID로 사용자 정보 조회
  * @param userId 사용자 ID
  * @returns 사용자 정보 또는 null
