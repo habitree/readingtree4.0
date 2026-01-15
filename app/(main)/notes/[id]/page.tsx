@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { NoteWithBook } from "@/types/note";
 import { getUserById } from "@/app/actions/profile";
 import { BookLinkRenderer } from "@/components/notes/book-link-renderer";
+import { BookLinkManager } from "@/components/notes/book-link-manager";
 
 interface NoteDetailPageProps {
   params: {
@@ -108,6 +109,12 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 
         <div className="flex items-center gap-2 self-end md:self-auto">
           <SimpleShareDialog note={noteWithBook} />
+          {noteWithBook.content && (
+            <BookLinkManager 
+              noteId={noteWithBook.id} 
+              content={noteWithBook.content}
+            />
+          )}
           <Button variant="outline" size="sm" asChild className="gap-2">
             <Link href={`/notes/${noteWithBook.id}/edit`}>
               <Edit className="h-4 w-4" />
