@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { BookStatusBadge } from "./book-status-badge";
 import { BookNotesPreview } from "./book-notes-preview";
+import { BookDeleteButton } from "./book-delete-button";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 import { BookOpen, FileText, Loader2, Users, BookOpen as BookOpenIcon } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -158,6 +159,9 @@ export function BookTable({ books }: BookTableProps) {
               </th>
               <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-48">
                 책정보
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-24">
+                액션
               </th>
             </tr>
           </thead>
@@ -441,6 +445,14 @@ export function BookTable({ books }: BookTableProps) {
                         ) : null;
                       })()}
                     </div>
+                  </td>
+
+                  {/* 액션 */}
+                  <td className="px-4 py-4">
+                    <BookDeleteButton
+                      userBookId={item.id}
+                      bookTitle={book.title}
+                    />
                   </td>
                 </tr>
               );

@@ -23,13 +23,15 @@ import { Trash2, Loader2 } from "lucide-react";
 interface BookDeleteButtonProps {
   userBookId: string;
   bookTitle: string;
+  variant?: "default" | "icon";
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
 /**
  * 책 삭제 버튼 컴포넌트
  * 제목 입력 확인 후 책을 삭제합니다
  */
-export function BookDeleteButton({ userBookId, bookTitle }: BookDeleteButtonProps) {
+export function BookDeleteButton({ userBookId, bookTitle, variant = "default", size }: BookDeleteButtonProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -66,19 +68,26 @@ export function BookDeleteButton({ userBookId, bookTitle }: BookDeleteButtonProp
     }
   };
 
+  const buttonSize = size || (variant === "icon" ? "icon" : "default");
+
   return (
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive" disabled={isDeleting}>
+        <Button 
+          variant={buttonVariant} 
+          size={buttonSize}
+          disabled={isDeleting}
+          className={variant === "icon" ? "h-8 w-8 p-0" : ""}
+        >
           {isDeleting ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              삭제 중...
+              <Loader2 className={variant === "icon" ? "h-4 w-4" : "mr-2 h-4 w-4 animate-spin"} />
+              {variant !== "icon" && "삭제 중..."}
             </>
           ) : (
             <>
-              <Trash2 className="mr-2 h-4 w-4" />
-              책 삭제
+              <Trash2 className={variant === "icon" ? "h-4 w-4" : "mr-2 h-4 w-4"} />
+              {variant !== "icon" && "책 삭제"}
             </>
           )}
         </Button>
