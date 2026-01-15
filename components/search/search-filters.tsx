@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Search, BookOpen, Loader2 } from "lucide-react";
+import Image from "next/image";
+import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
+import { cn } from "@/lib/utils";
 import type { NoteType } from "@/types/note";
 import { getUserBooks } from "@/app/actions/books";
 import { getUserTags } from "@/app/actions/notes";
@@ -95,37 +98,181 @@ export function SearchFilters({ onBooksLoaded }: SearchFiltersProps) {
   };
 
 
+  // 책 검색 관련 상태
+  const [bookSearchQuery, setBookSearchQuery] = useState("");
+  const [bookSuggestions, setBookSuggestions] = useState<Array<{ id: string; books: { title: string; author?: string | null; cover_image_url?: string | null } }>>([]);
+  const [showBookSuggestions, setShowBookSuggestions] = useState(false);
+  const [selectedBookIndex, setSelectedBookIndex] = useState(0);
+  const bookInputRef = useRef<HTMLInputElement>(null);
+  const bookSuggestionsRef = useRef<HTMLDivElement>(null);
+
+  // 선택된 책 정보
+  const selectedBook = books.find((b) => b.id === bookId);
+  const selectedBookTitle = selectedBook ? (selectedBook as any).books?.title : "";
+
+  // 책 검색 필터링
+  useEffect(() => {
+    if (!bookSearchQuery.trim()) {
+      setBookSuggestions([]);
+      return;
+    }
+
+    const filtered = books.filter((userBook) => {
+      const book = (userBook as any).books;
+      const title = book?.title?.toLowerCase() || "";
+      const author = book?.author?.toLowerCase() || "";
+      const query = bookSearchQuery.toLowerCase();
+      return title.includes(query) || author.includes(query);
+    });
+
+    setBookSuggestions(filtered.slice(0, 10)); // 최대 10개만 표시
+    setShowBookSuggestions(filtered.length > 0);
+  }, [bookSearchQuery, books]);
+
+  // 책 선택 핸들러
+  const handleBookSelect = (userBook: { id: string; books: { title: string } }) => {
+    updateFilter("bookId", userBook.id);
+    setBookSearchQuery("");
+    setShowBookSuggestions(false);
+    if (bookInputRef.current) {
+      bookInputRef.current.blur();
+    }
+  };
+
+  // 책 검색 입력 핸들러
+  const handleBookSearchChange = (value: string) => {
+    setBookSearchQuery(value);
+    if (value.trim()) {
+      setShowBookSuggestions(true);
+    }
+  };
+
+  // 책 검색 키보드 네비게이션
+  const handleBookSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showBookSuggestions && bookSuggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedBookIndex((prev) => (prev + 1) % bookSuggestions.length);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedBookIndex((prev) => (prev - 1 + bookSuggestions.length) % bookSuggestions.length);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (bookSuggestions[selectedBookIndex]) {
+          handleBookSelect(bookSuggestions[selectedBookIndex]);
+        }
+      } else if (e.key === "Escape") {
+        setShowBookSuggestions(false);
+        setBookSearchQuery("");
+      }
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* 책 제목 필터 */}
+      {/* 책 제목 필터 - 자동완성 검색 */}
       <div className="space-y-2">
         <Label>책 제목</Label>
-        <Select value={bookId || "all"} onValueChange={(value) => updateFilter("bookId", value === "all" ? "" : value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="전체" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-            {books.map((userBook) => {
-              const book = (userBook as any).books;
-              return (
-                <SelectItem key={userBook.id} value={userBook.id}>
-                  {book?.title || "제목 없음"}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-        {bookId && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => clearFilter("bookId")}
-            className="h-6 px-2"
-          >
-            <X className="h-3 w-3 mr-1" />
-            필터 제거
-          </Button>
+        <div className="relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              ref={bookInputRef}
+              type="search"
+              placeholder={selectedBookTitle || "책 제목으로 검색..."}
+              value={bookSearchQuery}
+              onChange={(e) => handleBookSearchChange(e.target.value)}
+              onKeyDown={handleBookSearchKeyDown}
+              onFocus={() => {
+                if (bookSuggestions.length > 0) {
+                  setShowBookSuggestions(true);
+                }
+              }}
+              onBlur={(e) => {
+                const relatedTarget = e.relatedTarget as HTMLElement;
+                if (relatedTarget && bookSuggestionsRef.current?.contains(relatedTarget)) {
+                  return;
+                }
+                setTimeout(() => {
+                  if (!bookSuggestionsRef.current?.contains(document.activeElement)) {
+                    setShowBookSuggestions(false);
+                  }
+                }, 200);
+              }}
+              className="pl-10"
+            />
+          </div>
+
+          {/* 책 자동완성 목록 */}
+          {showBookSuggestions && bookSuggestions.length > 0 && (
+            <div
+              ref={bookSuggestionsRef}
+              className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-auto"
+            >
+              {bookSuggestions.map((userBook, index) => {
+                const book = (userBook as any).books;
+                const hasValidImage = isValidImageUrl(book?.cover_image_url) && book?.cover_image_url;
+                return (
+                  <button
+                    key={userBook.id}
+                    type="button"
+                    className={cn(
+                      "w-full text-left px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-3",
+                      index === selectedBookIndex && "bg-accent"
+                    )}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      handleBookSelect(userBook);
+                    }}
+                    onMouseEnter={() => setSelectedBookIndex(index)}
+                  >
+                    {/* 책 표지 */}
+                    <div className="relative w-10 h-14 shrink-0 overflow-hidden rounded bg-muted">
+                      {hasValidImage ? (
+                        <Image
+                          src={getImageUrl(book.cover_image_url!)}
+                          alt={book.title || "책 표지"}
+                          fill
+                          className="object-cover"
+                          sizes="40px"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <BookOpen className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    {/* 책 정보 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {book?.title || "제목 없음"}
+                      </div>
+                      {book?.author && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {book.author}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {bookId && selectedBookTitle && (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="flex items-center gap-1">
+              {selectedBookTitle}
+              <button
+                type="button"
+                onClick={() => clearFilter("bookId")}
+                className="ml-1 rounded-full hover:bg-destructive/20 p-0.5 transition-colors"
+                aria-label="책 필터 제거"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          </div>
         )}
       </div>
 
