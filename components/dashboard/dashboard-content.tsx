@@ -136,7 +136,7 @@ export default async function DashboardContent() {
         </Card>
 
         {/* 통계 카드: 아이콘과 색상으로 시각적 구분 */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-3">
           <Card className="border-l-4 border-l-blue-500">
             <CardHeader className="pb-2 sm:pb-3">
               <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
@@ -235,138 +235,140 @@ export default async function DashboardContent() {
               </div>
             )}
           </CardContent>
-        </Card>
+          {/* 최근 기록한 책: 표지 이미지 기반 (사용자 요청) */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="mb-2">월별 기록 통계</CardTitle>
+                  <CardDescription>최근 6개월간 작성한 기록 수</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {monthly.length > 0 ? (
+                <MonthlyChart data={monthly} />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[300px] text-center p-6 bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20">
+                  <div className="rounded-full bg-muted p-4 mb-4">
+                    <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">데이터가 없습니다</h3>
+                  <p className="text-sm text-muted-foreground max-w-[250px]">
+                    독서 기록을 남기면 이곳에 월별 통계가 그래프로 표시됩니다.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card >
 
-        {/* 월별 통계 차트: 아이콘으로 시각적 계층 강화 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                <BarChart3 className="h-5 w-5 text-primary" />
+          {/* 최근 기록: 아이콘으로 시각적 계층 강화 */}
+          < Card >
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="mb-2">최근 기록</CardTitle>
+                  <CardDescription>최근 작성한 기록 5개</CardDescription>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="mb-2">월별 기록 통계</CardTitle>
-                <CardDescription>최근 6개월간 작성한 기록 수</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {monthly.length > 0 ? (
-              <MonthlyChart data={monthly} />
-            ) : (
-              <div className="flex items-center justify-center h-[300px]">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  기록이 없습니다. 첫 번째 기록을 작성해보세요.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {recentNotes.length > 0 ? (
+                <RecentNotes notes={recentNotes} />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    기록이 없습니다. 첫 번째 기록을 작성해보세요.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card >
 
-        {/* 최근 기록: 아이콘으로 시각적 계층 강화 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                <FileText className="h-5 w-5 text-primary" />
+          {/* 가장 많이 기록한 책 (리스트 형태 유지) */}
+          < Card >
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="mb-2">가장 많이 기록한 책</CardTitle>
+                  <CardDescription>기록 수가 많은 책 Top 5</CardDescription>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="mb-2">최근 기록</CardTitle>
-                <CardDescription>최근 작성한 기록 5개</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {recentNotes.length > 0 ? (
-              <RecentNotes notes={recentNotes} />
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  기록이 없습니다. 첫 번째 기록을 작성해보세요.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 가장 많이 기록한 책 (리스트 형태 유지) */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="mb-2">가장 많이 기록한 책</CardTitle>
-                <CardDescription>기록 수가 많은 책 Top 5</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {readingStats && readingStats.topBooks.length > 0 ? (
-              <div className="space-y-2">
-                {readingStats.topBooks.map((item, index) => (
-                  <Link
-                    key={item.book.id}
-                    href={`/books/${item.book.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 hover:border-primary/20 transition-all group"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={cn(
-                        "flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
-                        index === 0 && "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-                        index === 1 && "bg-gray-400/20 text-gray-700 dark:text-gray-400",
-                        index === 2 && "bg-orange-500/20 text-orange-700 dark:text-orange-400",
-                        index >= 3 && "bg-muted text-muted-foreground"
-                      )}>
-                        {index + 1}
+            </CardHeader>
+            <CardContent>
+              {readingStats && readingStats.topBooks.length > 0 ? (
+                <div className="space-y-2">
+                  {readingStats.topBooks.map((item, index) => (
+                    <Link
+                      key={item.book.id}
+                      href={`/books/${item.book.id}`}
+                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 hover:border-primary/20 transition-all group"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className={cn(
+                          "flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0",
+                          index === 0 && "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
+                          index === 1 && "bg-gray-400/20 text-gray-700 dark:text-gray-400",
+                          index === 2 && "bg-orange-500/20 text-orange-700 dark:text-orange-400",
+                          index >= 3 && "bg-muted text-muted-foreground"
+                        )}>
+                          {index + 1}
+                        </div>
+                        <span className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                          {item.book.title}
+                        </span>
                       </div>
-                      <span className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                        {item.book.title}
+                      <span className="text-sm text-muted-foreground shrink-0 ml-4">
+                        {item.noteCount}개 기록
                       </span>
-                    </div>
-                    <span className="text-sm text-muted-foreground shrink-0 ml-4">
-                      {item.noteCount}개 기록
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  기록한 책이 없습니다. 책을 추가하고 기록을 작성해보세요.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    기록한 책이 없습니다. 책을 추가하고 기록을 작성해보세요.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card >
 
-        {/* 서비스 소식 (보도자료): 아이콘으로 시각적 계층 강화 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-4">
-              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                <Megaphone className="h-5 w-5 text-primary" />
+          {/* 서비스 소식 (보도자료): 아이콘으로 시각적 계층 강화 */}
+          < Card >
+            <CardHeader>
+              <div className="flex items-start gap-4">
+                <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                  <Megaphone className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="mb-2">새로운 소식</CardTitle>
+                  <CardDescription>
+                    독서 기록이 사라지지 않는 시대: Readtree 독서플랫폼이 읽었던 문장을 다시 찾고 공유할 수 있게 해줍니다.
+                  </CardDescription>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="mb-2">새로운 소식</CardTitle>
-                <CardDescription>
-                  독서 기록이 사라지지 않는 시대: Readtree 독서플랫폼이 읽었던 문장을 다시 찾고 공유할 수 있게 해줍니다.
-                </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex justify-end">
+                <Button asChild variant="outline" size="sm">
+                  <Link href="https://habitree.github.io/habitree_pr/#press-release" target="_blank" rel="noopener noreferrer">
+                    보도자료 보기
+                  </Link>
+                </Button>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex justify-end">
-              <Button asChild variant="outline" size="sm">
-                <Link href="https://habitree.github.io/habitree_pr/#press-release" target="_blank" rel="noopener noreferrer">
-                  보도자료 보기
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card >
+      </div >
     </>
   );
 }

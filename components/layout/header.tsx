@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, User, Trees } from "lucide-react";
+import { Megaphone, User, Trees } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -48,10 +48,11 @@ export function Header() {
         {/* 우측 메뉴 */}
         <div className="flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
 
-          {/* 알림 */}
-          <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-10 sm:w-10">
-            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-            {/* TODO: 알림 배지 표시 */}
+          {/* 새로운 소식 (보도자료) */}
+          <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-10 sm:w-10" asChild>
+            <Link href="https://habitree.github.io/habitree_pr/#press-release" target="_blank" rel="noopener noreferrer">
+              <Megaphone className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Link>
           </Button>
 
           {/* 프로필 메뉴 */}

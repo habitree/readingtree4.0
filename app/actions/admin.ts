@@ -233,6 +233,223 @@ export async function getOcrTotalStats() {
 }
 
 /**
+ * OCR 배치 처리
+ * 이미지가 있지만 OCR 처리가 안 된 모든 기록을 일괄 처리
+ * 관리자만 실행 가능
+ * @param batchSize 한 번에 처리할 최대 기록 수 (기본값: 10)
+ * @returns 처리 결과
+ */
+export async function batchProcessOCR(batchSize: number = 10) {
+    await requireAdmin();
+    
+    const supabase = await createServerSupabaseClient();
+
+    // OCR 처리가 필요한 기록 조회
+    // 1. image_url이 있는 기록
+    // 2. type이 'photo' 또는 'transcription'인 기록
+    // 3. transcriptions 테이블에 없거나 status가 'failed'인 기록
+    const { data: notesNeedingOCR, error: queryError } = await supabase
+        .from("notes")
+        .select(`
+            id,
+            image_url,
+            type,
+            user_id
+        `)
+        .not("image_url", "is", null)
+        .in("type", ["photo", "transcription"])
+        .limit(batchSize);
+
+    if (queryError) {
+        console.error("OCR 배치 처리 - 기록 조회 오류:", queryError);
+        throw new Error(`기록 조회 실패: ${queryError.message}`);
+    }
+
+    if (!notesNeedingOCR || notesNeedingOCR.length === 0) {
+        return {
+            success: true,
+            processedCount: 0,
+            totalFound: 0,
+            message: "OCR 처리가 필요한 기록이 없습니다.",
+        };
+    }
+
+    // 각 기록에 대해 transcription 존재 여부 확인
+    const noteIds = notesNeedingOCR.map(note => note.id);
+    const { data: existingTranscriptions } = await supabase
+        .from("transcriptions")
+        .select("note_id, status")
+        .in("note_id", noteIds);
+
+    const transcriptionMap = new Map<string, string>();
+    if (existingTranscriptions) {
+        existingTranscriptions.forEach(t => {
+            transcriptionMap.set(t.note_id, t.status);
+        });
+    }
+
+    // OCR 처리가 필요한 기록만 필터링
+    const notesToProcess = notesNeedingOCR.filter(note => {
+        const status = transcriptionMap.get(note.id);
+        // transcription이 없거나 status가 'failed'인 경우만 처리
+        return !status || status === "failed";
+    });
+
+    if (notesToProcess.length === 0) {
+        return {
+            success: true,
+            processedCount: 0,
+            totalFound: notesNeedingOCR.length,
+            message: "모든 기록이 이미 OCR 처리되었거나 처리 중입니다.",
+        };
+    }
+
+    // OCR 처리 로직 직접 호출 (Server Action에서 직접 처리)
+    const { extractTextFromImage } = await import("@/lib/api/ocr");
+    const { createTranscriptionInitial, createOrUpdateTranscription, updateTranscriptionStatus } = await import("@/app/actions/notes");
+    const { recordOcrSuccess, recordOcrFailure } = await import("@/app/actions/ocr");
+    
+    const processPromises = notesToProcess.map(async (note) => {
+        const startTime = Date.now();
+        try {
+            // 1. Transcription 초기 상태 생성
+            await createTranscriptionInitial(note.id);
+            
+            // 2. OCR 처리 (이미지에서 텍스트 추출)
+            const extractedText = await extractTextFromImage(note.image_url);
+            
+            // 3. Transcription 저장
+            await createOrUpdateTranscription(note.id, extractedText);
+            
+            // 4. 상태 확인 및 업데이트
+            const { data: transcription } = await supabase
+                .from("transcriptions")
+                .select("id, status")
+                .eq("note_id", note.id)
+                .maybeSingle();
+            
+            if (transcription && transcription.status !== "completed") {
+                await updateTranscriptionStatus(note.id, "completed");
+            }
+            
+            // 5. 성공 통계 기록
+            const duration = Date.now() - startTime;
+            try {
+                await recordOcrSuccess(note.user_id, note.id, duration);
+            } catch (statsError) {
+                console.error(`OCR 통계 기록 실패 (계속 진행): noteId=${note.id}`, statsError);
+            }
+            
+            return {
+                noteId: note.id,
+                success: true,
+            };
+        } catch (error) {
+            const duration = Date.now() - startTime;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            console.error(`OCR 처리 실패 - noteId: ${note.id}`, error);
+            
+            // 실패 시 transcription 상태를 "failed"로 업데이트
+            try {
+                await updateTranscriptionStatus(note.id, "failed");
+            } catch (statusError) {
+                console.error(`Transcription 상태 업데이트 실패: noteId=${note.id}`, statusError);
+            }
+            
+            // 실패 통계 기록
+            try {
+                await recordOcrFailure(note.user_id, note.id, errorMessage, duration);
+            } catch (statsError) {
+                console.error(`OCR 실패 통계 기록 실패: noteId=${note.id}`, statsError);
+            }
+            
+            return {
+                noteId: note.id,
+                success: false,
+                error: errorMessage,
+            };
+        }
+    });
+
+    // 모든 OCR 처리 요청 실행
+    const results = await Promise.allSettled(processPromises);
+    
+    const successful = results.filter(r => r.status === "fulfilled" && r.value.success).length;
+    const failed = results.length - successful;
+
+    return {
+        success: true,
+        processedCount: successful,
+        failedCount: failed,
+        totalFound: notesNeedingOCR.length,
+        totalNeedingOCR: notesToProcess.length,
+        message: `${successful}개의 기록에 대해 OCR 처리를 시작했습니다. ${failed}개 실패.`,
+    };
+}
+
+/**
+ * OCR 처리 대기 중인 기록 수 조회
+ * 관리자만 실행 가능
+ * @returns OCR 처리가 필요한 기록 수
+ */
+export async function getPendingOCRCount() {
+    await requireAdmin();
+    
+    const supabase = await createServerSupabaseClient();
+
+    // OCR 처리가 필요한 기록 수 조회
+    const { count, error } = await supabase
+        .from("notes")
+        .select("*", { count: "exact", head: true })
+        .not("image_url", "is", null)
+        .in("type", ["photo", "transcription"]);
+
+    if (error) {
+        console.error("OCR 대기 기록 수 조회 오류:", error);
+        throw new Error(`조회 실패: ${error.message}`);
+    }
+
+    // transcription이 없거나 failed인 기록 수 계산
+    const { data: notesWithImages } = await supabase
+        .from("notes")
+        .select("id")
+        .not("image_url", "is", null)
+        .in("type", ["photo", "transcription"])
+        .limit(1000); // 최대 1000개만 확인
+
+    if (!notesWithImages || notesWithImages.length === 0) {
+        return {
+            total: 0,
+            needingOCR: 0,
+        };
+    }
+
+    const noteIds = notesWithImages.map(note => note.id);
+    const { data: transcriptions } = await supabase
+        .from("transcriptions")
+        .select("note_id, status")
+        .in("note_id", noteIds);
+
+    const transcriptionMap = new Map<string, string>();
+    if (transcriptions) {
+        transcriptions.forEach(t => {
+            transcriptionMap.set(t.note_id, t.status);
+        });
+    }
+
+    const needingOCR = notesWithImages.filter(note => {
+        const status = transcriptionMap.get(note.id);
+        return !status || status === "failed";
+    }).length;
+
+    return {
+        total: count || 0,
+        needingOCR,
+    };
+}
+
+/**
  * API 연동 정보 조회
  * 현재 설정된 모든 외부 API 정보 및 상태 확인
  */
