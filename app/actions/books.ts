@@ -3,6 +3,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { searchBooks, transformNaverBookItem } from "@/lib/api/naver";
+import { summarizeBookDescription } from "@/lib/api/gemini";
 import type { ReadingStatus } from "@/types/book";
 import { isValidUUID, sanitizeErrorForLogging } from "@/lib/utils/validation";
 import type { User } from "@supabase/supabase-js";
@@ -611,6 +612,7 @@ export interface BookWithNotes {
     isbn: string | null;
     published_date: string | null;
     cover_image_url: string | null;
+    description_summary: string | null;
     created_at?: string;
     updated_at?: string;
   };
@@ -718,6 +720,7 @@ export async function getUserBooksWithNotes(
         isbn,
         published_date,
         cover_image_url,
+        description_summary,
         created_at,
         updated_at
       )
@@ -1095,6 +1098,86 @@ export async function getBookDetail(userBookId: string, user?: User | null) {
  * @param userBookId UserBooks 테이블의 ID
  * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
+/**
+ * 책소개 요약 가져오기
+ * DB에 저장된 요약이 있으면 반환, 없으면 Naver API + Gemini API로 생성 후 저장
+ * @param bookId 책 ID
+ * @param isbn ISBN (선택)
+ * @param title 책 제목 (선택)
+ * @returns 요약된 책소개 (20자 내외)
+ */
+export async function getBookDescriptionSummary(
+  bookId: string,
+  isbn?: string | null,
+  title?: string | null
+): Promise<string> {
+  if (!bookId) {
+    return "";
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  try {
+    // 1. DB에서 기존 요약 확인
+    const { data: book, error: fetchError } = await supabase
+      .from("books")
+      .select("description_summary")
+      .eq("id", bookId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("[getBookDescriptionSummary] DB 조회 오류:", fetchError);
+    }
+
+    // 2. 기존 요약이 있으면 반환
+    if (book?.description_summary && book.description_summary.trim().length > 0) {
+      return book.description_summary;
+    }
+
+    // 3. 요약이 없으면 생성
+    if (!isbn && !title) {
+      return "";
+    }
+
+    // Naver API로 책 검색
+    const query = isbn || title || "";
+    const naverResponse = await searchBooks({ query, display: 1 });
+
+    if (!naverResponse.items || naverResponse.items.length === 0) {
+      return "";
+    }
+
+    const description = naverResponse.items[0].description;
+    if (!description || description.trim().length === 0) {
+      return "";
+    }
+
+    // Gemini API로 요약
+    const summary = await summarizeBookDescription(description);
+    
+    if (summary && summary.trim().length > 0) {
+      // 4. DB에 저장 (비동기, 실패해도 반환)
+      supabase
+        .from("books")
+        .update({ description_summary: summary })
+        .eq("id", bookId)
+        .then(({ error: updateError }) => {
+          if (updateError) {
+            console.error("[getBookDescriptionSummary] DB 저장 오류:", updateError);
+          }
+        })
+        .catch((error) => {
+          console.error("[getBookDescriptionSummary] DB 저장 실패:", error);
+        });
+    }
+
+    return summary;
+  } catch (error) {
+    console.error("[getBookDescriptionSummary] 책소개 요약 실패:", error);
+    return "";
+  }
+}
+
 export async function deleteBook(userBookId: string, user?: User | null) {
   const supabase = await createServerSupabaseClient();
 

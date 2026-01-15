@@ -53,6 +53,7 @@ export interface Database {
           category: string | null;
           total_pages: number | null;
           summary: string | null;
+          description_summary: string | null;
           external_link: string | null;
           is_sample: boolean | null;
           created_at: string;
@@ -69,6 +70,7 @@ export interface Database {
           category?: string | null;
           total_pages?: number | null;
           summary?: string | null;
+          description_summary?: string | null;
           external_link?: string | null;
           is_sample?: boolean | null;
           created_at?: string;
@@ -85,6 +87,7 @@ export interface Database {
           category?: string | null;
           total_pages?: number | null;
           summary?: string | null;
+          description_summary?: string | null;
           external_link?: string | null;
           is_sample?: boolean | null;
           created_at?: string;

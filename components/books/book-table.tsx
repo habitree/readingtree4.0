@@ -18,7 +18,7 @@ import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
 import { BookOpen, FileText, Loader2, Users, BookOpen as BookOpenIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { updateBookStatus } from "@/app/actions/books";
+import { updateBookStatus, getBookDescriptionSummary } from "@/app/actions/books";
 import { moveBookToBookshelf, getBookshelves } from "@/app/actions/bookshelves";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -44,6 +44,8 @@ export function BookTable({ books }: BookTableProps) {
   const [bookshelvesMap, setBookshelvesMap] = useState<Record<string, Bookshelf>>({});
   const [isLoadingBookshelves, setIsLoadingBookshelves] = useState(false);
   const [updatingBookshelf, setUpdatingBookshelf] = useState<Record<string, boolean>>({});
+  const [bookDescriptions, setBookDescriptions] = useState<Record<string, string>>({});
+  const [loadingDescriptions, setLoadingDescriptions] = useState<Record<string, boolean>>({});
 
   // 서재 목록 로드
   useEffect(() => {
@@ -62,6 +64,75 @@ export function BookTable({ books }: BookTableProps) {
     }
     loadBookshelves();
   }, []);
+
+  // 책소개 초기화 및 로드 (PC 버전에서만)
+  useEffect(() => {
+    // PC 버전에서만 로드 (lg 이상)
+    if (typeof window === "undefined") return;
+    if (window.innerWidth < 1024) return;
+
+    // 1. DB에서 가져온 description_summary 먼저 설정
+    const initialDescriptions: Record<string, string> = {};
+    for (const item of books) {
+      const book = item.books;
+      if (book.description_summary && book.description_summary.trim().length > 0) {
+        initialDescriptions[book.id] = book.description_summary;
+      }
+    }
+    setBookDescriptions((prev) => ({ ...prev, ...initialDescriptions }));
+
+    // 2. description_summary가 없는 책만 API로 요약 생성
+    async function loadBookDescriptions() {
+      const descriptionsToLoad: Array<{ bookId: string; isbn?: string | null; title?: string | null }> = [];
+
+      for (const item of books) {
+        const book = item.books;
+        // 이미 DB에 있거나 로드되었거나 로딩 중이면 스킵
+        if (book.description_summary || bookDescriptions[book.id] || loadingDescriptions[book.id]) {
+          continue;
+        }
+
+        // ISBN이나 제목이 없으면 스킵
+        if (!book.isbn && !book.title) {
+          continue;
+        }
+
+        descriptionsToLoad.push({
+          bookId: book.id,
+          isbn: book.isbn,
+          title: book.title,
+        });
+      }
+
+      // 병렬로 로드 (최대 5개씩)
+      const batchSize = 5;
+      for (let i = 0; i < descriptionsToLoad.length; i += batchSize) {
+        const batch = descriptionsToLoad.slice(i, i + batchSize);
+        
+        await Promise.all(
+          batch.map(async ({ bookId, isbn, title }) => {
+            setLoadingDescriptions((prev) => ({ ...prev, [bookId]: true }));
+            try {
+              const summary = await getBookDescriptionSummary(bookId, isbn, title);
+              if (summary) {
+                setBookDescriptions((prev) => ({ ...prev, [bookId]: summary }));
+              }
+            } catch (error) {
+              console.error(`책소개 요약 실패 (${title}):`, error);
+            } finally {
+              setLoadingDescriptions((prev) => {
+                const next = { ...prev };
+                delete next[bookId];
+                return next;
+              });
+            }
+          })
+        );
+      }
+    }
+    loadBookDescriptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [books]);
 
   const handleToggleNotes = async (bookId: string, userBookId: string) => {
     if (expandedBookId === userBookId) {
@@ -149,9 +220,12 @@ export function BookTable({ books }: BookTableProps) {
                 표지
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[200px] sm:min-w-[300px]">
-                제목/책소개
+                제목
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32 sm:w-40">
+              <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[150px]">
+                책소개
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-24 sm:w-28">
                 상태
               </th>
               <th className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32">
@@ -198,7 +272,7 @@ export function BookTable({ books }: BookTableProps) {
                     </Link>
                   </td>
 
-                  {/* 제목/책소개 */}
+                  {/* 제목 */}
                   <td className="px-4 py-4">
                     <div className="space-y-2">
                       <div className="flex items-start gap-2 flex-wrap">
@@ -272,6 +346,22 @@ export function BookTable({ books }: BookTableProps) {
                     </div>
                   </td>
 
+                  {/* 책소개 (PC 버전에서만 표시) */}
+                  <td className="hidden lg:table-cell px-4 py-4">
+                    <div className="text-sm text-muted-foreground">
+                      {loadingDescriptions[book.id] ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span className="text-xs">요약 중...</span>
+                        </div>
+                      ) : book.description_summary || bookDescriptions[book.id] ? (
+                        <p className="line-clamp-2">{book.description_summary || bookDescriptions[book.id]}</p>
+                      ) : (
+                        <span className="text-xs opacity-50">-</span>
+                      )}
+                    </div>
+                  </td>
+
                   {/* 상태 */}
                   <td className="px-4 py-4">
                     <div className="space-y-2">
@@ -285,7 +375,7 @@ export function BookTable({ books }: BookTableProps) {
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="outline"
-                              className="w-[180px] h-9 justify-between"
+                              className="w-full max-w-[140px] h-9 justify-between"
                               disabled={updatingStatus[item.id]}
                             >
                               <div className="flex flex-col items-start gap-0.5">
