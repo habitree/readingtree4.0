@@ -120,6 +120,35 @@ async function getNotionPage(pageId) {
 }
 
 /**
+ * 노션 데이터베이스에서 모든 페이지(책) 가져오기
+ */
+async function getAllNotionBooks(databaseId) {
+  const allPages = [];
+  let startCursor = null;
+
+  while (true) {
+    const path = startCursor
+      ? `/v1/databases/${databaseId}/query`
+      : `/v1/databases/${databaseId}/query`;
+
+    const requestBody = startCursor
+      ? { start_cursor: startCursor }
+      : {};
+
+    const response = await notionRequest('POST', path, requestBody);
+    allPages.push(...response.results);
+
+    if (!response.has_more) {
+      break;
+    }
+
+    startCursor = response.next_cursor;
+  }
+
+  return allPages;
+}
+
+/**
  * 페이지의 모든 블록 가져오기
  */
 async function getNotionPageBlocks(pageId) {
@@ -151,38 +180,74 @@ function getPropertyText(properties, key) {
   const prop = properties[key];
   if (!prop) return null;
   
-  if (prop.type === 'title' && prop.title) {
-    return prop.title.map(item => item.plain_text).join('');
+  // status 타입 처리 (독서상태 등)
+  if (prop.type === 'status' && prop.status) {
+    return prop.status.name;
   }
-  if (prop.type === 'rich_text' && prop.rich_text) {
-    return prop.rich_text.map(item => item.plain_text).join('');
-  }
+  
+  // select 타입 처리
   if (prop.type === 'select' && prop.select) {
     return prop.select.name;
   }
+  
+  // title 타입 처리
+  if (prop.type === 'title' && prop.title) {
+    return prop.title.map(item => item.plain_text).join('');
+  }
+  
+  // rich_text 타입 처리
+  if (prop.type === 'rich_text' && prop.rich_text) {
+    return prop.rich_text.map(item => item.plain_text).join('');
+  }
+  
+  // url 타입 처리
   if (prop.type === 'url' && prop.url) {
     return prop.url;
   }
+  
+  // number 타입 처리
   if (prop.type === 'number' && prop.number !== null) {
     return prop.number;
   }
+  
   return null;
 }
 
 /**
  * 노션 독서상태를 시스템 독서상태로 변환
+ * 
+ * 매핑 규칙:
+ * - 완독 → completed
+ * - 읽는중 → reading
+ * - 읽기전 → not_started
+ * - 멈춤 → paused
+ * - 필사중 → reading
+ * - 탐독 → rereading (재독과 동일)
+ * - 재독 → rereading
  */
 function mapReadingStatus(notionStatus) {
+  if (!notionStatus) {
+    return 'reading'; // 기본값
+  }
+  
   const statusMap = {
     '읽기전': 'not_started',
     '읽는중': 'reading',
     '완독': 'completed',
     '재독': 'rereading',
     '멈춤': 'paused',
-    '탐독': 'reading',
+    '탐독': 'rereading', // 탐독도 재독으로 처리
     '필사중': 'reading',
   };
-  return statusMap[notionStatus] || 'reading';
+  
+  const mappedStatus = statusMap[notionStatus.trim()];
+  
+  if (!mappedStatus) {
+    console.log(`   ⚠️  알 수 없는 독서상태: "${notionStatus}" → 기본값(reading) 사용`);
+    return 'reading';
+  }
+  
+  return mappedStatus;
 }
 
 /**
@@ -784,36 +849,9 @@ async function main() {
   // 사용자 이메일 (환경 변수에서 가져오거나 하드코딩)
   const userEmail = process.env.USER_EMAIL || 'cdhnaya@kakao.com';
   
-  // 사용자 ID (환경 변수에서 가져오기)
-  const userIdFromEnv = process.env.USER_ID;
-
-  // 마이그레이션할 책 목록
-  const books = [
-    {
-      pageId: '18cfcf15-b6ad-8167-a571-f768b898058d',
-      title: '죽음의 수용소에서',
-    },
-    {
-      pageId: '28cfcf15-b6ad-8080-b1d0-d6cd428b4271',
-      title: '어린왕자',
-    },
-    {
-      pageId: '195fcf15-b6ad-8091-9c4e-dd7962ad33ed',
-      title: '넥서스',
-    },
-    {
-      pageId: '1b8fcf15-b6ad-8020-89f3-f72e8a3491b0',
-      title: '사랑의기술',
-    },
-    {
-      pageId: '18cfcf15-b6ad-81f3-8caa-f4921d88683b',
-      title: '기회의 심리학',
-    },
-    {
-      pageId: '18cfcf15-b6ad-8066-84af-ecbf1ab8cedc',
-      title: '지적대화를 위한 넓고 얕은 지식 1',
-    },
-  ];
+  // 노션 데이터베이스 ID (환경 변수에서 가져오기, 없으면 기본값 사용)
+  // 기본값: "독서 리스트" 데이터베이스 ID
+  const notionDatabaseId = process.env.NOTION_DATABASE_ID || 'ddda41d6-e7fe-450b-9475-daffa45e0d5c';
 
   console.log('마이그레이션 설정:');
   console.log(`- 사용자 이메일: ${userEmail}`);
@@ -828,14 +866,76 @@ async function main() {
       SUPABASE_SERVICE_ROLE_KEY ? 'Service Role Key 사용' : 'Anon Key 사용'
     }`
   );
-  console.log(`- 마이그레이션 대상 책 수: ${books.length}권`);
+
+  let books = [];
+
+  // 노션 데이터베이스 ID가 있으면 자동으로 모든 책 가져오기
+  if (notionDatabaseId) {
+    console.log(`- 노션 데이터베이스 ID: ${notionDatabaseId}`);
+    console.log('\n📚 노션 데이터베이스에서 모든 책 가져오기...');
+    
+    try {
+      const pages = await getAllNotionBooks(notionDatabaseId);
+      console.log(`   총 ${pages.length}개 책 발견`);
+      
+      // 각 페이지에서 제목 추출
+      books = pages.map((page) => {
+        const title = getPropertyText(page.properties, '제목') || '제목 없음';
+        return {
+          pageId: page.id,
+          title: title,
+        };
+      });
+      
+      console.log(`   📖 책 목록:`);
+      books.forEach((book, index) => {
+        console.log(`      ${index + 1}. ${book.title}`);
+      });
+    } catch (error) {
+      console.error(`❌ 노션 데이터베이스 조회 실패: ${error.message}`);
+      console.error(`   환경 변수 NOTION_DATABASE_ID를 확인하거나 수동으로 책 목록을 설정하세요.`);
+      process.exit(1);
+    }
+  } else {
+    // 데이터베이스 ID가 없으면 하드코딩된 목록 사용 (기존 방식)
+    console.log(`- 노션 데이터베이스 ID: 없음 (하드코딩된 목록 사용)`);
+    books = [
+      {
+        pageId: '18cfcf15-b6ad-8167-a571-f768b898058d',
+        title: '죽음의 수용소에서',
+      },
+      {
+        pageId: '28cfcf15-b6ad-8080-b1d0-d6cd428b4271',
+        title: '어린왕자',
+      },
+      {
+        pageId: '195fcf15-b6ad-8091-9c4e-dd7962ad33ed',
+        title: '넥서스',
+      },
+      {
+        pageId: '1b8fcf15-b6ad-8020-89f3-f72e8a3491b0',
+        title: '사랑의기술',
+      },
+      {
+        pageId: '18cfcf15-b6ad-81f3-8caa-f4921d88683b',
+        title: '기회의 심리학',
+      },
+      {
+        pageId: '18cfcf15-b6ad-8066-84af-ecbf1ab8cedc',
+        title: '지적대화를 위한 넓고 얕은 지식 1',
+      },
+    ];
+  }
+
+  console.log(`\n- 마이그레이션 대상 책 수: ${books.length}권`);
 
   let successCount = 0;
   let failCount = 0;
 
-  for (const book of books) {
+  for (let i = 0; i < books.length; i++) {
+    const book = books[i];
     console.log('\n' + '-'.repeat(60));
-    console.log(`📖 책 마이그레이션: ${book.title}`);
+    console.log(`📖 책 마이그레이션 [${i + 1}/${books.length}]: ${book.title}`);
     console.log('-'.repeat(60));
 
     try {

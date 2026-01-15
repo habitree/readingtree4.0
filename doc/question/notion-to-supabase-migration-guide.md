@@ -22,6 +22,9 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key  # 권장
 # 사용자 정보 (선택사항)
 USER_EMAIL=cdhnaya@kakao.com
 USER_ID=your_user_uuid  # 직접 설정 시 이메일 조회 생략
+
+# 노션 데이터베이스 (자동 마이그레이션용)
+NOTION_DATABASE_ID=your_database_id  # 노션 독서 리스트 데이터베이스 ID
 ```
 
 ### 2. 사용자 ID 확인 방법
@@ -74,9 +77,29 @@ node scripts/migrate-notion-to-supabase.js
 - **필사정보 (이미지)**: `type='transcription'`, `image_url`에 이미지 URL 저장
 - **내생각정보 (텍스트)**: `type='memo'`, `content`에 텍스트 저장
 
+## 자동 마이그레이션 (전체 책)
+
+### 노션 데이터베이스 ID 설정
+
+1. 노션에서 독서 리스트 데이터베이스 열기
+2. 데이터베이스 URL에서 ID 추출:
+   - URL 형식: `https://www.notion.so/workspace/{database_id}?v=...`
+   - 또는 데이터베이스 페이지의 URL에서 `?v=` 앞의 부분이 데이터베이스 ID
+3. `.env.local`에 추가: `NOTION_DATABASE_ID=your_database_id`
+
+### 실행
+
+```bash
+node scripts/migrate-notion-to-supabase.js
+```
+
+**동작 방식:**
+- `NOTION_DATABASE_ID`가 설정되어 있으면 → 노션 데이터베이스에서 **모든 책을 자동으로 가져와서** 마이그레이션
+- `NOTION_DATABASE_ID`가 없으면 → 하드코딩된 6권만 마이그레이션 (기존 방식)
+
 ## 테스트 실행
 
-현재 "죽음의 수용소에서" 책 1개만 테스트로 마이그레이션합니다.
+특정 책만 테스트로 마이그레이션하려면 `NOTION_DATABASE_ID`를 설정하지 않고 실행하면 하드코딩된 6권만 마이그레이션됩니다.
 
 ## 문제 해결
 
