@@ -252,20 +252,20 @@ export function BookTable({ books }: BookTableProps) {
                   className="hover:bg-muted/30 transition-colors"
                 >
                   {/* 표지 */}
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-6">
                     <Link href={`/books/${item.id}`} className="block">
-                      <div className="relative w-12 h-16 sm:w-16 sm:h-20 rounded overflow-hidden bg-muted cursor-pointer hover:opacity-90 transition-opacity mx-auto">
+                      <div className="relative w-20 h-28 sm:w-24 sm:h-36 rounded-md overflow-hidden bg-muted cursor-pointer hover:shadow-lg transition-all duration-300 mx-auto shadow-md border border-black/5">
                         {hasValidImage ? (
                           <Image
                             src={getImageUrl(book.cover_image_url)}
                             alt={`${book.title} 표지`}
                             fill
-                            className="object-cover"
-                            sizes="(max-width: 640px) 48px, 64px"
+                            className="object-cover hover:scale-105 transition-transform duration-500"
+                            sizes="(max-width: 640px) 80px, 96px"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+                            <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/50" />
                           </div>
                         )}
                       </div>
@@ -273,12 +273,12 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 제목 */}
-                  <td className="px-4 py-4">
-                    <div className="space-y-2">
+                  <td className="px-4 py-6">
+                    <div className="space-y-3">
                       <div className="flex items-start gap-2 flex-wrap">
                         <Link
                           href={`/books/${item.id}`}
-                          className="font-semibold hover:text-primary transition-colors line-clamp-1 flex-1"
+                          className="font-bold text-lg hover:text-primary transition-colors line-clamp-2 leading-tight"
                         >
                           {book.title}
                         </Link>
@@ -286,22 +286,22 @@ export function BookTable({ books }: BookTableProps) {
 
                       {/* 읽는 이유 */}
                       {item.reading_reason && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 italic">
+                        <p className="text-sm text-muted-foreground line-clamp-2 italic border-l-2 border-primary/20 pl-3 py-1 bg-muted/30 rounded-r">
                           "{item.reading_reason}"
                         </p>
                       )}
 
                       {/* 책소개 (플레이스홀더) */}
                       {book.publisher && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 opacity-75">
+                        <p className="text-xs text-muted-foreground line-clamp-1 opacity-75 font-medium">
                           {book.publisher}
                         </p>
                       )}
 
                       {/* 기록 개수 및 더보기 */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
                         {item.noteCount > 0 && (
-                          <Badge variant="secondary" className="text-xs font-medium">
+                          <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-secondary/50">
                             <FileText className="w-3 h-3 mr-1" aria-hidden="true" />
                             {item.noteCount}개 기록
                           </Badge>
@@ -312,7 +312,7 @@ export function BookTable({ books }: BookTableProps) {
                               <Badge
                                 key={gb.group_id}
                                 variant="outline"
-                                className="text-xs px-1.5 py-0.5"
+                                className="text-xs px-1.5 py-0.5 border-primary/20 text-primary/80"
                                 title={`${gb.group_name} 지정도서`}
                               >
                                 <Users className="mr-1 h-2.5 w-2.5" />
@@ -328,18 +328,18 @@ export function BookTable({ books }: BookTableProps) {
                             onClick={() =>
                               handleToggleNotes(book.id, item.id)
                             }
-                            className="h-8 text-xs min-h-[36px]"
+                            className="h-7 text-xs px-2 hover:bg-muted"
                           >
                             {expandedBookId === item.id
                               ? "접기"
-                              : "나의기록 더보기"}
+                              : "기록 더보기"}
                           </Button>
                         )}
                       </div>
 
                       {/* 기록 미리보기 */}
                       {expandedBookId === item.id && notes.length > 0 && (
-                        <div className="mt-2 pt-2 border-t">
+                        <div className="mt-3 pt-3 border-t border-border/50">
                           <BookNotesPreview notes={notes} />
                         </div>
                       )}
@@ -347,15 +347,15 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 책소개 (PC 버전에서만 표시) */}
-                  <td className="hidden lg:table-cell px-4 py-4">
-                    <div className="text-sm text-muted-foreground">
+                  <td className="hidden lg:table-cell px-4 py-6 align-top">
+                    <div className="text-sm text-muted-foreground pt-1">
                       {loadingDescriptions[book.id] ? (
                         <div className="flex items-center gap-2">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span className="text-xs">요약 중...</span>
                         </div>
                       ) : book.description_summary || bookDescriptions[book.id] ? (
-                        <p className="line-clamp-2">{book.description_summary || bookDescriptions[book.id]}</p>
+                        <p className="line-clamp-4 leading-relaxed">{book.description_summary || bookDescriptions[book.id]}</p>
                       ) : (
                         <span className="text-xs opacity-50">-</span>
                       )}
@@ -363,43 +363,33 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 상태 */}
-                  <td className="px-4 py-4">
-                    <div className="space-y-2">
+                  <td className="px-4 py-6 align-top">
+                    <div className="pt-1">
                       {updatingStatus[item.id] ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>변경 중...</span>
                         </div>
                       ) : (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="outline"
-                              className="w-full max-w-[140px] h-9 justify-between"
+                              className="w-full max-w-[110px] h-8 text-xs font-medium justify-between px-2 bg-background/50"
                               disabled={updatingStatus[item.id]}
                             >
-                              <div className="flex flex-col items-start gap-0.5">
-                                <span className="text-sm leading-tight">
+                              <div className="flex flex-col items-start gap-0.5 truncate">
+                                <span className="truncate">
                                   {item.status === "not_started" && "읽기전"}
                                   {item.status === "reading" && "읽는 중"}
                                   {item.status === "completed" && "완독"}
                                   {item.status === "rereading" && "재독"}
                                   {item.status === "paused" && "중단"}
                                 </span>
-                                {(() => {
-                                  const bookshelfId = (item as any).bookshelf_id;
-                                  const bookshelf = bookshelfId ? bookshelvesMap[bookshelfId] : null;
-                                  return bookshelf ? (
-                                    <span className="text-xs text-muted-foreground leading-tight">
-                                      {bookshelf.name}
-                                    </span>
-                                  ) : null;
-                                })()}
                               </div>
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-[180px]">
-                            <DropdownMenuLabel>상태</DropdownMenuLabel>
+                          <DropdownMenuContent align="start" className="w-[160px]">
+                            <DropdownMenuLabel className="text-xs">읽기 상태</DropdownMenuLabel>
                             <DropdownMenuItem
                               onClick={() => handleStatusChange(item.id, "not_started")}
                               disabled={item.status === "not_started" || updatingStatus[item.id]}
@@ -441,14 +431,14 @@ export function BookTable({ books }: BookTableProps) {
                               {item.status === "paused" && " ✓"}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuLabel>서재</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-xs">서재 이동</DropdownMenuLabel>
                             {isLoadingBookshelves ? (
                               <DropdownMenuItem disabled>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                로딩 중...
+                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                <span className="text-xs">로딩 중...</span>
                               </DropdownMenuItem>
                             ) : bookshelves.length === 0 ? (
-                              <DropdownMenuItem disabled>서재가 없습니다</DropdownMenuItem>
+                              <DropdownMenuItem disabled className="text-xs">서재가 없습니다</DropdownMenuItem>
                             ) : (
                               bookshelves.map((bookshelf) => {
                                 const currentBookshelfId = (item as any).bookshelf_id;
@@ -459,8 +449,8 @@ export function BookTable({ books }: BookTableProps) {
                                     disabled={bookshelf.id === currentBookshelfId || updatingStatus[item.id] || updatingBookshelf[item.id]}
                                     className={bookshelf.id === currentBookshelfId ? "bg-accent" : ""}
                                   >
-                                    <BookOpenIcon className="mr-2 h-4 w-4" />
-                                    {bookshelf.name}
+                                    <BookOpenIcon className="mr-2 h-3 w-3" />
+                                    <span className="truncate">{bookshelf.name}</span>
                                     {bookshelf.id === currentBookshelfId && " ✓"}
                                   </DropdownMenuItem>
                                 );
@@ -473,9 +463,9 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 기록 (모바일에서 숨김) */}
-                  <td className="hidden md:table-cell px-4 py-4">
-                    <Link href={`/books/${item.id}#book-info`}>
-                      <Button variant="outline" size="sm" className="w-full min-h-[36px]">
+                  <td className="hidden md:table-cell px-4 py-6 align-top">
+                    <Link href={`/books/${item.id}#book-info`} className="block pt-1">
+                      <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-primary">
                         <FileText className="w-4 h-4 mr-2" aria-hidden="true" />
                         기록
                       </Button>
@@ -483,26 +473,18 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 책정보 (태블릿 이하에서 숨김) */}
-                  <td className="hidden lg:table-cell px-4 py-4">
-                    <div className="space-y-1 text-sm">
+                  <td className="hidden lg:table-cell px-4 py-6 align-top">
+                    <div className="space-y-1.5 text-sm pt-1">
                       {book.author && (
-                        <div>
-                          <span className="text-muted-foreground">저자:</span>{" "}
-                          <span className="font-medium">{book.author}</span>
+                        <div className="flex gap-2 text-muted-foreground">
+                          <span className="text-xs min-w-[3rem]">저자</span>
+                          <span className="font-medium text-foreground">{book.author}</span>
                         </div>
                       )}
                       {book.publisher && (
-                        <div>
-                          <span className="text-muted-foreground">출판사:</span>{" "}
-                          <span className="font-medium">{book.publisher}</span>
-                        </div>
-                      )}
-                      {book.isbn && (
-                        <div>
-                          <span className="text-muted-foreground">ISBN:</span>{" "}
-                          <span className="font-medium font-mono text-xs">
-                            {book.isbn}
-                          </span>
+                        <div className="flex gap-2 text-muted-foreground">
+                          <span className="text-xs min-w-[3rem]">출판사</span>
+                          <span className="font-medium text-foreground">{book.publisher}</span>
                         </div>
                       )}
                       {(() => {
@@ -521,9 +503,9 @@ export function BookTable({ books }: BookTableProps) {
                           dates = [item.completed_at];
                         }
                         return dates.length > 0 ? (
-                          <div>
-                            <span className="text-muted-foreground">완독일:</span>{" "}
-                            <span className="font-medium">
+                          <div className="flex gap-2 text-muted-foreground">
+                            <span className="text-xs min-w-[3rem]">완독일</span>
+                            <span className="font-medium text-foreground">
                               {dates.map((date: string, index: number) => (
                                 <span key={index}>
                                   {formatDate(date)}
@@ -538,11 +520,15 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 액션 */}
-                  <td className="px-4 py-4">
-                    <BookDeleteButton
-                      userBookId={item.id}
-                      bookTitle={book.title}
-                    />
+                  <td className="px-4 py-6 text-center align-top">
+                    <div className="pt-1">
+                      <BookDeleteButton
+                        userBookId={item.id}
+                        bookTitle={book.title}
+                        variant="icon"
+                        size="sm"
+                      />
+                    </div>
                   </td>
                 </tr>
               );
