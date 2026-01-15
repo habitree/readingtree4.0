@@ -932,10 +932,23 @@ export async function addGroupBookToMyLibrary(
     throw new Error("이미 내 서재에 등록된 책입니다.");
   }
 
+  // 메인 서재 찾기
+  const { data: mainBookshelf } = await supabase
+    .from("bookshelves")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("is_main", true)
+    .maybeSingle();
+
+  if (!mainBookshelf) {
+    throw new Error("메인 서재를 찾을 수 없습니다. 서재를 먼저 생성해주세요.");
+  }
+
   // 내 서재에 추가
   const { error } = await supabase.from("user_books").insert({
     user_id: user.id,
     book_id: bookId,
+    bookshelf_id: mainBookshelf.id,
     status: status,
     started_at: new Date().toISOString(),
   });

@@ -36,6 +36,7 @@ import type { NoteWithBook } from "@/types/note";
 import { TagInput } from "./tag-input";
 import { BookMentionTextarea } from "./book-mention-textarea";
 import { RelatedBooksManager } from "./related-books-manager";
+import { RelatedBooksPreview } from "./related-books-preview";
 
 // 스키마: 모든 값은 선택이지만 완전히 빈값은 불가
 const noteEditFormSchema = z.object({
@@ -73,6 +74,9 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<number, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [relatedBookIds, setRelatedBookIds] = useState<string[] | null>(
+    note.related_user_book_ids || null
+  );
 
   // 기존 content를 파싱하여 초기값 설정
   const { quote, memo } = parseNoteContentFields(note.content);
@@ -228,7 +232,7 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
               <FormLabel>인상깊은 구절</FormLabel>
               <FormControl>
                 <BookMentionTextarea
-                  placeholder="인상 깊었던 문장. @를 입력하면 책을 링크할 수 있습니다."
+                  placeholder="인상 깊었던 문장을 입력하세요."
                   value={field.value || ""}
                   onValueChange={field.onChange}
                   rows={4}
@@ -249,7 +253,7 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
               <FormLabel>내 생각</FormLabel>
               <FormControl>
                 <BookMentionTextarea
-                  placeholder="생각이나 감상. @를 입력하면 책을 링크할 수 있습니다."
+                  placeholder="생각이나 감상을 입력하세요."
                   value={field.value || ""}
                   onValueChange={field.onChange}
                   rows={6}
@@ -377,16 +381,26 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
         />
 
         {/* 연결된 책 관리 */}
-        <div className="space-y-2">
-          <Label>연결된 책 <span className="text-muted-foreground text-xs font-normal">(선택)</span></Label>
-          <p className="text-xs text-muted-foreground">
-            이 기록과 관련된 다른 책을 선택할 수 있습니다. 주 책은 자동으로 제외됩니다.
-          </p>
-          <RelatedBooksManager
-            noteId={note.id}
-            currentRelatedBookIds={note.related_user_book_ids || null}
-            mainBookId={(note as any).user_book_id || ""}
-          />
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <Label>연결된 책 <span className="text-muted-foreground text-xs font-normal">(선택)</span></Label>
+            <p className="text-xs text-muted-foreground">
+              이 기록과 관련된 다른 책을 선택할 수 있습니다. 주 책은 자동으로 제외됩니다.
+            </p>
+            <RelatedBooksManager
+              noteId={note.id}
+              currentRelatedBookIds={relatedBookIds}
+              mainBookId={(note as any).user_book_id || ""}
+              onUpdate={(updatedIds) => setRelatedBookIds(updatedIds)}
+            />
+          </div>
+          
+          {/* 연결된 책 표지 이미지 미리보기 */}
+          {relatedBookIds && relatedBookIds.length > 0 && (
+            <RelatedBooksPreview
+              relatedBookIds={relatedBookIds}
+            />
+          )}
         </div>
 
         {/* 공개 설정 */}

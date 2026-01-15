@@ -424,7 +424,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
             id="quoteContent"
             value={quoteContent}
             onValueChange={(value) => setValue("quoteContent", value)}
-            placeholder="인상 깊었던 문장. @를 입력하면 책을 링크할 수 있습니다."
+            placeholder="인상 깊었던 문장을 입력하세요."
             rows={4}
             className="resize-none max-w-2xl"
           />
@@ -449,7 +449,7 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
             id="memoContent"
             value={memoContent}
             onValueChange={(value) => setValue("memoContent", value)}
-            placeholder="생각이나 감상. @를 입력하면 책을 링크할 수 있습니다."
+            placeholder="생각이나 감상을 입력하세요."
             rows={6}
             className="resize-none max-w-2xl"
           />

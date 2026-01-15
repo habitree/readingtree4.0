@@ -26,6 +26,7 @@ interface RelatedBooksManagerProps {
   noteId: string;
   currentRelatedBookIds: string[] | null;
   mainBookId: string; // 주 책의 user_books.id
+  onUpdate?: (updatedIds: string[] | null) => void; // 연결된 책 목록 업데이트 콜백
 }
 
 /**
@@ -35,6 +36,7 @@ export function RelatedBooksManager({
   noteId,
   currentRelatedBookIds,
   mainBookId,
+  onUpdate,
 }: RelatedBooksManagerProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -88,6 +90,12 @@ export function RelatedBooksManager({
       });
 
       toast.success("관련 책이 업데이트되었습니다.");
+      
+      // 부모 컴포넌트에 업데이트된 목록 전달
+      if (onUpdate) {
+        onUpdate(selectedBookIds.length > 0 ? selectedBookIds : null);
+      }
+      
       setOpen(false);
       router.refresh();
     } catch (error: any) {
