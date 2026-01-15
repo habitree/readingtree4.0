@@ -11,7 +11,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { X, Plus, BookOpen, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { X, Plus, BookOpen, Loader2, Search } from "lucide-react";
 import { getUserBooks } from "@/app/actions/books";
 import { updateNote } from "@/app/actions/notes";
 import { toast } from "sonner";
@@ -43,11 +44,13 @@ export function RelatedBooksManager({
   const [selectedBookIds, setSelectedBookIds] = useState<string[]>(
     currentRelatedBookIds || []
   );
+  const [searchQuery, setSearchQuery] = useState("");
 
   // 사용 가능한 책 목록 로드
   useEffect(() => {
     if (open) {
       loadAvailableBooks();
+      setSearchQuery(""); // 다이얼로그 열 때 검색어 초기화
     }
   }, [open]);
 
@@ -99,6 +102,17 @@ export function RelatedBooksManager({
     selectedBookIds.includes(book.id)
   );
 
+  // 검색어로 필터링된 책 목록
+  const filteredBooks = availableBooks.filter((book) => {
+    if (!searchQuery.trim()) {
+      return true;
+    }
+    const query = searchQuery.toLowerCase();
+    const title = (book.books?.title || "").toLowerCase();
+    const author = (book.books?.author || "").toLowerCase();
+    return title.includes(query) || author.includes(query);
+  });
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -146,7 +160,29 @@ export function RelatedBooksManager({
 
           {/* 사용 가능한 책 목록 */}
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">책 선택</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium">책 선택</h4>
+              {availableBooks.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  전체 {availableBooks.length}개 중 {filteredBooks.length}개 표시
+                </span>
+              )}
+            </div>
+            
+            {/* 검색 입력 필드 */}
+            {availableBooks.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="책 제목 또는 저자로 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            )}
+
             {isLoadingBooks ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -155,9 +191,13 @@ export function RelatedBooksManager({
               <p className="text-sm text-muted-foreground text-center py-8">
                 연결할 수 있는 다른 책이 없습니다.
               </p>
+            ) : filteredBooks.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                검색 결과가 없습니다.
+              </p>
             ) : (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {availableBooks.map((book) => {
+                {filteredBooks.map((book) => {
                   const isSelected = selectedBookIds.includes(book.id);
                   return (
                     <div
