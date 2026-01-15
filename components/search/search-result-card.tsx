@@ -38,6 +38,15 @@ export function SearchResultCard({ note, searchQuery }: SearchResultCardProps) {
   const bookCoverImage = book?.cover_image_url;
   const hasBookCover = bookCoverImage && isValidImageUrl(bookCoverImage);
 
+  // user_books 정보 확인 (읽는이유 검색 시 표시용)
+  const userBookData = (note as any).user_books;
+  const userBook = Array.isArray(userBookData) ? userBookData[0] : userBookData;
+  const readingReason = userBook?.reading_reason;
+  
+  // 검색어가 읽는이유와 매칭되는지 확인
+  const isReadingReasonMatch = searchQuery && readingReason && 
+    readingReason.toLowerCase().includes(searchQuery.toLowerCase());
+
   return (
     <Link href={`/notes/${note.id}`} className="group">
       <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer h-full overflow-hidden border-slate-200/60 dark:border-slate-800">
@@ -103,15 +112,40 @@ export function SearchResultCard({ note, searchQuery }: SearchResultCardProps) {
               </div>
 
               {/* 책 정보 - 타임라인과 동일한 스타일 */}
-              {book ? (
+              {/* 읽는이유가 검색어와 매칭되거나 책 정보가 있는 경우 표시 */}
+              {(book || isReadingReasonMatch) ? (
                 <div className="space-y-1 pb-1 border-b">
-                  <p className="text-base font-bold line-clamp-1 text-foreground">
-                    {book.title || "제목 없음"}
-                  </p>
-                  {book.author && (
-                    <p className="text-sm text-muted-foreground line-clamp-1">
-                      {book.author}
-                    </p>
+                  {book && (
+                    <>
+                      <p className="text-base font-bold line-clamp-1 text-foreground">
+                        {book.title || "제목 없음"}
+                      </p>
+                      {book.author && (
+                        <p className="text-sm text-muted-foreground line-clamp-1">
+                          {book.author}
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {/* 읽는이유가 검색어와 매칭된 경우 표시 */}
+                  {isReadingReasonMatch && readingReason && (
+                    <div className="mt-2 pt-2 border-t">
+                      <div className="flex items-center gap-1 mb-1">
+                        <Badge variant="outline" className="text-xs">읽는 이유</Badge>
+                        <span className="text-xs text-primary font-medium">검색 매칭</span>
+                      </div>
+                      <p className="text-sm text-foreground line-clamp-2 bg-primary/10 p-2 rounded border border-primary/20">
+                        {readingReason}
+                      </p>
+                    </div>
+                  )}
+                  {/* 읽는이유가 있지만 검색어와 매칭되지 않은 경우 (선택적 표시) */}
+                  {!isReadingReasonMatch && readingReason && book && (
+                    <div className="mt-1">
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        읽는 이유: {readingReason}
+                      </p>
+                    </div>
                   )}
                 </div>
               ) : (

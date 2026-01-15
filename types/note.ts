@@ -27,6 +27,15 @@ export interface NoteWithBook extends Note {
     author: string | null;
     cover_image_url: string | null;
   };
+  user_books?: {
+    id: string;
+    reading_reason: string | null;
+    status: string;
+  } | Array<{
+    id: string;
+    reading_reason: string | null;
+    status: string;
+  }>;
 }
 
 export interface CreateNoteInput {

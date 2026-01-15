@@ -586,15 +586,14 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
         />
 
         {/* 공개 설정 */}
-        <div className="flex items-center gap-3 md:gap-4">
-          <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2">
             <Switch
               id="isPublic"
               checked={!isPublic} // 반대로: 체크하면 비공개
               onCheckedChange={(checked) => setValue("isPublic", !checked)}
-              className="scale-100 md:scale-125"
             />
-            <Label htmlFor="isPublic" className="cursor-pointer text-sm md:text-base font-medium">
+            <Label htmlFor="isPublic" className="cursor-pointer text-sm font-medium">
               {isPublic ? "공개" : "비공개"}
             </Label>
           </div>

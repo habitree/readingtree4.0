@@ -64,12 +64,13 @@ export async function searchNotes(params: SearchParams, user?: User | null): Pro
           .eq("user_id", currentUser.id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    // 검색어가 있으면 사용자가 소유한 책(user_books) 중에서 title, author로 검색
+    // 검색어가 있으면 사용자가 소유한 책(user_books) 중에서 title, author, reading_reason으로 검색
     sanitizedQuery
       ? supabase
           .from("user_books")
           .select(`
             book_id,
+            reading_reason,
             books!inner (
               id,
               title,
@@ -77,7 +78,7 @@ export async function searchNotes(params: SearchParams, user?: User | null): Pro
             )
           `)
           .eq("user_id", currentUser.id)
-          .or(`books.title.ilike.%${sanitizedQuery}%,books.author.ilike.%${sanitizedQuery}%`)
+          .or(`books.title.ilike.%${sanitizedQuery}%,books.author.ilike.%${sanitizedQuery}%,reading_reason.ilike.%${sanitizedQuery}%`)
       : Promise.resolve({ data: [], error: null }),
   ]);
 
@@ -171,10 +172,39 @@ export async function searchNotes(params: SearchParams, user?: User | null): Pro
     throw new Error(sanitizeErrorMessage(error));
   }
 
+  // notes 결과에 user_books 정보 추가 (reading_reason 표시용)
+  // book_id와 user_id를 사용하여 user_books 조회
+  const notes = data || [];
+  const bookIds = [...new Set(notes.map((note: any) => note.book_id).filter(Boolean))];
+  
+  let userBooksMap = new Map<string, any>();
+  if (bookIds.length > 0) {
+    const { data: userBooksData } = await supabase
+      .from("user_books")
+      .select("id, book_id, reading_reason, status")
+      .eq("user_id", currentUser.id)
+      .in("book_id", bookIds);
+    
+    if (userBooksData) {
+      userBooksData.forEach((ub: any) => {
+        userBooksMap.set(ub.book_id, ub);
+      });
+    }
+  }
+
+  // notes 결과에 user_books 정보 병합
+  const resultsWithUserBooks = notes.map((note: any) => {
+    const userBook = userBooksMap.get(note.book_id);
+    return {
+      ...note,
+      user_books: userBook ? [userBook] : undefined,
+    };
+  });
+
   const totalPages = count ? Math.ceil(count / ITEMS_PER_PAGE) : 0;
 
   return {
-    results: (data || []) as Database["public"]["Tables"]["notes"]["Row"][],
+    results: resultsWithUserBooks as Database["public"]["Tables"]["notes"]["Row"][],
     total: count || 0,
     page,
     totalPages,

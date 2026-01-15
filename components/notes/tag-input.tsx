@@ -302,29 +302,21 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
       {availableTags.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            저장된 태그: <span className="text-foreground">클릭하여 추가</span>, <span className="text-destructive">마우스를 올리면 삭제 버튼 표시</span>
+            저장된 태그: <span className="text-foreground">클릭하여 추가</span>
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {availableTags.slice(0, 20).map((tag, index) => (
               <div 
                 key={index} 
-                className="relative group"
-                onMouseEnter={(e) => e.stopPropagation()}
-                onMouseLeave={(e) => e.stopPropagation()}
+                className="relative inline-flex items-center gap-0.5"
               >
                 <Badge
                   variant="outline"
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1.5"
-                  onClick={(e) => {
-                    // 삭제 버튼 클릭이 아닐 때만 태그 추가
-                    const target = e.target as HTMLElement;
-                    if (!target.closest('button[aria-label*="완전 삭제"]')) {
-                      handleSavedTagClick(tag);
-                    }
-                  }}
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-2 py-0.5 text-xs h-6 flex items-center"
+                  onClick={() => handleSavedTagClick(tag)}
                   title="클릭하여 추가"
                 >
-                  {tag}
+                  <span className="truncate max-w-[120px]">{tag}</span>
                 </Badge>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -332,13 +324,13 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // preventDefault 제거 - AlertDialog 트리거를 위해 필요
+                        e.preventDefault();
                       }}
-                      className="absolute -top-1.5 -right-1.5 h-6 w-6 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center hover:bg-destructive/90 shadow-md z-10 border-2 border-white dark:border-slate-900"
+                      className="h-4 w-4 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors shrink-0"
                       aria-label={`${tag} 태그 완전 삭제`}
-                      title="클릭하여 완전 삭제"
+                      title="태그 삭제"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <X className="h-2.5 w-2.5" />
                     </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -376,33 +368,31 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              입력된 태그 (클릭하여 삭제): 
+              입력된 태그: 
               <span className={`ml-1 font-semibold ${currentTags.length >= 10 ? "text-destructive" : "text-foreground"}`}>
                 {currentTags.length}/10
               </span>
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {currentTags.map((tag, index) => (
               <Badge 
                 key={index} 
                 variant="secondary"
-                className="cursor-pointer hover:bg-destructive/20 hover:border-destructive/50 transition-all px-2.5 py-1.5 pr-1.5 flex items-center gap-1.5 group/tag"
-                onClick={() => handleTagRemove(tag)}
-                title="클릭하여 삭제"
+                className="px-2 py-0.5 text-xs h-6 flex items-center gap-1 pr-1"
               >
-                <span>{tag}</span>
+                <span className="truncate max-w-[120px]">{tag}</span>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleTagRemove(tag);
                   }}
-                  className="ml-0.5 h-4 w-4 rounded-full hover:bg-destructive/30 flex items-center justify-center transition-colors shrink-0"
+                  className="ml-0.5 h-4 w-4 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive flex items-center justify-center transition-colors shrink-0"
                   aria-label={`${tag} 태그 제거`}
                   title="태그 제거"
                 >
-                  <X className="h-3 w-3 text-muted-foreground group-hover/tag:text-destructive" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </Badge>
             ))}

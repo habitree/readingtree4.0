@@ -404,19 +404,18 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
         </div>
 
         {/* 공개 설정 */}
-        <div className="flex items-center gap-3 md:gap-4">
-          <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2">
             <Switch
               id="isPublic"
               checked={isPublic}
               onCheckedChange={(checked) => setValue("isPublic", checked)}
-              className="scale-100 md:scale-125"
             />
-            <Label htmlFor="isPublic" className="text-sm md:text-base font-medium">
+            <Label htmlFor="isPublic" className="text-sm font-medium">
               공개
             </Label>
           </div>
-          <p className="text-xs md:text-sm text-muted-foreground hidden md:block">
+          <p className="text-xs text-muted-foreground hidden sm:block">
             {isPublic 
               ? "다른 사용자도 이 기록을 볼 수 있습니다." 
               : "이 기록은 나만 볼 수 있습니다."}
