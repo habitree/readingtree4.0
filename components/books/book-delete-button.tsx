@@ -74,7 +74,7 @@ export function BookDeleteButton({ userBookId, bookTitle, variant = "default", s
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
       <AlertDialogTrigger asChild>
         <Button 
-          variant={buttonVariant} 
+          variant="destructive" 
           size={buttonSize}
           disabled={isDeleting}
           className={variant === "icon" ? "h-8 w-8 p-0" : ""}
