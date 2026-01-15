@@ -12,7 +12,7 @@ import Link from "next/link";
 import type { NoteWithBook } from "@/types/note";
 import type { User } from "@supabase/supabase-js";
 // 아이콘 추가: 시각적 계층 강화 (UX 원칙)
-import { Target, BookOpen, FileText, TrendingUp, Award, BarChart3 } from "lucide-react";
+import { Target, BookOpen, FileText, TrendingUp, Award, BarChart3, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -338,6 +338,32 @@ export default async function DashboardContent() {
                 </p>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* 서비스 소식 (보도자료): 아이콘으로 시각적 계층 강화 */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start gap-4">
+              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
+                <Megaphone className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="mb-2">새로운 소식</CardTitle>
+                <CardDescription>
+                  독서 기록이 사라지지 않는 시대: Readtree 독서플랫폼이 읽었던 문장을 다시 찾고 공유할 수 있게 해줍니다.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex justify-end">
+              <Button asChild variant="outline" size="sm">
+                <Link href="https://habitree.github.io/habitree_pr/#press-release" target="_blank" rel="noopener noreferrer">
+                  보도자료 보기
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
