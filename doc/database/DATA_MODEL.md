@@ -301,7 +301,7 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 **주요 컬럼**:
 - `id` (UUID, PK): 기본 키
 - `user_id` (UUID, NOT NULL): 사용자 ID (`users(id)` 참조)
-- `book_id` (UUID, NOT NULL): 책 ID (`books(id)` 참조)
+- `book_id` (UUID, NOT NULL): 책 ID (`books(id)` 참조) - 주 책
 - `title` (TEXT): 기록 제목 (선택 사항)
 - `type` (note_type, NOT NULL): 기록 유형
 - `content` (TEXT): 기록 내용
@@ -310,6 +310,7 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 - `is_public` (BOOLEAN, DEFAULT FALSE): 공개 여부
 - `is_sample` (BOOLEAN, DEFAULT FALSE): 샘플 데이터 플래그 (게스트 사용자용)
 - `tags` (TEXT[]): 태그 배열
+- `related_user_book_ids` (UUID[]): 연결된 다른 책들의 `user_books.id` 배열 (선택 사항)
 - `created_at`, `updated_at` (TIMESTAMP WITH TIME ZONE): 생성/수정 시간
 
 **관계 정의**:
@@ -327,6 +328,7 @@ CREATE TYPE ocr_log_status AS ENUM ('success', 'failed');
 - `idx_notes_content_fts`: 내용 전문 검색용 (GIN)
 - `idx_notes_tags`: 태그 검색용 (GIN)
 - `idx_notes_title`: 제목 검색용
+- `idx_notes_related_user_book_ids`: 관련 책 검색용 (GIN)
 
 **RLS 정책 요약**:
 - **SELECT**: 자신의 기록, 공개 기록, 샘플 기록 조회 가능 (`auth.uid() = user_id OR is_public = TRUE OR is_sample = TRUE`)

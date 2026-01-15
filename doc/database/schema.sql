@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS notes (
     is_public BOOLEAN DEFAULT FALSE,
     is_sample BOOLEAN DEFAULT FALSE, -- 샘플 데이터 플래그
     tags TEXT[],
+    related_user_book_ids UUID[], -- 연결된 다른 책들의 user_books.id 배열
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -199,6 +200,9 @@ CREATE INDEX IF NOT EXISTS idx_notes_content_fts ON notes USING gin(to_tsvector(
 
 -- 태그 인덱스
 CREATE INDEX IF NOT EXISTS idx_notes_tags ON notes USING gin(tags);
+
+-- 관련 책 인덱스
+CREATE INDEX IF NOT EXISTS idx_notes_related_user_book_ids ON notes USING gin(related_user_book_ids);
 
 -- RLS
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;

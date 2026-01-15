@@ -35,6 +35,7 @@ import { parseNoteContentFields } from "@/lib/utils/note";
 import type { NoteWithBook } from "@/types/note";
 import { TagInput } from "./tag-input";
 import { BookMentionTextarea } from "./book-mention-textarea";
+import { RelatedBooksManager } from "./related-books-manager";
 
 // 스키마: 모든 값은 선택이지만 완전히 빈값은 불가
 const noteEditFormSchema = z.object({
@@ -374,6 +375,19 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
           value={watch("tags") || ""}
           onChange={(value) => setValue("tags", value)}
         />
+
+        {/* 연결된 책 관리 */}
+        <div className="space-y-2">
+          <Label>연결된 책 <span className="text-muted-foreground text-xs font-normal">(선택)</span></Label>
+          <p className="text-xs text-muted-foreground">
+            이 기록과 관련된 다른 책을 선택할 수 있습니다. 주 책은 자동으로 제외됩니다.
+          </p>
+          <RelatedBooksManager
+            noteId={note.id}
+            currentRelatedBookIds={note.related_user_book_ids || null}
+            mainBookId={(note as any).user_book_id || ""}
+          />
+        </div>
 
         {/* 공개 설정 */}
         <div className="flex items-center gap-3 md:gap-4">

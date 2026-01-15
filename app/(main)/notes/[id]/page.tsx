@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { NoteWithBook } from "@/types/note";
 import { getUserById } from "@/app/actions/profile";
 import { BookLinkRenderer } from "@/components/notes/book-link-renderer";
-import { BookLinkManager } from "@/components/notes/book-link-manager";
+import { RelatedBooksManager, RelatedBooksDisplay } from "@/components/notes/related-books-manager";
 
 interface NoteDetailPageProps {
   params: {
@@ -109,12 +109,11 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
 
         <div className="flex items-center gap-2 self-end md:self-auto">
           <SimpleShareDialog note={noteWithBook} />
-          {noteWithBook.content && (
-            <BookLinkManager 
-              noteId={noteWithBook.id} 
-              content={noteWithBook.content}
-            />
-          )}
+          <RelatedBooksManager
+            noteId={noteWithBook.id}
+            currentRelatedBookIds={noteWithBook.related_user_book_ids || null}
+            mainBookId={noteWithBook.user_book_id || ""}
+          />
           <Button variant="outline" size="sm" asChild className="gap-2">
             <Link href={`/notes/${noteWithBook.id}/edit`}>
               <Edit className="h-4 w-4" />
@@ -132,7 +131,19 @@ export default async function NoteDetailPage({ params }: NoteDetailPageProps) {
         <ShareNoteCard note={noteWithBook} user={user} className="shadow-2xl border border-slate-100 dark:border-slate-800" />
       </div>
 
-      {/* 3. 상세 분석 정보 (필사 데이터 등) */}
+      {/* 3. 연결된 책 표시 */}
+      {noteWithBook.related_user_book_ids && noteWithBook.related_user_book_ids.length > 0 && (
+        <Card className="border-none bg-slate-50 dark:bg-slate-900/50">
+          <CardContent className="pt-6">
+            <RelatedBooksDisplay
+              relatedBookIds={noteWithBook.related_user_book_ids}
+              mainBookId={noteWithBook.user_book_id || ""}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 4. 상세 분석 정보 (필사 데이터 등) */}
       {transcription && (transcription.status === "completed" || transcription.extracted_text) && (
         <Card className="border-none bg-slate-50 dark:bg-slate-900/50 shadow-inner">
           <CardHeader className="pb-2">

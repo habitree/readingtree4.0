@@ -96,6 +96,39 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
     throw new Error("권한이 없습니다. 해당 책을 소유하고 있지 않습니다.");
   }
 
+  // related_user_book_ids 검증
+  let relatedUserBookIds: string[] | null = null;
+  if (data.related_user_book_ids && data.related_user_book_ids.length > 0) {
+    // 각 ID가 유효한 UUID인지 확인
+    for (const id of data.related_user_book_ids) {
+      if (!isValidUUID(id)) {
+        throw new Error(`유효하지 않은 관련 책 ID입니다: ${id}`);
+      }
+      // 주 책과 중복되지 않는지 확인
+      if (id === data.book_id) {
+        throw new Error("주 책은 관련 책 목록에 포함할 수 없습니다.");
+      }
+    }
+
+    // 각 ID가 현재 사용자의 user_books에 속하는지 확인
+    const { data: relatedUserBooks, error: relatedBooksError } = await supabase
+      .from("user_books")
+      .select("id")
+      .in("id", data.related_user_book_ids)
+      .eq("user_id", currentUser.id);
+
+    if (relatedBooksError) {
+      throw new Error("관련 책 확인에 실패했습니다.");
+    }
+
+    if (!relatedUserBooks || relatedUserBooks.length !== data.related_user_book_ids.length) {
+      throw new Error("일부 관련 책을 소유하고 있지 않거나 권한이 없습니다.");
+    }
+
+    // 중복 제거 및 정렬
+    relatedUserBookIds = [...new Set(data.related_user_book_ids)];
+  }
+
   // content 구성: quote_content와 memo_content를 JSON으로 저장
   let content: string | null = null;
   if (data.quote_content || data.memo_content) {
@@ -129,6 +162,7 @@ export async function createNote(data: CreateNoteInput, user?: User | null) {
       page_number: data.page_number || null,
       is_public: data.is_public ?? true, // 기본값: 공개
       tags: data.tags || null,
+      related_user_book_ids: relatedUserBookIds,
     })
     .select()
     .single();
@@ -246,6 +280,63 @@ export async function updateNote(noteId: string, data: UpdateNoteInput, user?: U
     }
   }
 
+  // related_user_book_ids 검증
+  let relatedUserBookIds: string[] | null | undefined = undefined;
+  if (data.related_user_book_ids !== undefined) {
+    if (data.related_user_book_ids.length === 0) {
+      relatedUserBookIds = null;
+    } else {
+      // 각 ID가 유효한 UUID인지 확인
+      for (const id of data.related_user_book_ids) {
+        if (!isValidUUID(id)) {
+          throw new Error(`유효하지 않은 관련 책 ID입니다: ${id}`);
+        }
+      }
+
+      // 기존 기록의 book_id 조회 (주 책과 중복 확인용)
+      const { data: existingNote } = await supabase
+        .from("notes")
+        .select("book_id")
+        .eq("id", noteId)
+        .single();
+
+      if (existingNote) {
+        // 주 책의 user_books.id 조회
+        const { data: mainUserBook } = await supabase
+          .from("user_books")
+          .select("id")
+          .eq("book_id", existingNote.book_id)
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (mainUserBook) {
+          // 주 책과 중복되지 않는지 확인
+          if (data.related_user_book_ids.includes(mainUserBook.id)) {
+            throw new Error("주 책은 관련 책 목록에 포함할 수 없습니다.");
+          }
+        }
+      }
+
+      // 각 ID가 현재 사용자의 user_books에 속하는지 확인
+      const { data: relatedUserBooks, error: relatedBooksError } = await supabase
+        .from("user_books")
+        .select("id")
+        .in("id", data.related_user_book_ids)
+        .eq("user_id", currentUser.id);
+
+      if (relatedBooksError) {
+        throw new Error("관련 책 확인에 실패했습니다.");
+      }
+
+      if (!relatedUserBooks || relatedUserBooks.length !== data.related_user_book_ids.length) {
+        throw new Error("일부 관련 책을 소유하고 있지 않거나 권한이 없습니다.");
+      }
+
+      // 중복 제거 및 정렬
+      relatedUserBookIds = [...new Set(data.related_user_book_ids)];
+    }
+  }
+
   // 기록 수정
   const updateData: any = {
     title: data.title !== undefined ? (data.title || null) : undefined,
@@ -253,6 +344,10 @@ export async function updateNote(noteId: string, data: UpdateNoteInput, user?: U
     is_public: data.is_public !== undefined ? data.is_public : undefined,
     tags: data.tags !== undefined ? data.tags : undefined,
   };
+
+  if (relatedUserBookIds !== undefined) {
+    updateData.related_user_book_ids = relatedUserBookIds;
+  }
 
   if (content !== undefined) {
     updateData.content = content;

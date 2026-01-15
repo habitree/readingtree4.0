@@ -15,6 +15,7 @@ export interface Note {
   page_number: string | null;
   is_public: boolean;
   tags: string[] | null;
+  related_user_book_ids: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +41,7 @@ export interface CreateNoteInput {
   page_number?: string;
   is_public?: boolean; // 기본값: true (공개)
   tags?: string[];
+  related_user_book_ids?: string[]; // 연결된 다른 책들의 user_books.id 배열
 }
 
 export interface UpdateNoteInput {
@@ -52,6 +54,7 @@ export interface UpdateNoteInput {
   page_number?: string;
   is_public?: boolean;
   tags?: string[];
+  related_user_book_ids?: string[]; // 연결된 다른 책들의 user_books.id 배열
 }
 
 /**

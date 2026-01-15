@@ -147,6 +147,7 @@ export interface Database {
           page_number: number | null;
           is_public: boolean;
           tags: string[] | null;
+          related_user_book_ids: string[] | null;
           created_at: string;
           updated_at: string;
         };
@@ -161,6 +162,7 @@ export interface Database {
           page_number?: number | null;
           is_public?: boolean;
           tags?: string[] | null;
+          related_user_book_ids?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -175,6 +177,7 @@ export interface Database {
           page_number?: number | null;
           is_public?: boolean;
           tags?: string[] | null;
+          related_user_book_ids?: string[] | null;
           created_at?: string;
           updated_at?: string;
         };
