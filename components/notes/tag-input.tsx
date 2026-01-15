@@ -312,7 +312,7 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
               >
                 <Badge
                   variant="outline"
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-2 py-0.5 text-xs h-6 flex items-center"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1 text-sm h-7 flex items-center"
                   onClick={() => handleSavedTagClick(tag)}
                   title="클릭하여 추가"
                 >
@@ -326,11 +326,11 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
                         e.stopPropagation();
                         e.preventDefault();
                       }}
-                      className="h-4 w-4 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors shrink-0"
+                      className="h-3 w-3 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors shrink-0"
                       aria-label={`${tag} 태그 완전 삭제`}
                       title="태그 삭제"
                     >
-                      <X className="h-2.5 w-2.5" />
+                      <X className="h-2 w-2" />
                     </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -379,7 +379,7 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
               <Badge 
                 key={index} 
                 variant="secondary"
-                className="px-2 py-0.5 text-xs h-6 flex items-center gap-1 pr-1"
+                className="px-3 py-1 text-sm h-7 flex items-center gap-1 pr-1"
               >
                 <span className="truncate max-w-[120px]">{tag}</span>
                 <button
@@ -388,11 +388,11 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
                     e.stopPropagation();
                     handleTagRemove(tag);
                   }}
-                  className="ml-0.5 h-4 w-4 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive flex items-center justify-center transition-colors shrink-0"
+                  className="ml-0.5 h-3 w-3 rounded-full bg-destructive/80 text-destructive-foreground hover:bg-destructive flex items-center justify-center transition-colors shrink-0"
                   aria-label={`${tag} 태그 제거`}
                   title="태그 제거"
                 >
-                  <X className="h-2.5 w-2.5" />
+                  <X className="h-2 w-2" />
                 </button>
               </Badge>
             ))}
