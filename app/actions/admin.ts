@@ -309,19 +309,17 @@ export async function batchProcessOCR(batchSize: number = 10) {
     const { createTranscriptionInitial, createOrUpdateTranscription, updateTranscriptionStatus } = await import("@/app/actions/notes");
     const { recordOcrSuccess, recordOcrFailure } = await import("@/app/actions/ocr");
     
+    // OCR 처리를 비동기로 실행 (Promise.allSettled 사용)
     const processPromises = notesToProcess.map(async (note) => {
         const startTime = Date.now();
         try {
-            // 1. Transcription 초기 상태 생성
-            await createTranscriptionInitial(note.id);
-            
-            // 2. OCR 처리 (이미지에서 텍스트 추출)
+            // 1. OCR 처리 (이미지에서 텍스트 추출)
             const extractedText = await extractTextFromImage(note.image_url);
             
-            // 3. Transcription 저장
+            // 2. Transcription 저장
             await createOrUpdateTranscription(note.id, extractedText);
             
-            // 4. 상태 확인 및 업데이트
+            // 3. 상태 확인 및 업데이트
             const { data: transcription } = await supabase
                 .from("transcriptions")
                 .select("id, status")
@@ -332,7 +330,7 @@ export async function batchProcessOCR(batchSize: number = 10) {
                 await updateTranscriptionStatus(note.id, "completed");
             }
             
-            // 5. 성공 통계 기록
+            // 4. 성공 통계 기록
             const duration = Date.now() - startTime;
             try {
                 await recordOcrSuccess(note.user_id, note.id, duration);
@@ -343,6 +341,7 @@ export async function batchProcessOCR(batchSize: number = 10) {
             return {
                 noteId: note.id,
                 success: true,
+                duration,
             };
         } catch (error) {
             const duration = Date.now() - startTime;
@@ -368,6 +367,7 @@ export async function batchProcessOCR(batchSize: number = 10) {
                 noteId: note.id,
                 success: false,
                 error: errorMessage,
+                duration,
             };
         }
     });
@@ -375,8 +375,35 @@ export async function batchProcessOCR(batchSize: number = 10) {
     // 모든 OCR 처리 요청 실행
     const results = await Promise.allSettled(processPromises);
     
-    const successful = results.filter(r => r.status === "fulfilled" && r.value.success).length;
-    const failed = results.length - successful;
+    // 개별 항목 결과 추출
+    const items: Array<{
+        noteId: string;
+        success: boolean;
+        error?: string;
+        duration?: number;
+    }> = [];
+    
+    results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+            items.push({
+                noteId: result.value.noteId,
+                success: result.value.success,
+                error: result.value.error,
+                duration: result.value.duration,
+            });
+        } else {
+            // Promise 자체가 실패한 경우
+            const note = notesToProcess[index];
+            items.push({
+                noteId: note?.id || "unknown",
+                success: false,
+                error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+            });
+        }
+    });
+    
+    const successful = items.filter(item => item.success).length;
+    const failed = items.filter(item => !item.success).length;
 
     return {
         success: true,
@@ -384,7 +411,8 @@ export async function batchProcessOCR(batchSize: number = 10) {
         failedCount: failed,
         totalFound: notesNeedingOCR.length,
         totalNeedingOCR: notesToProcess.length,
-        message: `${successful}개의 기록에 대해 OCR 처리를 시작했습니다. ${failed}개 실패.`,
+        items, // 개별 항목 상세 정보 추가
+        message: `${successful}개의 기록에 대해 OCR 처리를 완료했습니다. ${failed}개 실패.`,
     };
 }
 
