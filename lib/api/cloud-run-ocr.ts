@@ -110,13 +110,67 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
     console.log("[Cloud Run OCR] OCR 처리 시작");
 
     // 1. 이미지 다운로드
-    const imageResponse = await fetch(imageUrl, {
-      signal: AbortSignal.timeout(30000), // 30초 타임아웃
+    console.log("[Cloud Run OCR] 이미지 다운로드 시작:", {
+      imageUrl: imageUrl.substring(0, 100) + "...",
     });
 
+    let imageResponse: Response;
+    try {
+      imageResponse = await fetch(imageUrl, {
+        signal: AbortSignal.timeout(30000), // 30초 타임아웃
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; ReadingTree/1.0)",
+        },
+      });
+    } catch (fetchError) {
+      const errorMessage = fetchError instanceof Error ? fetchError.message : "알 수 없는 오류";
+      console.error("[Cloud Run OCR] 이미지 다운로드 요청 실패:", {
+        error: errorMessage,
+        imageUrl: imageUrl.substring(0, 100) + "...",
+      });
+      
+      // 네트워크 오류인 경우
+      if (errorMessage.includes("timeout") || errorMessage.includes("aborted")) {
+        throw new Error(`이미지 다운로드 타임아웃: 이미지 서버에 연결할 수 없습니다.`);
+      }
+      throw new Error(`이미지 다운로드 실패: ${errorMessage}`);
+    }
+
     if (!imageResponse.ok) {
+      const status = imageResponse.status;
+      const statusText = imageResponse.statusText;
+      
+      // 404 오류인 경우 더 명확한 메시지
+      if (status === 404) {
+        console.error("[Cloud Run OCR] 이미지 404 오류:", {
+          status,
+          statusText,
+          imageUrl: imageUrl.substring(0, 100) + "...",
+        });
+        
+        throw new Error(`이미지 파일을 찾을 수 없습니다 (404). 이미지 URL이 만료되었거나 삭제되었을 수 있습니다.`);
+      }
+      
+      // 403/401 오류인 경우
+      if (status === 403 || status === 401) {
+        console.error("[Cloud Run OCR] 이미지 접근 거부:", {
+          status,
+          statusText,
+          imageUrl: imageUrl.substring(0, 100) + "...",
+        });
+        
+        throw new Error(`이미지 접근이 거부되었습니다 (${status}). 권한이 없거나 파일이 삭제되었을 수 있습니다.`);
+      }
+      
+      // 기타 오류
+      console.error("[Cloud Run OCR] 이미지 다운로드 실패:", {
+        status,
+        statusText,
+        imageUrl: imageUrl.substring(0, 100) + "...",
+      });
+      
       throw new Error(
-        `이미지 다운로드 실패: ${imageResponse.status} ${imageResponse.statusText}`
+        `이미지 다운로드 실패: ${status} ${statusText}`
       );
     }
 

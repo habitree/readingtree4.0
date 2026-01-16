@@ -351,9 +351,23 @@ export async function batchProcessOCR(batchSize: number = 10) {
             };
         } catch (error) {
             const duration = Date.now() - startTime;
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            let errorMessage = error instanceof Error ? error.message : String(error);
             
-            console.error(`OCR 처리 실패 - noteId: ${note.id}`, error);
+            // 오류 메시지 개선 (사용자 친화적으로)
+            if (errorMessage.includes("404") || errorMessage.includes("만료") || errorMessage.includes("유효하지 않")) {
+                // 이미지 URL 만료/유효하지 않음
+                errorMessage = "이미지 파일을 찾을 수 없습니다. 이미지 URL이 만료되었거나 삭제되었을 수 있습니다.";
+            } else if (errorMessage.includes("403") || errorMessage.includes("401") || errorMessage.includes("접근")) {
+                errorMessage = "이미지 접근 불가: 이미지에 접근할 수 없습니다. 권한이 없거나 파일이 삭제되었을 수 있습니다.";
+            } else if (errorMessage.includes("timeout") || errorMessage.includes("타임아웃")) {
+                errorMessage = "이미지 다운로드 타임아웃: 이미지 서버에 연결할 수 없습니다. 네트워크 상태를 확인해주세요.";
+            }
+            
+            console.error(`OCR 처리 실패 - noteId: ${note.id}`, {
+                error: errorMessage,
+                originalError: error instanceof Error ? error.message : String(error),
+                imageUrl: note.image_url?.substring(0, 100) + "...",
+            });
             
             // 실패 시 transcription 상태를 "failed"로 업데이트
             try {
