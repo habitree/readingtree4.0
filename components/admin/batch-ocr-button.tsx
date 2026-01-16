@@ -197,8 +197,8 @@ export function BatchOCRButton() {
       });
 
       setProgressItems(items);
-      setCompletedCount(result.processedCount);
-      setFailedCount(result.failedCount);
+      setCompletedCount(result.processedCount ?? 0);
+      setFailedCount(result.failedCount ?? 0);
 
       // 모든 항목이 완료/실패된 경우에도 transcription 상태를 한 번 더 확인
       // (서버에서 완료되었지만 DB 업데이트가 지연될 수 있음)
@@ -272,14 +272,17 @@ export function BatchOCRButton() {
       });
       
       setProgressItems(finalItems);
-      setCompletedCount(result.processedCount);
-      setFailedCount(result.failedCount);
+      setCompletedCount(result.processedCount ?? 0);
+      setFailedCount(result.failedCount ?? 0);
       setIsProcessing(false);
       
-      if (result.failedCount === 0) {
+      const failedCount = result.failedCount ?? 0;
+      const processedCount = result.processedCount ?? 0;
+      
+      if (failedCount === 0) {
         toast.success("모든 실패 항목이 성공적으로 재처리되었습니다.");
       } else {
-        toast.warning(`${result.processedCount}개 재처리 성공, ${result.failedCount}개 여전히 실패`);
+        toast.warning(`${processedCount}개 재처리 성공, ${failedCount}개 여전히 실패`);
       }
     } catch (error) {
       console.error("OCR 재시도 오류:", error);

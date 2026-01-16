@@ -269,7 +269,10 @@ export async function batchProcessOCR(batchSize: number = 10) {
         return {
             success: true,
             processedCount: 0,
+            failedCount: 0,
             totalFound: 0,
+            totalNeedingOCR: 0,
+            items: [],
             message: "OCR 처리가 필요한 기록이 없습니다.",
         };
     }
@@ -299,7 +302,10 @@ export async function batchProcessOCR(batchSize: number = 10) {
         return {
             success: true,
             processedCount: 0,
+            failedCount: 0,
             totalFound: notesNeedingOCR.length,
+            totalNeedingOCR: 0,
+            items: [],
             message: "모든 기록이 이미 OCR 처리되었거나 처리 중입니다.",
         };
     }
