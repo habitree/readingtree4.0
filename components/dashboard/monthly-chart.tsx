@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { useEffect, useRef, useState } from "react";
 
 interface MonthlyChartProps {
   data: Array<{ month: string; count: number }>;
@@ -21,6 +22,31 @@ interface MonthlyChartProps {
  * Recharts를 사용하여 막대 그래프 표시
  */
 export function MonthlyChart({ data }: MonthlyChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+
+  // 컨테이너 크기 측정
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth;
+        if (width > 0) {
+          setContainerWidth(width);
+        }
+      }
+    };
+
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    // 약간의 지연 후 다시 측정 (레이아웃 완료 후)
+    const timeoutId = setTimeout(updateWidth, 100);
+
+    return () => {
+      window.removeEventListener("resize", updateWidth);
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
   // 빈 데이터 체크
   if (!data || data.length === 0) {
     return null;
@@ -50,9 +76,37 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
     return null;
   }
 
+  // 컨테이너 크기가 측정되지 않았으면 로딩 표시
+  if (containerWidth === 0) {
+    return (
+      <div 
+        ref={containerRef}
+        className="w-full" 
+        style={{ 
+          height: "300px", 
+          minHeight: "300px", 
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}
+      >
+        <div className="text-sm text-muted-foreground">차트를 불러오는 중...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full" style={{ height: "300px" }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div 
+      ref={containerRef}
+      className="w-full" 
+      style={{ 
+        height: "300px", 
+        minHeight: "300px", 
+        position: "relative"
+      }}
+    >
+      <ResponsiveContainer width="100%" height={300}>
         <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
