@@ -1,0 +1,26 @@
+{
+  "name": "Habitree Reading Hub",
+  "short_name": "Habitree",
+  "description": "독서 기록 및 공유 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["books", "education", "productivity"],
+  "lang": "ko",
+  "dir": "ltr"
+}

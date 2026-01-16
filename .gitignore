@@ -40,6 +40,7 @@ gen-lang-client-*.json
 !tsconfig.json
 !tsconfig.*.json
 !components.json
+!public/manifest.json
 
 # vercel
 .vercel
