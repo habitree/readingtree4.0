@@ -68,6 +68,22 @@ export function Header() {
     }
   }, [user, pathname]); // pathname 추가하여 프로필 페이지에서 돌아올 때 갱신
 
+  // 프로필 페이지에서 돌아올 때 강제로 프로필 정보 갱신
+  useEffect(() => {
+    if (user && pathname !== "/profile") {
+      // 프로필 페이지가 아닌 다른 페이지로 이동할 때 프로필 정보 갱신
+      getCurrentUserProfile()
+        .then((profile) => {
+          if (profile) {
+            setUserProfile(profile);
+          }
+        })
+        .catch((error) => {
+          console.error("프로필 갱신 오류:", error);
+        });
+    }
+  }, [pathname, user]); // pathname이 변경될 때마다 실행
+
   const userName = userProfile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "사용자";
   const userAvatar = userProfile?.avatar_url || null;
   const isAdmin = isAdminUser(user);
