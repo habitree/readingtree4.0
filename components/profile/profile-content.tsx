@@ -3,7 +3,7 @@ import { ProfileForm } from "./profile-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { getImageUrl } from "@/lib/utils/image";
+import { getImageUrl, getProxiedImageUrl } from "@/lib/utils/image";
 import { formatSmartDate } from "@/lib/utils/date";
 import { User, AlertCircle, RefreshCw } from "lucide-react";
 import { sanitizeErrorForLogging } from "@/lib/utils/validation";
@@ -63,7 +63,10 @@ export async function ProfileContent() {
         <CardContent>
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={getImageUrl(user.avatar_url)} />
+              <AvatarImage 
+                src={user.avatar_url ? getProxiedImageUrl(user.avatar_url) : undefined}
+                alt={user.name}
+              />
               <AvatarFallback>
                 {user.name[0]?.toUpperCase() || <User className="h-8 w-8" />}
               </AvatarFallback>

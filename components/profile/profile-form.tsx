@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { updateProfile, updateProfileImage } from "@/app/actions/profile";
 import { toast } from "sonner";
 import { Loader2, Upload, User } from "lucide-react";
-import { getImageUrl } from "@/lib/utils/image";
+import { getImageUrl, getProxiedImageUrl } from "@/lib/utils/image";
 import type { User as UserType } from "@/types/user";
 
 interface ProfileFormProps {
@@ -110,7 +110,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
         <CardContent>
           <div className="flex items-center gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarImage src={getImageUrl(avatarUrl)} />
+              <AvatarImage 
+                src={avatarUrl ? getProxiedImageUrl(avatarUrl) : undefined}
+                alt={user.name}
+              />
               <AvatarFallback>
                 {user.name[0]?.toUpperCase() || <User className="h-12 w-12" />}
               </AvatarFallback>
