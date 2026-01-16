@@ -479,8 +479,17 @@ export async function getMonthlyStats(user?: User | null) {
   // 모든 쿼리를 병렬 실행
   const results = await Promise.all(
     monthQueries.map(async ({ month, query }) => {
-      const { count } = await query;
-      return { month, count: count || 0 };
+      try {
+        const { count, error } = await query;
+        if (error) {
+          console.error(`월별 통계 조회 오류 (${month}):`, error);
+          return { month, count: 0 };
+        }
+        return { month, count: count || 0 };
+      } catch (error) {
+        console.error(`월별 통계 조회 예외 (${month}):`, error);
+        return { month, count: 0 };
+      }
     })
   );
 

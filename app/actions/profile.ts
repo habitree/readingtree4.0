@@ -7,6 +7,7 @@ import { isValidUUID, sanitizeErrorForLogging, sanitizeErrorMessage } from "@/li
 
 /**
  * 프로필 조회
+ * 프로필이 없으면 자동 생성
  */
 export async function getProfile() {
   const supabase = await createServerSupabaseClient();
@@ -22,11 +23,33 @@ export async function getProfile() {
   }
 
   // 프로필 조회
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("users")
     .select("*")
     .eq("id", user.id)
     .single();
+
+  // 프로필이 없으면 자동 생성
+  if (error && error.code === "PGRST116") {
+    // 프로필이 없는 경우 자동 생성
+    const defaultName = user.user_metadata?.name || user.email?.split("@")[0] || "사용자";
+    const { data: newProfile, error: insertError } = await supabase
+      .from("users")
+      .insert({
+        id: user.id,
+        email: user.email,
+        name: defaultName,
+        reading_goal: 12, // 기본값
+      })
+      .select()
+      .single();
+
+    if (insertError || !newProfile) {
+      throw new Error(`프로필 생성 실패: ${insertError?.message || "프로필을 생성할 수 없습니다."}`);
+    }
+
+    return newProfile;
+  }
 
   if (error || !data) {
     throw new Error(`프로필 조회 실패: ${error?.message || "프로필을 찾을 수 없습니다."}`);
@@ -95,6 +118,7 @@ export async function updateProfile(data: {
   revalidatePath("/profile");
   revalidatePath("/");
   revalidatePath("/dashboard");
+  revalidatePath("/", "layout"); // 레이아웃 캐시도 무효화
   return { success: true };
 }
 
@@ -212,6 +236,7 @@ export async function updateProfileImage(imageFile: File) {
   revalidatePath("/profile");
   revalidatePath("/");
   revalidatePath("/dashboard");
+  revalidatePath("/", "layout"); // 레이아웃 캐시도 무효화
   return { success: true, avatarUrl: publicUrl };
 }
 

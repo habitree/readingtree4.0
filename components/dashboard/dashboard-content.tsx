@@ -251,19 +251,33 @@ export default async function DashboardContent() {
             </div>
           </CardHeader>
           <CardContent>
-            {monthly.length > 0 ? (
-              <MonthlyChart data={monthly} />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] text-center p-6 bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20">
-                <div className="rounded-full bg-muted p-4 mb-4">
-                  <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
+            {(() => {
+              // 데이터가 있고 실제로 count > 0인 항목이 있는지 확인
+              const hasValidData = monthly.some((item) => item.count > 0);
+              
+              if (hasValidData) {
+                return <MonthlyChart data={monthly} />;
+              }
+              
+              return (
+                <div className="flex flex-col items-center justify-center h-[300px] text-center p-6 bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20">
+                  <div className="rounded-full bg-muted p-4 mb-4">
+                    <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">데이터가 없습니다</h3>
+                  <p className="text-sm text-muted-foreground max-w-[250px]">
+                    {isGuest
+                      ? "로그인하여 독서 기록을 남기면 이곳에 월별 통계가 그래프로 표시됩니다."
+                      : "독서 기록을 남기면 이곳에 월별 통계가 그래프로 표시됩니다."}
+                  </p>
+                  {isGuest && (
+                    <Button asChild variant="outline" className="mt-4">
+                      <Link href="/login">로그인하기</Link>
+                    </Button>
+                  )}
                 </div>
-                <h3 className="font-semibold text-foreground mb-1">데이터가 없습니다</h3>
-                <p className="text-sm text-muted-foreground max-w-[250px]">
-                  독서 기록을 남기면 이곳에 월별 통계가 그래프로 표시됩니다.
-                </p>
-              </div>
-            )}
+              );
+            })()}
           </CardContent>
         </Card>
 
