@@ -128,12 +128,16 @@ export function Header() {
                     <DropdownMenuTrigger asChild>
                       <Button 
                         variant="ghost" 
-                        className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full"
+                        className="relative h-8 w-8 sm:h-10 sm:w-10 rounded-full p-0"
                         aria-label="프로필"
                       >
-                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10">
-                          <AvatarImage src={getImageUrl(userAvatar)} alt={userName} />
-                          <AvatarFallback className="text-xs sm:text-sm">
+                        <Avatar className="h-8 w-8 sm:h-10 sm:w-10 border-2 border-background">
+                          <AvatarImage 
+                            src={getImageUrl(userAvatar)} 
+                            alt={userName}
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="text-xs sm:text-sm bg-primary text-primary-foreground">
                             {userName.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>

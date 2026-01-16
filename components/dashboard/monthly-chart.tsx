@@ -23,6 +23,7 @@ interface MonthlyChartProps {
 export function MonthlyChart({ data }: MonthlyChartProps) {
   // 빈 데이터 체크
   if (!data || data.length === 0) {
+    console.warn("MonthlyChart: 데이터가 없습니다", data);
     return null;
   }
 
@@ -38,19 +39,27 @@ export function MonthlyChart({ data }: MonthlyChartProps) {
   // 모든 count가 0인 경우도 빈 데이터로 처리
   const hasData = chartData.some((item) => item.count > 0);
   if (!hasData) {
+    console.warn("MonthlyChart: 모든 count가 0입니다", chartData);
     return null;
   }
 
+  // 디버깅: 차트 데이터 로그
+  if (process.env.NODE_ENV === 'development') {
+    console.log("MonthlyChart 렌더링:", chartData);
+  }
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="month" />
-        <YAxis />
-        <Tooltip />
-        <Bar dataKey="count" fill="hsl(var(--primary))" />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="w-full h-[300px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="month" />
+          <YAxis />
+          <Tooltip />
+          <Bar dataKey="count" fill="hsl(var(--primary))" />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 

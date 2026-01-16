@@ -250,10 +250,25 @@ export default async function DashboardContent() {
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-h-[300px]">
             {(() => {
+              // 데이터 유효성 검사 강화
+              if (!monthly || !Array.isArray(monthly) || monthly.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center h-[300px] text-center p-6 bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20">
+                    <div className="rounded-full bg-muted p-4 mb-4">
+                      <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                    <h3 className="font-semibold text-foreground mb-1">데이터를 불러올 수 없습니다</h3>
+                    <p className="text-sm text-muted-foreground max-w-[250px]">
+                      월별 통계 데이터를 불러오는 중 오류가 발생했습니다.
+                    </p>
+                  </div>
+                );
+              }
+
               // 데이터가 있고 실제로 count > 0인 항목이 있는지 확인
-              const hasValidData = monthly.some((item) => item.count > 0);
+              const hasValidData = monthly.some((item) => item && typeof item.count === 'number' && item.count > 0);
               
               if (hasValidData) {
                 return <MonthlyChart data={monthly} />;
