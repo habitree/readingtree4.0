@@ -314,11 +314,47 @@ export async function batchProcessOCR(batchSize: number = 10) {
     const { extractTextFromImage } = await import("@/lib/api/ocr");
     const { createTranscriptionInitial, createOrUpdateTranscription, updateTranscriptionStatus } = await import("@/app/actions/notes");
     const { recordOcrSuccess, recordOcrFailure } = await import("@/app/actions/ocr");
+    const { validateImageUrl } = await import("@/lib/utils/image-url-validation");
     
     // OCR 처리를 비동기로 실행 (Promise.allSettled 사용)
     const processPromises = notesToProcess.map(async (note) => {
         const startTime = Date.now();
         try {
+            // 0. 이미지 URL 유효성 검증 (OCR 처리 전)
+            // 만료된 URL이나 접근 불가능한 이미지는 사전에 필터링하여 불필요한 OCR 처리 방지
+            const validation = await validateImageUrl(note.image_url || "", 10000);
+            
+            if (!validation.valid) {
+                // 이미지 URL이 유효하지 않으면 OCR 처리하지 않고 실패로 기록
+                const errorMessage = validation.error || "이미지 URL이 유효하지 않습니다.";
+                console.warn(`[OCR 배치 처리] 이미지 URL 유효성 검증 실패 - noteId: ${note.id}`, {
+                    error: errorMessage,
+                    status: validation.status,
+                    imageUrl: note.image_url?.substring(0, 100) + "...",
+                });
+                
+                // 실패 시 transcription 상태를 "failed"로 업데이트
+                try {
+                    await updateTranscriptionStatus(note.id, "failed");
+                } catch (statusError) {
+                    console.error(`Transcription 상태 업데이트 실패: noteId=${note.id}`, statusError);
+                }
+                
+                // 실패 통계 기록
+                try {
+                    await recordOcrFailure(note.user_id, note.id, errorMessage, 0);
+                } catch (statsError) {
+                    console.error(`OCR 실패 통계 기록 실패: noteId=${note.id}`, statsError);
+                }
+                
+                return {
+                    noteId: note.id,
+                    success: false,
+                    error: errorMessage,
+                    duration: 0,
+                };
+            }
+            
             // 1. OCR 처리 (이미지에서 텍스트 추출)
             const extractedText = await extractTextFromImage(note.image_url);
             

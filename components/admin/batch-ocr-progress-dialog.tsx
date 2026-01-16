@@ -125,11 +125,11 @@ export function BatchOCRProgressDialog({
           </div>
 
           {/* 실패한 항목 재시도 버튼 */}
-          {!isProcessing && failedCount > 0 && onRetryFailed && (
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+          {failedCount > 0 && onRetryFailed && (
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-destructive/20">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-destructive" />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm font-medium">
                   {failedCount}개 항목이 실패했습니다.
                 </span>
               </div>
@@ -137,10 +137,11 @@ export function BatchOCRProgressDialog({
                 variant="outline"
                 size="sm"
                 onClick={onRetryFailed}
+                disabled={isProcessing}
                 className="gap-2"
               >
-                <RefreshCw className="h-4 w-4" />
-                실패 항목 재시도
+                <RefreshCw className={cn("h-4 w-4", isProcessing && "animate-spin")} />
+                {isProcessing ? "재시도 중..." : "실패 항목 재시도"}
               </Button>
             </div>
           )}
@@ -219,9 +220,12 @@ function OCRItemRow({ item }: { item: OCRItem }) {
           )}
         </div>
         {item.error && (
-          <div className="mt-1 p-2 bg-destructive/10 border border-destructive/20 rounded text-xs text-destructive">
-            <div className="font-semibold mb-1">오류:</div>
-            <div className="break-words">{item.error}</div>
+          <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded-md text-xs">
+            <div className="font-semibold mb-1 text-destructive flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              오류:
+            </div>
+            <div className="break-words text-destructive/90">{item.error}</div>
           </div>
         )}
       </div>
