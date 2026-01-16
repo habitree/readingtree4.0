@@ -24,6 +24,7 @@ import { signOut } from "@/app/actions/auth";
 import { getCurrentUserProfile } from "@/app/actions/profile";
 import { getImageUrl } from "@/lib/utils/image";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 /**
  * 관리자 여부 확인
@@ -42,24 +43,30 @@ function isAdminUser(user: any): boolean {
  */
 export function Header() {
   const { user, isLoading } = useAuth();
+  const pathname = usePathname();
   const [userProfile, setUserProfile] = useState<{ id: string; name: string; avatar_url: string | null } | null>(null);
   
   // 사용자 프로필 정보 가져오기
+  // user가 변경되거나 프로필 페이지에서 다른 페이지로 이동할 때 갱신
   useEffect(() => {
     if (user) {
       getCurrentUserProfile()
         .then((profile) => {
           if (profile) {
             setUserProfile(profile);
+          } else {
+            // 프로필이 없으면 초기화 (다시 시도)
+            setUserProfile(null);
           }
         })
         .catch((error) => {
           console.error("프로필 조회 오류:", error);
+          setUserProfile(null);
         });
     } else {
       setUserProfile(null);
     }
-  }, [user]);
+  }, [user, pathname]); // pathname 추가하여 프로필 페이지에서 돌아올 때 갱신
 
   const userName = userProfile?.name || user?.user_metadata?.name || user?.email?.split("@")[0] || "사용자";
   const userAvatar = userProfile?.avatar_url || null;

@@ -243,6 +243,7 @@ export async function updateProfileImage(imageFile: File) {
 /**
  * 현재 사용자의 프로필 정보 조회 (헤더용)
  * 클라이언트 컴포넌트에서 사용 가능
+ * 프로필이 없으면 자동 생성
  * @returns 사용자 프로필 정보 (id, name, avatar_url) 또는 null
  */
 export async function getCurrentUserProfile() {
@@ -259,11 +260,34 @@ export async function getCurrentUserProfile() {
   }
 
   // 프로필 조회
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("users")
     .select("id, name, avatar_url")
     .eq("id", user.id)
     .single();
+
+  // 프로필이 없으면 자동 생성
+  if (error && error.code === "PGRST116") {
+    const defaultName = user.user_metadata?.name || user.email?.split("@")[0] || "사용자";
+    const { data: newProfile, error: insertError } = await supabase
+      .from("users")
+      .insert({
+        id: user.id,
+        email: user.email,
+        name: defaultName,
+        reading_goal: 12, // 기본값
+      })
+      .select("id, name, avatar_url")
+      .single();
+
+    if (insertError || !newProfile) {
+      // 프로필 생성 실패해도 null 반환 (에러 로그만 출력)
+      console.error("프로필 자동 생성 실패:", insertError);
+      return null;
+    }
+
+    return newProfile;
+  }
 
   if (error || !data) {
     return null;
