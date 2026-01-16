@@ -23,43 +23,57 @@ interface MonthlyChartProps {
 export function MonthlyChart({ data }: MonthlyChartProps) {
   // 빈 데이터 체크
   if (!data || data.length === 0) {
-    console.warn("MonthlyChart: 데이터가 없습니다", data);
     return null;
   }
 
+  // 데이터 변환: "YYYY-MM" 형식을 "M월" 형식으로 변환
   const chartData = data.map((item) => {
-    const [year, month] = item.month.split("-");
-    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-    return {
-      month: format(date, "M월", { locale: ko }),
-      count: item.count,
-    };
+    try {
+      const [year, month] = item.month.split("-");
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      return {
+        month: format(date, "M월", { locale: ko }),
+        count: item.count || 0,
+      };
+    } catch (error) {
+      console.error("[MonthlyChart] 날짜 변환 오류:", item, error);
+      return {
+        month: item.month,
+        count: item.count || 0,
+      };
+    }
   });
 
-  // 모든 count가 0인 경우도 빈 데이터로 처리
+  // 모든 count가 0인 경우 체크
   const hasData = chartData.some((item) => item.count > 0);
   if (!hasData) {
-    console.warn("MonthlyChart: 모든 count가 0입니다", chartData);
     return null;
-  }
-
-  // 디버깅: 차트 데이터 로그
-  if (process.env.NODE_ENV === 'development') {
-    console.log("MonthlyChart 렌더링:", chartData);
   }
 
   return (
-    <div className="w-full h-[300px]">
+    <div className="w-full" style={{ height: "300px" }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis />
-          <Tooltip />
-          <Bar dataKey="count" fill="hsl(var(--primary))" />
+          <XAxis
+            dataKey="month"
+            tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+          />
+          <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "hsl(var(--background))",
+              border: "1px solid hsl(var(--border))",
+              borderRadius: "6px",
+            }}
+          />
+          <Bar
+            dataKey="count"
+            fill="hsl(var(--primary))"
+            radius={[4, 4, 0, 0]}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
   );
 }
-

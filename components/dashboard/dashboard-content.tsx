@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getGoalProgress, getReadingStats, getMonthlyStats } from "@/app/actions/stats";
 import { getNotes } from "@/app/actions/notes";
-import { MonthlyChart } from "./monthly-chart";
 import { RecentNotes } from "./recent-notes";
+import { MonthlyStatsCard } from "./monthly-stats-card";
 import { LoginSuccessToast } from "./login-success-toast";
 import { getCurrentUser } from "@/app/actions/auth";
 import Link from "next/link";
@@ -25,12 +25,14 @@ export default async function DashboardContent() {
   const isGuest = !user;
 
   // 서버에서 직접 데이터 페칭 (병렬 실행)
-  const [progress, readingStats, monthly, notes] = await Promise.all([
+  const [progress, readingStats, notes] = await Promise.all([
     getGoalProgress(user),
     getReadingStats(user),
-    getMonthlyStats(user),
     getNotes(undefined, undefined, user),
   ]);
+  
+  // 월별 통계 데이터는 클라이언트 컴포넌트에서 직접 조회
+  const monthly = await getMonthlyStats(user);
 
   const recentNotes = (notes as NoteWithBook[]).slice(0, 5);
 
@@ -237,64 +239,8 @@ export default async function DashboardContent() {
           </CardContent>
         </Card>
 
-        {/* 월별 기록 통계: 아이콘으로 시각적 계층 강화 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <div className="rounded-lg bg-primary/10 p-2 shrink-0">
-                <BarChart3 className="h-5 w-5 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <CardTitle className="mb-2">월별 기록 통계</CardTitle>
-                <CardDescription>최근 6개월간 작성한 기록 수</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="min-h-[300px]">
-            {(() => {
-              // 데이터 유효성 검사 강화
-              if (!monthly || !Array.isArray(monthly) || monthly.length === 0) {
-                return (
-                  <div className="flex flex-col items-center justify-center h-[300px] text-center p-6 bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20">
-                    <div className="rounded-full bg-muted p-4 mb-4">
-                      <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-1">데이터를 불러올 수 없습니다</h3>
-                    <p className="text-sm text-muted-foreground max-w-[250px]">
-                      월별 통계 데이터를 불러오는 중 오류가 발생했습니다.
-                    </p>
-                  </div>
-                );
-              }
-
-              // 데이터가 있고 실제로 count > 0인 항목이 있는지 확인
-              const hasValidData = monthly.some((item) => item && typeof item.count === 'number' && item.count > 0);
-              
-              if (hasValidData) {
-                return <MonthlyChart data={monthly} />;
-              }
-              
-              return (
-                <div className="flex flex-col items-center justify-center h-[300px] text-center p-6 bg-muted/20 rounded-lg border border-dashed border-muted-foreground/20">
-                  <div className="rounded-full bg-muted p-4 mb-4">
-                    <BarChart3 className="h-8 w-8 text-muted-foreground/50" />
-                  </div>
-                  <h3 className="font-semibold text-foreground mb-1">데이터가 없습니다</h3>
-                  <p className="text-sm text-muted-foreground max-w-[250px]">
-                    {isGuest
-                      ? "로그인하여 독서 기록을 남기면 이곳에 월별 통계가 그래프로 표시됩니다."
-                      : "독서 기록을 남기면 이곳에 월별 통계가 그래프로 표시됩니다."}
-                  </p>
-                  {isGuest && (
-                    <Button asChild variant="outline" className="mt-4">
-                      <Link href="/login">로그인하기</Link>
-                    </Button>
-                  )}
-                </div>
-              );
-            })()}
-          </CardContent>
-        </Card>
+        {/* 월별 기록 통계 */}
+        <MonthlyStatsCard monthlyData={monthly} isGuest={isGuest} />
 
         {/* 최근 기록: 아이콘으로 시각적 계층 강화 */}
         <Card>
