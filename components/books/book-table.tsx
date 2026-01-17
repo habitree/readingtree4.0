@@ -245,7 +245,7 @@ export function BookTable({ books }: BookTableProps) {
 
   return (
     <div className="rounded-lg border overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="w-full" style={{ minWidth: '1600px', tableLayout: 'auto' }}>
           <thead className="bg-muted/50">
             <tr>
@@ -372,8 +372,16 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 책소개 (PC 버전에서만 표시) */}
-                  <td className="hidden lg:table-cell px-3 py-4 align-top" style={{ width: '900px', minWidth: '900px' }}>
-                    <div className="text-xs text-foreground leading-relaxed pr-4">
+                  <td className="hidden lg:table-cell px-3 py-4 align-top" style={{ width: '900px', minWidth: '900px', overflow: 'visible' }}>
+                    <div 
+                      className="text-xs text-foreground leading-relaxed pr-4"
+                      style={{
+                        overflow: 'visible',
+                        textOverflow: 'clip',
+                        whiteSpace: 'normal',
+                        wordWrap: 'break-word'
+                      }}
+                    >
                       {loadingDescriptions[book.id] ? (
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -387,8 +395,11 @@ export function BookTable({ books }: BookTableProps) {
                             overflowWrap: 'break-word',
                             whiteSpace: 'normal',
                             overflow: 'visible',
+                            textOverflow: 'clip',
                             display: 'block',
-                            width: '100%'
+                            width: '100%',
+                            maxWidth: '100%',
+                            minHeight: 'auto'
                           }}
                         >
                           {book.description_summary || bookDescriptions[book.id]}
