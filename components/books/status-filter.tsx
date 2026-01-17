@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -20,6 +20,10 @@ interface StatusFilterProps {
 export function StatusFilter({ currentStatus }: StatusFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // 현재 경로에 따라 기본 경로 결정 (서재 개별 페이지인지 확인)
+  const basePath = pathname?.startsWith("/bookshelves/") ? pathname : "/books";
 
   const handleStatusChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -28,7 +32,7 @@ export function StatusFilter({ currentStatus }: StatusFilterProps) {
     } else {
       params.set("status", value);
     }
-    router.push(`/books?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   };
 
   return (

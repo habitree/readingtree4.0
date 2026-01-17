@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Grid3x3, Table2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ interface ViewModeToggleProps {
 export function ViewModeToggle({ className }: ViewModeToggleProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const [isMobile, setIsMobile] = useState(true);
   
@@ -33,6 +34,9 @@ export function ViewModeToggle({ className }: ViewModeToggleProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
   
+  // 현재 경로에 따라 기본 경로 결정 (서재 개별 페이지인지 확인)
+  const basePath = pathname?.startsWith("/bookshelves/") ? pathname : "/books";
+  
   // URL 파라미터에서 view 값을 가져오고, 없으면 기본값 "grid" 사용
   const currentView = (searchParams.get("view") as ViewMode) || "grid";
 
@@ -44,7 +48,7 @@ export function ViewModeToggle({ className }: ViewModeToggleProps) {
     params.set("view", view);
     
     startTransition(() => {
-      router.push(`/books?${params.toString()}`);
+      router.push(`${basePath}?${params.toString()}`);
     });
   };
 

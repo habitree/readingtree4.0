@@ -537,10 +537,10 @@ export function NoteFormNew({ bookId }: NoteFormNewProps) {
                     type="button"
                     variant="destructive"
                     size="icon"
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-1.5 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:shadow-lg"
                     onClick={() => removeImage(index)}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-2.5 w-2.5" />
                   </Button>
                   {uploadProgress[index] !== undefined && (
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 text-center">

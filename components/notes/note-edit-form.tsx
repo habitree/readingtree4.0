@@ -335,10 +335,10 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
                         type="button"
                         variant="destructive"
                         size="icon"
-                        className="absolute top-2 right-2 h-8 w-8"
+                        className="absolute top-1.5 right-1.5 h-5 w-5 p-0 shadow-md hover:shadow-lg"
                         onClick={() => removeImage(index)}
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-2.5 w-2.5" />
                       </Button>
                     </div>
                   ))}

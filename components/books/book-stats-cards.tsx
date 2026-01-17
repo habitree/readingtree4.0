@@ -3,7 +3,7 @@
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BookOpen, BookMarked, CheckCircle2, Pause, BookX, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import type { BookStats } from "@/app/actions/books";
 import type { ReadingStatus } from "@/types/book";
 
@@ -19,6 +19,10 @@ interface BookStatsCardsProps {
 export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  // 현재 경로에 따라 기본 경로 결정 (서재 개별 페이지인지 확인)
+  const basePath = pathname?.startsWith("/bookshelves/") ? pathname : "/books";
 
   const statItems = [
     {
@@ -72,7 +76,7 @@ export function BookStatsCards({ stats, className }: BookStatsCardsProps) {
     } else {
       params.delete("status");
     }
-    router.push(`/books?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   };
 
   return (

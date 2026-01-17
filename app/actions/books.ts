@@ -683,11 +683,29 @@ export async function getUserBooksWithNotes(
     };
   }
 
-  // 상태별 통계 조회
-  const { data: allUserBooks } = await supabase
+  // 상태별 통계 조회 (서재별 또는 전체)
+  let statsQuery = supabase
     .from("user_books")
     .select("status")
     .eq("user_id", currentUser.id);
+
+  // bookshelfId가 제공되면 해당 서재의 책만으로 통계 계산
+  if (bookshelfId) {
+    const { data: bookshelf } = await supabase
+      .from("bookshelves")
+      .select("is_main")
+      .eq("id", bookshelfId)
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+
+    // 메인 서재가 아니면 해당 서재의 책만 조회
+    if (bookshelf && !bookshelf.is_main) {
+      statsQuery = statsQuery.eq("bookshelf_id", bookshelfId);
+    }
+    // 메인 서재면 필터링하지 않음 (모든 서재의 책 조회)
+  }
+
+  const { data: allUserBooks } = await statsQuery;
 
   const stats: BookStats = {
     total: allUserBooks?.length || 0,
