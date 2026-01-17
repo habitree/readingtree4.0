@@ -22,7 +22,7 @@ import { updateBookStatus, getBookDescriptionSummary } from "@/app/actions/books
 import { moveBookToBookshelf, getBookshelves } from "@/app/actions/bookshelves";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { formatDate } from "@/lib/utils/date";
+import { formatDate, formatDateWithDashes } from "@/lib/utils/date";
 import type { BookWithNotes } from "@/app/actions/books";
 import type { ReadingStatus } from "@/types/book";
 import { Bookshelf } from "@/types/bookshelf";
@@ -252,16 +252,16 @@ export function BookTable({ books }: BookTableProps) {
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-16 sm:w-20">
                 표지
               </th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground min-w-[150px] max-w-[180px]">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground min-w-[130px] max-w-[160px]">
                 제목
               </th>
-              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground min-w-[300px] max-w-[400px]">
+              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground min-w-[350px]">
                 책소개
               </th>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-28 sm:w-32">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-36 sm:w-40">
                 상태/기록
               </th>
-              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-44">
+              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-52">
                 책정보
               </th>
             </tr>
@@ -380,7 +380,7 @@ export function BookTable({ books }: BookTableProps) {
                           <span className="text-[11px]">요약 중...</span>
                         </div>
                       ) : book.description_summary || bookDescriptions[book.id] ? (
-                        <p className="text-xs text-foreground/95 whitespace-normal break-words leading-relaxed pr-2">
+                        <p className="text-xs text-foreground/95 whitespace-normal break-words leading-relaxed">
                           {book.description_summary || bookDescriptions[book.id]}
                         </p>
                       ) : (
@@ -403,7 +403,7 @@ export function BookTable({ books }: BookTableProps) {
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="outline"
-                                className="w-full h-7 text-[11px] font-medium justify-center px-2 bg-background/50"
+                                className="w-full h-7 text-[11px] font-medium justify-center px-2.5 bg-background/50"
                                 disabled={updatingStatus[item.id]}
                               >
                                 <span className="truncate">
@@ -490,7 +490,7 @@ export function BookTable({ books }: BookTableProps) {
                       
                       {/* 기록 */}
                       <Link href={`/books/${item.id}#book-info`} className="block">
-                        <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-foreground hover:text-primary hover:bg-muted justify-center">
+                        <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-foreground hover:text-primary hover:bg-muted justify-center px-2.5">
                           <FileText className="w-3 h-3 mr-1.5" aria-hidden="true" />
                           기록
                           {item.noteCount > 0 && (
@@ -507,13 +507,13 @@ export function BookTable({ books }: BookTableProps) {
                       {book.author && (
                         <div className="flex gap-2.5 items-start">
                           <span className="text-[11px] text-muted-foreground min-w-[3.5rem] shrink-0">저자</span>
-                          <span className="text-xs text-foreground leading-relaxed">{book.author}</span>
+                          <span className="text-xs text-foreground leading-relaxed break-words">{book.author}</span>
                         </div>
                       )}
                       {book.publisher && (
                         <div className="flex gap-2.5 items-start">
                           <span className="text-[11px] text-muted-foreground min-w-[3.5rem] shrink-0">출판사</span>
-                          <span className="text-xs text-foreground leading-relaxed">{book.publisher}</span>
+                          <span className="text-xs text-foreground leading-relaxed break-words">{book.publisher}</span>
                         </div>
                       )}
                       {(() => {
@@ -535,11 +535,16 @@ export function BookTable({ books }: BookTableProps) {
                           <div className="flex gap-2.5 items-start">
                             <span className="text-[11px] text-muted-foreground min-w-[3.5rem] shrink-0">완독일</span>
                             <div className="flex flex-col gap-1">
-                              {dates.map((date: string, index: number) => (
-                                <span key={index} className="text-xs text-foreground leading-relaxed">
-                                  {formatDate(date)}
-                                </span>
-                              ))}
+                              {dates.map((date: string, index: number) => {
+                                const formattedDate = formatDateWithDashes(date);
+                                const [year, month, day] = formattedDate.split(" - ");
+                                return (
+                                  <div key={index} className="text-xs text-foreground leading-relaxed">
+                                    <div>{year}</div>
+                                    <div>{month} - {day}</div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         ) : null;

@@ -1,18 +1,13 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
-import { BookList } from "@/components/books/book-list";
-import { BookTable } from "@/components/books/book-table";
-import { BookStatsCards } from "@/components/books/book-stats-cards";
-import { BookSearchInput } from "@/components/books/book-search-input";
-import { ViewModeToggle } from "@/components/books/view-mode-toggle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus, LogIn } from "lucide-react";
 import Link from "next/link";
-import { getUserBooks, getUserBooksWithNotes } from "@/app/actions/books";
-import { StatusFilter } from "@/components/books/status-filter";
+import { getUserBooksWithNotes } from "@/app/actions/books";
 import { getCurrentUser } from "@/app/actions/auth";
+import { BookshelfPageContent } from "@/components/books/bookshelf-page-content";
 import type { ReadingStatus } from "@/types/book";
 
 export const metadata: Metadata = {
@@ -52,25 +47,6 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
     const user = await getCurrentUser();
     const isGuest = !user;
 
-    // 통계 및 책 목록 조회 (기록 정보 포함)
-    let books: any[] = [];
-    let stats = {
-      total: 0,
-      reading: 0,
-      completed: 0,
-      paused: 0,
-      not_started: 0,
-      rereading: 0,
-    };
-
-    try {
-      const result = await getUserBooksWithNotes(status, query, user);
-      books = result.books;
-      stats = result.stats;
-    } catch (error) {
-      console.error("책 목록 조회 오류:", error);
-      // 에러 발생 시 빈 배열로 처리하여 페이지는 표시되도록 함
-    }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -122,38 +98,14 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
         )}
       </div>
 
-      {/* 통계 카드 */}
-      {!isGuest && <BookStatsCards stats={stats} />}
-
-      {/* 필터 및 검색 */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div className="flex-1 w-full sm:w-auto">
-          <BookSearchInput />
-        </div>
-        <div className="flex items-center gap-4">
-          <StatusFilter currentStatus={status} />
-          {!isGuest && <ViewModeToggle />}
-        </div>
-      </div>
-
-      {/* 책 목록 (그리드 또는 테이블) */}
-      {/* 모바일에서는 항상 그리드 뷰, 데스크톱에서만 테이블 뷰 선택 가능 */}
-      <Suspense fallback={<BookList books={[]} isLoading />}>
-        {view === "table" && !isGuest ? (
-          <>
-            {/* 테이블 뷰: 모바일에서는 그리드 뷰, 데스크톱에서만 테이블 뷰 */}
-            <div className="lg:hidden">
-              <BooksListGrid status={status} query={query} user={user} />
-            </div>
-            <div className="hidden lg:block">
-              <BookTable books={books} />
-            </div>
-          </>
-        ) : (
-          /* 그리드 뷰 또는 게스트 사용자 */
-          <BooksListGrid status={status} query={query} user={user} />
-        )}
-      </Suspense>
+      {/* 공통 컨텐츠 컴포넌트 */}
+      <BookshelfPageContent
+        status={status}
+        query={query}
+        view={view}
+        user={user}
+        isGuest={isGuest}
+      />
     </div>
   );
   } catch (error) {
@@ -178,58 +130,3 @@ export default async function BooksPage({ searchParams }: BooksPageProps) {
   }
 }
 
-async function BooksListGrid({
-  status,
-  query,
-  user,
-}: {
-  status?: ReadingStatus;
-  query?: string;
-  user?: any;
-}) {
-  try {
-    // 게스트 사용자인 경우 getUserBooks 사용 (샘플 데이터 포함)
-    // 인증된 사용자인 경우 getUserBooksWithNotes 사용 (기록 정보 포함)
-    let booksData: any[] = [];
-    
-    if (!user) {
-      // 게스트 사용자: 샘플 데이터 조회
-      booksData = await getUserBooks(status, user);
-    } else {
-      // 인증된 사용자: 기록 정보 포함 조회
-      try {
-        const { books: booksWithNotes } = await getUserBooksWithNotes(status, query, user);
-        booksData = booksWithNotes || [];
-      } catch (error) {
-        console.error("BooksListGrid: getUserBooksWithNotes 오류:", error);
-        booksData = [];
-      }
-    }
-    
-    // BookList 컴포넌트가 기대하는 형태로 변환
-    // BookList는 { id, status, books: { ... }, groupBooks?: [...] } 형태를 기대함
-    const books = booksData
-      .filter((item) => item.books && item.books.id) // books 객체가 있는 경우만 필터링
-      .map((item) => ({
-        id: item.id, // user_books.id 또는 sample-{book_id}
-        status: item.status,
-        books: {
-          id: item.books.id,
-          title: item.books.title,
-          author: item.books.author,
-          publisher: item.books.publisher,
-          isbn: item.books.isbn,
-          cover_image_url: item.books.cover_image_url,
-          published_date: item.books.published_date || null,
-          created_at: item.books.created_at || "",
-          updated_at: item.books.updated_at || "",
-        },
-        groupBooks: item.groupBooks || [],
-      }));
-    
-    return <BookList books={books} />;
-  } catch (error) {
-    console.error("BooksListGrid 렌더링 오류:", error);
-    return <BookList books={[]} />;
-  }
-}

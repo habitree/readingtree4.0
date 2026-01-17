@@ -72,3 +72,11 @@ export function getMonthKey(date: Date | string): string {
   return format(dateObj, "yyyyë…„ MMì›”", { locale: ko });
 }
 
+
+/**
+ * ? ì§œë¥?"yyyy - MM - dd" ?•ì‹?¼ë¡œ ?¬ë§· (?„ë…?¼ìš©)
+ */
+export function formatDateWithDashes(date: Date | string): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date;
+  return format(dateObj, "yyyy - MM - dd");
+}
