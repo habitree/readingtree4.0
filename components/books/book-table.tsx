@@ -246,7 +246,7 @@ export function BookTable({ books }: BookTableProps) {
   return (
     <div className="rounded-lg border overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
           <thead className="bg-muted/50">
             <tr>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-16 sm:w-20">
@@ -255,7 +255,7 @@ export function BookTable({ books }: BookTableProps) {
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground min-w-[130px] max-w-[160px]">
                 제목
               </th>
-              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground min-w-[400px] max-w-[500px]">
+              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground" style={{ width: '500px', maxWidth: '500px' }}>
                 책소개
               </th>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-36 sm:w-40">
@@ -372,15 +372,15 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 책소개 (PC 버전에서만 표시) */}
-                  <td className="hidden lg:table-cell px-3 py-4 align-top">
-                    <div className="text-xs text-foreground leading-relaxed min-w-[400px] max-w-[500px]">
+                  <td className="hidden lg:table-cell px-3 py-4 align-top" style={{ width: '500px', maxWidth: '500px' }}>
+                    <div className="text-xs text-foreground leading-relaxed">
                       {loadingDescriptions[book.id] ? (
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span className="text-[11px]">요약 중...</span>
                         </div>
                       ) : book.description_summary || bookDescriptions[book.id] ? (
-                        <p className="text-xs text-foreground/95 whitespace-normal break-words leading-relaxed">
+                        <p className="text-xs text-foreground/95 whitespace-pre-wrap break-words leading-relaxed" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           {book.description_summary || bookDescriptions[book.id]}
                         </p>
                       ) : (
