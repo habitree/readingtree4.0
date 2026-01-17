@@ -220,7 +220,26 @@ export async function getReadingStats(user?: User | null) {
       )
       .eq("is_sample", true);
 
-    // 책별 기록 수 집계
+    // 샘플 데이터에서 최근 기록한 책 (최근 기록 기준 상위 5개)
+    const { data: recentBooksData } = await supabase
+      .from("notes")
+      .select(
+        `
+        book_id,
+        created_at,
+        books (
+          id,
+          title,
+          author,
+          cover_image_url
+        )
+      `
+      )
+      .eq("is_sample", true)
+      .order("created_at", { ascending: false })
+      .limit(100); // 최근 100개 기록에서 중복 제거
+
+    // 책별 기록 수 집계 (가장 많이 기록한 책용)
     const bookCounts = new Map<string, { count: number; book: any }>();
     if (topBooksData) {
       topBooksData.forEach((note) => {
@@ -248,6 +267,37 @@ export async function getReadingStats(user?: User | null) {
         noteCount: item.count,
       }));
 
+    // 최근 기록한 책 (중복 제거, 최신순)
+    const recentBooksMap = new Map<string, { book: any; latestDate: string }>();
+    if (recentBooksData) {
+      recentBooksData.forEach((note) => {
+        const bookId = note.book_id;
+        const book = (note.books as any);
+        if (book) {
+          const existing = recentBooksMap.get(bookId);
+          
+          if (!existing || new Date(note.created_at) > new Date(existing.latestDate)) {
+            recentBooksMap.set(bookId, {
+              book: {
+                ...book,
+                id: `sample-${book.id}`, // 샘플 데이터 ID 형식 통일
+              },
+              latestDate: note.created_at,
+            });
+          }
+        }
+      });
+    }
+
+    // 최근 기록한 책을 최신순으로 정렬
+    const recentBooks = Array.from(recentBooksMap.values())
+      .sort((a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime())
+      .slice(0, 5)
+      .map((item) => ({
+        book: item.book,
+        noteCount: bookCounts.get(item.book.id.replace("sample-", ""))?.count || 1, // 기록 수 표시용
+      }));
+
     return {
       thisWeek: {
         notes: thisWeekNotes || 0,
@@ -257,6 +307,7 @@ export async function getReadingStats(user?: User | null) {
         notes: thisYearNotes || 0,
       },
       topBooks,
+      recentBooks,
     };
   }
 
@@ -301,6 +352,25 @@ export async function getReadingStats(user?: User | null) {
     )
     .eq("user_id", currentUser.id);
 
+  // 최근 기록한 책 (최근 기록 기준 상위 5개)
+  const { data: recentBooksData } = await supabase
+    .from("notes")
+    .select(
+      `
+      book_id,
+      created_at,
+      books (
+        id,
+        title,
+        author,
+        cover_image_url
+      )
+    `
+    )
+    .eq("user_id", currentUser.id)
+    .order("created_at", { ascending: false })
+    .limit(100); // 최근 100개 기록에서 중복 제거
+
   // 사용자의 user_books ID 가져오기 (매핑용)
   const { data: userBooksData } = await supabase
     .from("user_books")
@@ -312,7 +382,7 @@ export async function getReadingStats(user?: User | null) {
     userBooksData.forEach((ub) => userBookIdMap.set(ub.book_id, ub.id));
   }
 
-  // 책별 기록 수 집계
+  // 책별 기록 수 집계 (가장 많이 기록한 책용)
   const bookCounts = new Map<string, { count: number; book: any }>();
   if (topBooksData) {
     topBooksData.forEach((note) => {
@@ -341,6 +411,36 @@ export async function getReadingStats(user?: User | null) {
       noteCount: item.count,
     }));
 
+  // 최근 기록한 책 (중복 제거, 최신순)
+  const recentBooksMap = new Map<string, { book: any; latestDate: string }>();
+  if (recentBooksData) {
+    recentBooksData.forEach((note) => {
+      const bookId = note.book_id;
+      const book = (note.books as any);
+      if (book) {
+        const userBookId = userBookIdMap.get(bookId) || bookId;
+        const bookWithUserBookId = { ...book, id: userBookId };
+        const existing = recentBooksMap.get(bookId);
+        
+        if (!existing || new Date(note.created_at) > new Date(existing.latestDate)) {
+          recentBooksMap.set(bookId, {
+            book: bookWithUserBookId,
+            latestDate: note.created_at,
+          });
+        }
+      }
+    });
+  }
+
+  // 최근 기록한 책을 최신순으로 정렬
+  const recentBooks = Array.from(recentBooksMap.values())
+    .sort((a, b) => new Date(b.latestDate).getTime() - new Date(a.latestDate).getTime())
+    .slice(0, 5)
+    .map((item) => ({
+      book: item.book,
+      noteCount: bookCounts.get(item.book.id)?.count || 1, // 기록 수 표시용
+    }));
+
   return {
     thisWeek: {
       notes: thisWeekNotes || 0,
@@ -350,6 +450,7 @@ export async function getReadingStats(user?: User | null) {
       notes: thisYearNotes || 0,
     },
     topBooks,
+    recentBooks,
   };
 }
 

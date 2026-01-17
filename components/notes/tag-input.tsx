@@ -36,6 +36,8 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [userTags, setUserTags] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState(value);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedTagsForDelete, setSelectedTagsForDelete] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +60,7 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
     }
   };
 
-  // 태그 완전 삭제
+  // 태그 완전 삭제 (단일)
   const handleDeleteTag = async (tag: string) => {
     try {
       // 태그 사용 횟수 확인
@@ -100,6 +102,79 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
         error instanceof Error ? error.message : "태그 삭제에 실패했습니다."
       );
     }
+  };
+
+  // 선택된 태그들 일괄 삭제
+  const handleBatchDeleteTags = async () => {
+    if (selectedTagsForDelete.size === 0) {
+      toast.info("삭제할 태그를 선택해주세요.");
+      return;
+    }
+
+    try {
+      const tagsToDelete = Array.from(selectedTagsForDelete);
+      let totalUpdatedCount = 0;
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const tag of tagsToDelete) {
+        try {
+          const result = await deleteTag(tag);
+          if (result.success) {
+            totalUpdatedCount += result.updatedCount || 0;
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          console.error(`태그 "${tag}" 삭제 오류:`, error);
+          failCount++;
+        }
+      }
+
+      // 태그 목록 새로고침
+      await loadUserTags();
+
+      // 입력 필드에서도 해당 태그들 제거
+      const currentTags = inputValue
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .filter((tag) => !selectedTagsForDelete.has(tag));
+      
+      const newValue = currentTags.length > 0 
+        ? currentTags.join(", ") + ", "
+        : "";
+      setInputValue(newValue);
+      onChange(newValue);
+
+      // 삭제 모드 종료 및 선택 초기화
+      setIsDeleteMode(false);
+      setSelectedTagsForDelete(new Set());
+
+      if (successCount > 0) {
+        toast.success(
+          `${successCount}개의 태그가 삭제되었습니다. (총 ${totalUpdatedCount}개 기록에서 제거됨)`
+        );
+      }
+      if (failCount > 0) {
+        toast.error(`${failCount}개의 태그 삭제에 실패했습니다.`);
+      }
+    } catch (error) {
+      console.error("태그 일괄 삭제 오류:", error);
+      toast.error("태그 삭제에 실패했습니다.");
+    }
+  };
+
+  // 삭제 모드에서 태그 선택/해제
+  const handleTagToggleForDelete = (tag: string) => {
+    const newSelected = new Set(selectedTagsForDelete);
+    if (newSelected.has(tag)) {
+      newSelected.delete(tag);
+    } else {
+      newSelected.add(tag);
+    }
+    setSelectedTagsForDelete(newSelected);
   };
 
   // 입력값 변경 시 자동완성 필터링 및 태그 개수 검증
@@ -171,8 +246,14 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
     inputRef.current?.focus();
   };
 
-  // 저장된 태그 클릭으로 추가
+  // 저장된 태그 클릭으로 추가 (삭제 모드가 아닐 때만)
   const handleSavedTagClick = (tag: string) => {
+    if (isDeleteMode) {
+      // 삭제 모드일 때는 선택/해제만
+      handleTagToggleForDelete(tag);
+      return;
+    }
+
     const currentTags = inputValue
       .split(",")
       .map((t) => t.trim())
@@ -301,55 +382,73 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
       {/* 저장된 태그 목록 (사용 가능한 태그만 표시) */}
       {availableTags.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            저장된 태그: <span className="text-foreground">클릭하여 추가</span>
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {availableTags.slice(0, 20).map((tag, index) => (
-              <div 
-                key={index} 
-                className="relative inline-flex items-center gap-0.5"
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              저장된 태그: <span className="text-foreground">클릭하여 추가</span>
+            </p>
+            <div className="flex items-center gap-2">
+              {isDeleteMode && (
+                <span className="text-xs text-muted-foreground">
+                  {selectedTagsForDelete.size}개 선택됨
+                </span>
+              )}
+              <Button
+                type="button"
+                variant={isDeleteMode ? "default" : "outline"}
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => {
+                  if (isDeleteMode) {
+                    // 삭제 모드 종료
+                    setIsDeleteMode(false);
+                    setSelectedTagsForDelete(new Set());
+                  } else {
+                    // 삭제 모드 시작
+                    setIsDeleteMode(true);
+                  }
+                }}
               >
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors px-3 py-1 text-sm h-7 flex items-center"
-                  onClick={() => handleSavedTagClick(tag)}
-                  title="클릭하여 추가"
-                >
-                  <span className="truncate max-w-[120px]">{tag}</span>
-                </Badge>
+                {isDeleteMode ? "취소" : "태그 삭제"}
+              </Button>
+              {isDeleteMode && selectedTagsForDelete.size > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <button
+                    <Button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                      }}
-                      className="h-3 w-3 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center hover:bg-destructive transition-colors shrink-0"
-                      aria-label={`${tag} 태그 완전 삭제`}
-                      title="태그 삭제"
+                      variant="destructive"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
                     >
-                      <X className="h-2 w-2" />
-                    </button>
+                      선택 삭제 ({selectedTagsForDelete.size})
+                    </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>태그 완전 삭제 확인</AlertDialogTitle>
                       <AlertDialogDescription>
-                        태그 "{tag}"를 완전히 삭제하시겠습니까?
+                        선택한 {selectedTagsForDelete.size}개의 태그를 완전히 삭제하시겠습니까?
                         <br />
-                        이 태그가 달린 모든 기록에서 태그가 제거됩니다.
+                        이 태그들이 달린 모든 기록에서 태그가 제거됩니다.
                         <br />
                         <span className="text-destructive font-semibold">
                           이 작업은 되돌릴 수 없습니다.
                         </span>
+                        <div className="mt-2 pt-2 border-t">
+                          <p className="text-sm font-medium mb-1">삭제할 태그:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.from(selectedTagsForDelete).map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>취소</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => handleDeleteTag(tag)}
+                        onClick={handleBatchDeleteTags}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
                         삭제
@@ -357,8 +456,31 @@ export function TagInput({ value, onChange, placeholder = "태그 입력", label
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
-            ))}
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {availableTags.slice(0, 20).map((tag, index) => {
+              const isSelected = selectedTagsForDelete.has(tag);
+              return (
+                <Badge
+                  key={index}
+                  variant={isDeleteMode ? (isSelected ? "destructive" : "outline") : "outline"}
+                  className={cn(
+                    "cursor-pointer transition-colors px-3 py-1 text-sm h-7 flex items-center",
+                    isDeleteMode
+                      ? isSelected
+                        ? "bg-destructive text-destructive-foreground"
+                        : "hover:bg-muted"
+                      : "hover:bg-primary hover:text-primary-foreground"
+                  )}
+                  onClick={() => handleSavedTagClick(tag)}
+                  title={isDeleteMode ? (isSelected ? "선택 해제" : "선택하여 삭제") : "클릭하여 추가"}
+                >
+                  <span className="truncate max-w-[120px]">{tag}</span>
+                </Badge>
+              );
+            })}
           </div>
         </div>
       )}

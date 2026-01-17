@@ -15,7 +15,7 @@ import { BookStatusBadge } from "./book-status-badge";
 import { BookNotesPreview } from "./book-notes-preview";
 import { BookDeleteButton } from "./book-delete-button";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
-import { BookOpen, FileText, Loader2, Users, BookOpen as BookOpenIcon } from "lucide-react";
+import { BookOpen, FileText, Loader2, Users, BookOpen as BookOpenIcon, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateBookStatus, getBookDescriptionSummary } from "@/app/actions/books";
@@ -26,9 +26,37 @@ import { formatDate } from "@/lib/utils/date";
 import type { BookWithNotes } from "@/app/actions/books";
 import type { ReadingStatus } from "@/types/book";
 import { Bookshelf } from "@/types/bookshelf";
+import { BookDeleteButton } from "./book-delete-button";
 
 interface BookTableProps {
   books: BookWithNotes[];
+}
+
+/**
+ * 제목에서 괄호 내용을 분리하는 함수
+ * 예: "제목 (부제목)" -> { main: "제목", subtitle: "부제목" }
+ */
+function parseTitle(title: string): { main: string; subtitle: string | null } {
+  // 괄호 패턴 찾기: (내용) 또는 (내용!)
+  const match = title.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (match) {
+    return {
+      main: match[1].trim(),
+      subtitle: match[2].trim(),
+    };
+  }
+  return { main: title.trim(), subtitle: null };
+}
+
+/**
+ * 제목에서 출판사 정보 제거
+ * 제목 끝에 출판사명이 있는 경우 제거
+ */
+function removePublisherFromTitle(title: string, publisher: string | null): string {
+  if (!publisher) return title;
+  // 제목 끝에 출판사명이 있는지 확인
+  const publisherPattern = new RegExp(`\\s*${publisher.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
+  return title.replace(publisherPattern, '').trim();
 }
 
 /**
@@ -225,23 +253,17 @@ export function BookTable({ books }: BookTableProps) {
               <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-20 sm:w-24">
                 표지
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[200px] sm:min-w-[300px]">
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[180px] max-w-[220px]">
                 제목
               </th>
-              <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[150px]">
+              <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[250px]">
                 책소개
               </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-24 sm:w-28">
-                상태
-              </th>
-              <th className="hidden md:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32">
-                기록
+              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32 sm:w-36">
+                상태/기록
               </th>
               <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-48">
                 책정보
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-24">
-                액션
               </th>
             </tr>
           </thead>
@@ -265,93 +287,107 @@ export function BookTable({ books }: BookTableProps) {
                 >
                   {/* 표지 */}
                   <td className="px-4 py-6">
-                    <Link href={`/books/${item.id}`} className="block">
-                      <div className="relative w-20 h-28 sm:w-24 sm:h-36 rounded-md overflow-hidden bg-muted cursor-pointer hover:shadow-lg transition-all duration-300 mx-auto shadow-md border border-black/5">
-                        {hasValidImage ? (
-                          <Image
-                            src={getImageUrl(book.cover_image_url)}
-                            alt={`${book.title} 표지`}
-                            fill
-                            className="object-cover hover:scale-105 transition-transform duration-500"
-                            sizes="(max-width: 640px) 80px, 96px"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-                            <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/50" />
-                          </div>
-                        )}
+                    <div className="relative w-20 h-28 sm:w-24 sm:h-36 mx-auto">
+                      <Link href={`/books/${item.id}`} className="block">
+                        <div className="relative w-full h-full rounded-md overflow-hidden bg-muted cursor-pointer hover:shadow-lg transition-all duration-300 shadow-md border border-black/5">
+                          {hasValidImage ? (
+                            <Image
+                              src={getImageUrl(book.cover_image_url)}
+                              alt={`${book.title} 표지`}
+                              fill
+                              className="object-cover hover:scale-105 transition-transform duration-500"
+                              sizes="(max-width: 640px) 80px, 96px"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+                              <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/50" />
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      {/* 삭제 버튼 - 표지 상단 우측 */}
+                      <div className="absolute -top-1 -right-1 z-10">
+                        <BookDeleteButton
+                          userBookId={item.id}
+                          bookTitle={book.title}
+                          variant="icon"
+                          size="icon"
+                        />
                       </div>
-                    </Link>
+                    </div>
                   </td>
 
                   {/* 제목 */}
                   <td className="px-4 py-6">
-                    <div className="space-y-3">
-                      <div className="flex items-start gap-2 flex-wrap">
-                        <Link
-                          href={`/books/${item.id}`}
-                          className="font-bold text-lg hover:text-primary transition-colors line-clamp-2 leading-tight"
-                        >
-                          {book.title}
-                        </Link>
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        {(() => {
+                          // 출판사 정보 제거
+                          const titleWithoutPublisher = removePublisherFromTitle(book.title, book.publisher);
+                          // 괄호 내용 분리
+                          const { main, subtitle } = parseTitle(titleWithoutPublisher);
+                          
+                          return (
+                            <Link
+                              href={`/books/${item.id}`}
+                              className="block hover:text-primary transition-colors"
+                            >
+                              <div className="font-semibold text-base leading-tight text-foreground">
+                                {main}
+                              </div>
+                              {subtitle && (
+                                <div className="text-sm text-muted-foreground leading-tight mt-1">
+                                  ({subtitle})
+                                </div>
+                              )}
+                            </Link>
+                          );
+                        })()}
                       </div>
 
                       {/* 읽는 이유 */}
                       {item.reading_reason && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 italic border-l-2 border-primary/20 pl-3 py-1 bg-muted/30 rounded-r">
+                        <p className="text-xs text-muted-foreground line-clamp-2 italic border-l-2 border-primary/20 pl-2 py-1 bg-muted/30 rounded-r">
                           "{item.reading_reason}"
                         </p>
                       )}
 
-                      {/* 책소개 (플레이스홀더) */}
-                      {book.publisher && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 opacity-75 font-medium">
-                          {book.publisher}
-                        </p>
+                      {/* 그룹 지정도서 */}
+                      {item.groupBooks && item.groupBooks.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {item.groupBooks.map((gb) => (
+                            <Badge
+                              key={gb.group_id}
+                              variant="outline"
+                              className="text-xs px-1.5 py-0.5 border-primary/20 text-primary/80"
+                              title={`${gb.group_name} 지정도서`}
+                            >
+                              <Users className="mr-1 h-2.5 w-2.5" />
+                              {gb.group_name}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
 
-                      {/* 기록 개수 및 더보기 */}
-                      <div className="flex items-center gap-2 flex-wrap pt-1">
-                        {item.noteCount > 0 && (
-                          <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-secondary/50">
-                            <FileText className="w-3 h-3 mr-1" aria-hidden="true" />
-                            {item.noteCount}개 기록
-                          </Badge>
-                        )}
-                        {item.groupBooks && item.groupBooks.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {item.groupBooks.map((gb) => (
-                              <Badge
-                                key={gb.group_id}
-                                variant="outline"
-                                className="text-xs px-1.5 py-0.5 border-primary/20 text-primary/80"
-                                title={`${gb.group_name} 지정도서`}
-                              >
-                                <Users className="mr-1 h-2.5 w-2.5" />
-                                {gb.group_name}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                        {item.noteCount > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleToggleNotes(book.id, item.id)
-                            }
-                            className="h-7 text-xs px-2 hover:bg-muted"
-                          >
-                            {expandedBookId === item.id
-                              ? "접기"
-                              : "기록 더보기"}
-                          </Button>
-                        )}
-                      </div>
+                      {/* 기록 더보기 버튼 */}
+                      {item.noteCount > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleToggleNotes(book.id, item.id)
+                          }
+                          className="h-6 text-xs px-2 hover:bg-muted mt-1"
+                        >
+                          {expandedBookId === item.id
+                            ? "접기"
+                            : "기록 더보기"}
+                        </Button>
+                      )}
 
                       {/* 기록 미리보기 */}
                       {expandedBookId === item.id && notes.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-border/50">
+                        <div className="mt-2 pt-2 border-t border-border/50">
                           <BookNotesPreview notes={notes} />
                         </div>
                       )}
@@ -360,36 +396,37 @@ export function BookTable({ books }: BookTableProps) {
 
                   {/* 책소개 (PC 버전에서만 표시) */}
                   <td className="hidden lg:table-cell px-4 py-6 align-top">
-                    <div className="text-sm text-muted-foreground pt-1">
+                    <div className="text-sm text-foreground pt-1 leading-relaxed">
                       {loadingDescriptions[book.id] ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span className="text-xs">요약 중...</span>
                         </div>
                       ) : book.description_summary || bookDescriptions[book.id] ? (
-                        <p className="line-clamp-4 leading-relaxed">{book.description_summary || bookDescriptions[book.id]}</p>
+                        <p className="line-clamp-5 text-sm text-foreground/90">{book.description_summary || bookDescriptions[book.id]}</p>
                       ) : (
-                        <span className="text-xs opacity-50">-</span>
+                        <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </div>
                   </td>
 
-                  {/* 상태 */}
+                  {/* 상태/기록 그룹 */}
                   <td className="px-4 py-6 align-top">
-                    <div className="pt-1">
-                      {updatingStatus[item.id] ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        </div>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-full max-w-[110px] h-8 text-xs font-medium justify-between px-2 bg-background/50"
-                              disabled={updatingStatus[item.id]}
-                            >
-                              <div className="flex flex-col items-start gap-0.5 truncate">
+                    <div className="space-y-2 pt-1">
+                      {/* 상태 */}
+                      <div>
+                        {updatingStatus[item.id] ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          </div>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="w-full h-8 text-xs font-medium justify-between px-2 bg-background/50"
+                                disabled={updatingStatus[item.id]}
+                              >
                                 <span className="truncate">
                                   {item.status === "not_started" && "읽기전"}
                                   {item.status === "reading" && "읽는 중"}
@@ -397,106 +434,107 @@ export function BookTable({ books }: BookTableProps) {
                                   {item.status === "rereading" && "재독"}
                                   {item.status === "paused" && "중단"}
                                 </span>
-                              </div>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="w-[160px]">
-                            <DropdownMenuLabel className="text-xs">읽기 상태</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(item.id, "not_started")}
-                              disabled={item.status === "not_started" || updatingStatus[item.id]}
-                              className={item.status === "not_started" ? "bg-accent" : ""}
-                            >
-                              읽기전
-                              {item.status === "not_started" && " ✓"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(item.id, "reading")}
-                              disabled={item.status === "reading" || updatingStatus[item.id]}
-                              className={item.status === "reading" ? "bg-accent" : ""}
-                            >
-                              읽는 중
-                              {item.status === "reading" && " ✓"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(item.id, "completed")}
-                              disabled={item.status === "completed" || updatingStatus[item.id]}
-                              className={item.status === "completed" ? "bg-accent" : ""}
-                            >
-                              완독
-                              {item.status === "completed" && " ✓"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(item.id, "rereading")}
-                              disabled={item.status === "rereading" || updatingStatus[item.id]}
-                              className={item.status === "rereading" ? "bg-accent" : ""}
-                            >
-                              재독
-                              {item.status === "rereading" && " ✓"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleStatusChange(item.id, "paused")}
-                              disabled={item.status === "paused" || updatingStatus[item.id]}
-                              className={item.status === "paused" ? "bg-accent" : ""}
-                            >
-                              중단
-                              {item.status === "paused" && " ✓"}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuLabel className="text-xs">서재 이동</DropdownMenuLabel>
-                            {isLoadingBookshelves ? (
-                              <DropdownMenuItem disabled>
-                                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                                <span className="text-xs">로딩 중...</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-[160px]">
+                              <DropdownMenuLabel className="text-xs">읽기 상태</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(item.id, "not_started")}
+                                disabled={item.status === "not_started" || updatingStatus[item.id]}
+                                className={item.status === "not_started" ? "bg-accent" : ""}
+                              >
+                                읽기전
+                                {item.status === "not_started" && " ✓"}
                               </DropdownMenuItem>
-                            ) : bookshelves.length === 0 ? (
-                              <DropdownMenuItem disabled className="text-xs">서재가 없습니다</DropdownMenuItem>
-                            ) : (
-                              bookshelves.map((bookshelf) => {
-                                const currentBookshelfId = (item as any).bookshelf_id;
-                                return (
-                                  <DropdownMenuItem
-                                    key={bookshelf.id}
-                                    onClick={() => handleBookshelfChange(item.id, bookshelf.id)}
-                                    disabled={bookshelf.id === currentBookshelfId || updatingStatus[item.id] || updatingBookshelf[item.id]}
-                                    className={bookshelf.id === currentBookshelfId ? "bg-accent" : ""}
-                                  >
-                                    <BookOpenIcon className="mr-2 h-3 w-3" />
-                                    <span className="truncate">{bookshelf.name}</span>
-                                    {bookshelf.id === currentBookshelfId && " ✓"}
-                                  </DropdownMenuItem>
-                                );
-                              })
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(item.id, "reading")}
+                                disabled={item.status === "reading" || updatingStatus[item.id]}
+                                className={item.status === "reading" ? "bg-accent" : ""}
+                              >
+                                읽는 중
+                                {item.status === "reading" && " ✓"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(item.id, "completed")}
+                                disabled={item.status === "completed" || updatingStatus[item.id]}
+                                className={item.status === "completed" ? "bg-accent" : ""}
+                              >
+                                완독
+                                {item.status === "completed" && " ✓"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(item.id, "rereading")}
+                                disabled={item.status === "rereading" || updatingStatus[item.id]}
+                                className={item.status === "rereading" ? "bg-accent" : ""}
+                              >
+                                재독
+                                {item.status === "rereading" && " ✓"}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleStatusChange(item.id, "paused")}
+                                disabled={item.status === "paused" || updatingStatus[item.id]}
+                                className={item.status === "paused" ? "bg-accent" : ""}
+                              >
+                                중단
+                                {item.status === "paused" && " ✓"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel className="text-xs">서재 이동</DropdownMenuLabel>
+                              {isLoadingBookshelves ? (
+                                <DropdownMenuItem disabled>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  <span className="text-xs">로딩 중...</span>
+                                </DropdownMenuItem>
+                              ) : bookshelves.length === 0 ? (
+                                <DropdownMenuItem disabled className="text-xs">서재가 없습니다</DropdownMenuItem>
+                              ) : (
+                                bookshelves.map((bookshelf) => {
+                                  const currentBookshelfId = (item as any).bookshelf_id;
+                                  return (
+                                    <DropdownMenuItem
+                                      key={bookshelf.id}
+                                      onClick={() => handleBookshelfChange(item.id, bookshelf.id)}
+                                      disabled={bookshelf.id === currentBookshelfId || updatingStatus[item.id] || updatingBookshelf[item.id]}
+                                      className={bookshelf.id === currentBookshelfId ? "bg-accent" : ""}
+                                    >
+                                      <BookOpenIcon className="mr-2 h-3 w-3" />
+                                      <span className="truncate">{bookshelf.name}</span>
+                                      {bookshelf.id === currentBookshelfId && " ✓"}
+                                    </DropdownMenuItem>
+                                  );
+                                })
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                      
+                      {/* 기록 */}
+                      <Link href={`/books/${item.id}#book-info`} className="block">
+                        <Button variant="ghost" size="sm" className="w-full h-8 text-xs text-foreground hover:text-primary hover:bg-muted">
+                          <FileText className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                          기록
+                          {item.noteCount > 0 && (
+                            <span className="ml-1 text-muted-foreground">({item.noteCount})</span>
+                          )}
+                        </Button>
+                      </Link>
                     </div>
-                  </td>
-
-                  {/* 기록 (모바일에서 숨김) */}
-                  <td className="hidden md:table-cell px-4 py-6 align-top">
-                    <Link href={`/books/${item.id}#book-info`} className="block pt-1">
-                      <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-primary">
-                        <FileText className="w-4 h-4 mr-2" aria-hidden="true" />
-                        기록
-                      </Button>
-                    </Link>
                   </td>
 
                   {/* 책정보 (태블릿 이하에서 숨김) */}
                   <td className="hidden lg:table-cell px-4 py-6 align-top">
                     <div className="space-y-1.5 text-sm pt-1">
                       {book.author && (
-                        <div className="flex gap-2 text-muted-foreground">
-                          <span className="text-xs min-w-[3rem]">저자</span>
-                          <span className="font-medium text-foreground">{book.author}</span>
+                        <div className="flex gap-2">
+                          <span className="text-xs text-muted-foreground min-w-[3rem]">저자</span>
+                          <span className="text-sm text-foreground">{book.author}</span>
                         </div>
                       )}
                       {book.publisher && (
-                        <div className="flex gap-2 text-muted-foreground">
-                          <span className="text-xs min-w-[3rem]">출판사</span>
-                          <span className="font-medium text-foreground">{book.publisher}</span>
+                        <div className="flex gap-2">
+                          <span className="text-xs text-muted-foreground min-w-[3rem]">출판사</span>
+                          <span className="text-sm text-foreground">{book.publisher}</span>
                         </div>
                       )}
                       {(() => {
@@ -515,9 +553,9 @@ export function BookTable({ books }: BookTableProps) {
                           dates = [item.completed_at];
                         }
                         return dates.length > 0 ? (
-                          <div className="flex gap-2 text-muted-foreground">
-                            <span className="text-xs min-w-[3rem]">완독일</span>
-                            <span className="font-medium text-foreground">
+                          <div className="flex gap-2">
+                            <span className="text-xs text-muted-foreground min-w-[3rem]">완독일</span>
+                            <span className="text-sm text-foreground">
                               {dates.map((date: string, index: number) => (
                                 <span key={index}>
                                   {formatDate(date)}
@@ -528,18 +566,6 @@ export function BookTable({ books }: BookTableProps) {
                           </div>
                         ) : null;
                       })()}
-                    </div>
-                  </td>
-
-                  {/* 액션 */}
-                  <td className="px-4 py-6 text-center align-top">
-                    <div className="pt-1">
-                      <BookDeleteButton
-                        userBookId={item.id}
-                        bookTitle={book.title}
-                        variant="icon"
-                        size="sm"
-                      />
                     </div>
                   </td>
                 </tr>
