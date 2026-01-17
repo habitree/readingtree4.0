@@ -145,15 +145,23 @@ export async function createBookshelf(
   } = await supabase.auth.getUser();
 
   if (authError || !user) {
+    console.error("[createBookshelf] 인증 오류:", authError);
     throw new Error("로그인이 필요합니다.");
   }
 
+  console.log("[createBookshelf] 사용자 확인:", { userId: user.id, email: user.email });
+
   // 서재 개수 확인 (메인 서재 제외, 최대 5개)
-  const { data: existingBookshelves } = await supabase
+  const { data: existingBookshelves, error: countError } = await supabase
     .from("bookshelves")
     .select("id")
     .eq("user_id", user.id)
     .eq("is_main", false);
+
+  if (countError) {
+    console.error("[createBookshelf] 서재 개수 조회 오류:", countError);
+    throw new Error(`서재 개수 확인 실패: ${countError.message}`);
+  }
 
   const subBookshelfCount = existingBookshelves?.length || 0;
   if (subBookshelfCount >= 5) {
@@ -161,7 +169,7 @@ export async function createBookshelf(
   }
 
   // 사용자의 최대 order 값 조회
-  const { data: maxOrderData } = await supabase
+  const { data: maxOrderData, error: orderError } = await supabase
     .from("bookshelves")
     .select("order")
     .eq("user_id", user.id)
@@ -169,7 +177,18 @@ export async function createBookshelf(
     .limit(1)
     .maybeSingle();
 
+  if (orderError) {
+    console.error("[createBookshelf] order 조회 오류:", orderError);
+    // order 조회 실패는 치명적이지 않으므로 기본값 사용
+  }
+
   const nextOrder = maxOrderData?.order !== undefined ? maxOrderData.order + 1 : 0;
+
+  console.log("[createBookshelf] 서재 생성 시도:", {
+    userId: user.id,
+    name: input.name,
+    order: nextOrder,
+  });
 
   const { data, error } = await supabase
     .from("bookshelves")
@@ -185,8 +204,17 @@ export async function createBookshelf(
     .single();
 
   if (error) {
+    console.error("[createBookshelf] 서재 생성 오류:", {
+      error,
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     throw new Error(`서재 생성 실패: ${error.message}`);
   }
+
+  console.log("[createBookshelf] 서재 생성 성공:", data?.id);
 
   revalidatePath("/bookshelves");
   revalidatePath("/books");
