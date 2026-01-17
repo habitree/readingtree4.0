@@ -19,6 +19,7 @@ import {
 import { X, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getUserTags, deleteTag, getTagUsageCount } from "@/app/actions/notes";
+import { cn } from "@/lib/utils";
 
 interface TagInputProps {
   value: string;

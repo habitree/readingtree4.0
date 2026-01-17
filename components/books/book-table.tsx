@@ -15,7 +15,7 @@ import { BookStatusBadge } from "./book-status-badge";
 import { BookNotesPreview } from "./book-notes-preview";
 import { BookDeleteButton } from "./book-delete-button";
 import { getImageUrl, isValidImageUrl } from "@/lib/utils/image";
-import { BookOpen, FileText, Loader2, Users, BookOpen as BookOpenIcon, Trash2 } from "lucide-react";
+import { BookOpen, FileText, Loader2, Users, BookOpen as BookOpenIcon } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { updateBookStatus, getBookDescriptionSummary } from "@/app/actions/books";
@@ -26,7 +26,6 @@ import { formatDate } from "@/lib/utils/date";
 import type { BookWithNotes } from "@/app/actions/books";
 import type { ReadingStatus } from "@/types/book";
 import { Bookshelf } from "@/types/bookshelf";
-import { BookDeleteButton } from "./book-delete-button";
 
 interface BookTableProps {
   books: BookWithNotes[];
