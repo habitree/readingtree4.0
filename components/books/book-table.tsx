@@ -249,13 +249,13 @@ export function BookTable({ books }: BookTableProps) {
         <table className="w-full table-fixed">
           <thead className="bg-muted/50">
             <tr>
-              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-16 sm:w-20">
+              <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-16 sm:w-20 lg:w-24">
                 표지
               </th>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground min-w-[130px] max-w-[160px]">
                 제목
               </th>
-              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground" style={{ width: '500px', maxWidth: '500px' }}>
+              <th className="hidden lg:table-cell px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground" style={{ width: '700px', minWidth: '700px' }}>
                 책소개
               </th>
               <th className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground w-36 sm:w-40">
@@ -286,7 +286,7 @@ export function BookTable({ books }: BookTableProps) {
                 >
                   {/* 표지 */}
                   <td className="px-3 py-4 align-top">
-                    <div className="relative w-16 h-24 sm:w-20 sm:h-32 mx-auto">
+                    <div className="relative w-16 h-24 sm:w-20 sm:h-32 lg:w-24 lg:h-36 mx-auto">
                       <Link href={`/books/${item.id}`} className="block relative w-full h-full">
                         <div className="relative w-full h-full rounded-md overflow-hidden bg-muted cursor-pointer hover:shadow-lg transition-all duration-300 shadow-md border border-black/5">
                           {hasValidImage ? (
@@ -295,12 +295,12 @@ export function BookTable({ books }: BookTableProps) {
                               alt={`${book.title} 표지`}
                               fill
                               className="object-cover hover:scale-105 transition-transform duration-500"
-                              sizes="(max-width: 640px) 80px, 96px"
+                              sizes="(max-width: 640px) 80px, (max-width: 1024px) 96px, 128px"
                               unoptimized={false}
                             />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-                              <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground/50" />
+                              <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 text-muted-foreground/50" />
                             </div>
                           )}
                         </div>
@@ -372,15 +372,15 @@ export function BookTable({ books }: BookTableProps) {
                   </td>
 
                   {/* 책소개 (PC 버전에서만 표시) */}
-                  <td className="hidden lg:table-cell px-3 py-4 align-top" style={{ width: '500px', maxWidth: '500px' }}>
-                    <div className="text-xs text-foreground leading-relaxed">
+                  <td className="hidden lg:table-cell px-3 py-4 align-top" style={{ width: '700px', minWidth: '700px' }}>
+                    <div className="text-xs text-foreground leading-relaxed pr-4">
                       {loadingDescriptions[book.id] ? (
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span className="text-[11px]">요약 중...</span>
                         </div>
                       ) : book.description_summary || bookDescriptions[book.id] ? (
-                        <p className="text-xs text-foreground/95 whitespace-pre-wrap break-words leading-relaxed" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                        <p className="text-xs text-foreground/95 whitespace-pre-wrap break-words leading-relaxed" style={{ wordBreak: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}>
                           {book.description_summary || bookDescriptions[book.id]}
                         </p>
                       ) : (
