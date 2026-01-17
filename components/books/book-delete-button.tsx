@@ -77,16 +77,16 @@ export function BookDeleteButton({ userBookId, bookTitle, variant = "default", s
           variant="destructive" 
           size={buttonSize}
           disabled={isDeleting}
-          className={variant === "icon" ? "h-6 w-6 p-0 shadow-md hover:shadow-lg" : ""}
+          className={variant === "icon" ? "h-5 w-5 p-0 shadow-md hover:shadow-lg" : ""}
         >
           {isDeleting ? (
             <>
-              <Loader2 className={variant === "icon" ? "h-3 w-3" : "mr-2 h-4 w-4 animate-spin"} />
+              <Loader2 className={variant === "icon" ? "h-2.5 w-2.5" : "mr-2 h-4 w-4 animate-spin"} />
               {variant !== "icon" && "삭제 중..."}
             </>
           ) : (
             <>
-              <Trash2 className={variant === "icon" ? "h-3 w-3" : "mr-2 h-4 w-4"} />
+              <Trash2 className={variant === "icon" ? "h-2.5 w-2.5" : "mr-2 h-4 w-4"} />
               {variant !== "icon" && "책 삭제"}
             </>
           )}

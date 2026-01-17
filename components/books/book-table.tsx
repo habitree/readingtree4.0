@@ -255,7 +255,7 @@ export function BookTable({ books }: BookTableProps) {
               <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[180px] max-w-[220px]">
                 제목
               </th>
-              <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[250px]">
+              <th className="hidden lg:table-cell px-4 py-3 text-left text-sm font-semibold text-muted-foreground min-w-[350px]">
                 책소개
               </th>
               <th className="px-4 py-3 text-left text-sm font-semibold text-muted-foreground w-32 sm:w-36">
@@ -287,7 +287,7 @@ export function BookTable({ books }: BookTableProps) {
                   {/* 표지 */}
                   <td className="px-4 py-6">
                     <div className="relative w-20 h-28 sm:w-24 sm:h-36 mx-auto">
-                      <Link href={`/books/${item.id}`} className="block">
+                      <Link href={`/books/${item.id}`} className="block relative w-full h-full">
                         <div className="relative w-full h-full rounded-md overflow-hidden bg-muted cursor-pointer hover:shadow-lg transition-all duration-300 shadow-md border border-black/5">
                           {hasValidImage ? (
                             <Image
@@ -296,6 +296,7 @@ export function BookTable({ books }: BookTableProps) {
                               fill
                               className="object-cover hover:scale-105 transition-transform duration-500"
                               sizes="(max-width: 640px) 80px, 96px"
+                              unoptimized={false}
                             />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
@@ -305,7 +306,7 @@ export function BookTable({ books }: BookTableProps) {
                         </div>
                       </Link>
                       {/* 삭제 버튼 - 표지 상단 우측 */}
-                      <div className="absolute -top-1 -right-1 z-10">
+                      <div className="absolute -top-0.5 -right-0.5 z-10">
                         <BookDeleteButton
                           userBookId={item.id}
                           bookTitle={book.title}
@@ -318,8 +319,8 @@ export function BookTable({ books }: BookTableProps) {
 
                   {/* 제목 */}
                   <td className="px-4 py-6">
-                    <div className="space-y-2">
-                      <div className="space-y-1">
+                    <div className="space-y-1.5">
+                      <div className="space-y-0.5">
                         {(() => {
                           // 출판사 정보 제거
                           const titleWithoutPublisher = removePublisherFromTitle(book.title, book.publisher);
@@ -331,11 +332,11 @@ export function BookTable({ books }: BookTableProps) {
                               href={`/books/${item.id}`}
                               className="block hover:text-primary transition-colors"
                             >
-                              <div className="font-semibold text-base leading-tight text-foreground">
+                              <div className="font-semibold text-sm leading-tight text-foreground">
                                 {main}
                               </div>
                               {subtitle && (
-                                <div className="text-sm text-muted-foreground leading-tight mt-1">
+                                <div className="text-xs text-muted-foreground leading-tight mt-0.5">
                                   ({subtitle})
                                 </div>
                               )}
@@ -346,48 +347,25 @@ export function BookTable({ books }: BookTableProps) {
 
                       {/* 읽는 이유 */}
                       {item.reading_reason && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 italic border-l-2 border-primary/20 pl-2 py-1 bg-muted/30 rounded-r">
+                        <p className="text-[11px] text-muted-foreground line-clamp-2 italic border-l-2 border-primary/20 pl-1.5 py-0.5 bg-muted/30 rounded-r">
                           "{item.reading_reason}"
                         </p>
                       )}
 
                       {/* 그룹 지정도서 */}
                       {item.groupBooks && item.groupBooks.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
+                        <div className="flex flex-wrap gap-1 pt-0.5">
                           {item.groupBooks.map((gb) => (
                             <Badge
                               key={gb.group_id}
                               variant="outline"
-                              className="text-xs px-1.5 py-0.5 border-primary/20 text-primary/80"
+                              className="text-[10px] px-1 py-0 border-primary/20 text-primary/80"
                               title={`${gb.group_name} 지정도서`}
                             >
-                              <Users className="mr-1 h-2.5 w-2.5" />
+                              <Users className="mr-0.5 h-2 w-2" />
                               {gb.group_name}
                             </Badge>
                           ))}
-                        </div>
-                      )}
-
-                      {/* 기록 더보기 버튼 */}
-                      {item.noteCount > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            handleToggleNotes(book.id, item.id)
-                          }
-                          className="h-6 text-xs px-2 hover:bg-muted mt-1"
-                        >
-                          {expandedBookId === item.id
-                            ? "접기"
-                            : "기록 더보기"}
-                        </Button>
-                      )}
-
-                      {/* 기록 미리보기 */}
-                      {expandedBookId === item.id && notes.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-border/50">
-                          <BookNotesPreview notes={notes} />
                         </div>
                       )}
                     </div>
@@ -395,35 +373,35 @@ export function BookTable({ books }: BookTableProps) {
 
                   {/* 책소개 (PC 버전에서만 표시) */}
                   <td className="hidden lg:table-cell px-4 py-6 align-top">
-                    <div className="text-sm text-foreground pt-1 leading-relaxed">
+                    <div className="text-xs text-foreground pt-1 leading-relaxed">
                       {loadingDescriptions[book.id] ? (
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Loader2 className="w-3 h-3 animate-spin" />
-                          <span className="text-xs">요약 중...</span>
+                          <span className="text-[11px]">요약 중...</span>
                         </div>
                       ) : book.description_summary || bookDescriptions[book.id] ? (
-                        <p className="line-clamp-5 text-sm text-foreground/90">{book.description_summary || bookDescriptions[book.id]}</p>
+                        <p className="text-xs text-foreground/90 whitespace-normal break-words">{book.description_summary || bookDescriptions[book.id]}</p>
                       ) : (
-                        <span className="text-xs text-muted-foreground">-</span>
+                        <span className="text-[11px] text-muted-foreground">-</span>
                       )}
                     </div>
                   </td>
 
                   {/* 상태/기록 그룹 */}
                   <td className="px-4 py-6 align-top">
-                    <div className="space-y-2 pt-1">
+                    <div className="space-y-1.5 pt-1">
                       {/* 상태 */}
                       <div>
                         {updatingStatus[item.id] ? (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center">
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
+                            <Loader2 className="w-3 h-3 animate-spin" />
                           </div>
                         ) : (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="outline"
-                                className="w-full h-8 text-xs font-medium justify-between px-2 bg-background/50"
+                                className="w-full h-7 text-[11px] font-medium justify-between px-2 bg-background/50"
                                 disabled={updatingStatus[item.id]}
                               >
                                 <span className="truncate">
@@ -510,8 +488,8 @@ export function BookTable({ books }: BookTableProps) {
                       
                       {/* 기록 */}
                       <Link href={`/books/${item.id}#book-info`} className="block">
-                        <Button variant="ghost" size="sm" className="w-full h-8 text-xs text-foreground hover:text-primary hover:bg-muted">
-                          <FileText className="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
+                        <Button variant="ghost" size="sm" className="w-full h-7 text-[11px] text-foreground hover:text-primary hover:bg-muted">
+                          <FileText className="w-3 h-3 mr-1" aria-hidden="true" />
                           기록
                           {item.noteCount > 0 && (
                             <span className="ml-1 text-muted-foreground">({item.noteCount})</span>
@@ -523,17 +501,17 @@ export function BookTable({ books }: BookTableProps) {
 
                   {/* 책정보 (태블릿 이하에서 숨김) */}
                   <td className="hidden lg:table-cell px-4 py-6 align-top">
-                    <div className="space-y-1.5 text-sm pt-1">
+                    <div className="space-y-1 text-xs pt-1">
                       {book.author && (
                         <div className="flex gap-2">
-                          <span className="text-xs text-muted-foreground min-w-[3rem]">저자</span>
-                          <span className="text-sm text-foreground">{book.author}</span>
+                          <span className="text-[11px] text-muted-foreground min-w-[3rem]">저자</span>
+                          <span className="text-xs text-foreground">{book.author}</span>
                         </div>
                       )}
                       {book.publisher && (
                         <div className="flex gap-2">
-                          <span className="text-xs text-muted-foreground min-w-[3rem]">출판사</span>
-                          <span className="text-sm text-foreground">{book.publisher}</span>
+                          <span className="text-[11px] text-muted-foreground min-w-[3rem]">출판사</span>
+                          <span className="text-xs text-foreground">{book.publisher}</span>
                         </div>
                       )}
                       {(() => {
@@ -553,15 +531,14 @@ export function BookTable({ books }: BookTableProps) {
                         }
                         return dates.length > 0 ? (
                           <div className="flex gap-2">
-                            <span className="text-xs text-muted-foreground min-w-[3rem]">완독일</span>
-                            <span className="text-sm text-foreground">
+                            <span className="text-[11px] text-muted-foreground min-w-[3rem]">완독일</span>
+                            <div className="flex flex-col gap-0.5">
                               {dates.map((date: string, index: number) => (
-                                <span key={index}>
+                                <span key={index} className="text-xs text-foreground">
                                   {formatDate(date)}
-                                  {index < dates.length - 1 && ", "}
                                 </span>
                               ))}
-                            </span>
+                            </div>
                           </div>
                         ) : null;
                       })()}
