@@ -1123,12 +1123,12 @@ export async function getBookDetail(userBookId: string, user?: User | null) {
  * @param user 선택적 사용자 정보 (전달되지 않으면 자동 조회)
  */
 /**
- * 책소개 요약 가져오기
- * DB에 저장된 요약이 있으면 반환, 없으면 Naver API + Gemini API로 생성 후 저장
+ * 책소개 가져오기
+ * DB에 저장된 전체 책소개(summary)가 있으면 반환, 없으면 Naver API로 가져와서 저장
  * @param bookId 책 ID
  * @param isbn ISBN (선택)
  * @param title 책 제목 (선택)
- * @returns 요약된 책소개 (20자 내외)
+ * @returns 전체 책소개 (summary)
  */
 export async function getBookDescriptionSummary(
   bookId: string,
@@ -1142,10 +1142,10 @@ export async function getBookDescriptionSummary(
   const supabase = await createServerSupabaseClient();
 
   try {
-    // 1. DB에서 기존 책소개 확인
+    // 1. DB에서 기존 책소개 확인 (summary만 확인)
     const { data: book, error: fetchError } = await supabase
       .from("books")
-      .select("description_summary, summary")
+      .select("summary")
       .eq("id", bookId)
       .maybeSingle();
 
@@ -1156,11 +1156,6 @@ export async function getBookDescriptionSummary(
     // 2. 기존 전체 책소개(summary)가 있으면 반환
     if (book?.summary && book.summary.trim().length > 0) {
       return book.summary;
-    }
-    
-    // 3. summary가 없으면 description_summary 반환 (하위 호환)
-    if (book?.description_summary && book.description_summary.trim().length > 0) {
-      return book.description_summary;
     }
 
     // 3. 요약이 없으면 생성

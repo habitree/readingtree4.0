@@ -113,7 +113,7 @@ export function BookTable({ books }: BookTableProps) {
     }
     setBookDescriptions((prev) => ({ ...prev, ...initialDescriptions }));
 
-    // 2. description_summary가 없는 책만 API로 요약 생성
+    // 2. summary가 없는 책만 API로 책소개 생성
     async function loadBookDescriptions() {
       const descriptionsToLoad: Array<{ bookId: string; isbn?: string | null; title?: string | null }> = [];
 
