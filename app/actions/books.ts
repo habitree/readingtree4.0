@@ -613,6 +613,7 @@ export interface BookWithNotes {
     published_date: string | null;
     cover_image_url: string | null;
     description_summary: string | null;
+    summary: string | null;
     created_at?: string;
     updated_at?: string;
   };
@@ -739,6 +740,7 @@ export async function getUserBooksWithNotes(
         published_date,
         cover_image_url,
         description_summary,
+        summary,
         created_at,
         updated_at
       )
@@ -917,6 +919,7 @@ export async function getUserBooksWithNotes(
           published_date: null,
           cover_image_url: null,
           description_summary: null,
+          summary: null,
         },
         noteCount: 0,
         groupBooks: groupBooksMap[bookId] || [],
@@ -939,6 +942,7 @@ export async function getUserBooksWithNotes(
         published_date: userBook.books.published_date || null,
         cover_image_url: userBook.books.cover_image_url || null,
         description_summary: userBook.books.description_summary || null,
+        summary: userBook.books.summary || null,
         created_at: userBook.books.created_at,
         updated_at: userBook.books.updated_at,
       },
@@ -1138,10 +1142,10 @@ export async function getBookDescriptionSummary(
   const supabase = await createServerSupabaseClient();
 
   try {
-    // 1. DB에서 기존 요약 확인
+    // 1. DB에서 기존 책소개 확인
     const { data: book, error: fetchError } = await supabase
       .from("books")
-      .select("description_summary")
+      .select("description_summary, summary")
       .eq("id", bookId)
       .maybeSingle();
 
@@ -1149,7 +1153,12 @@ export async function getBookDescriptionSummary(
       console.error("[getBookDescriptionSummary] DB 조회 오류:", fetchError);
     }
 
-    // 2. 기존 요약이 있으면 반환
+    // 2. 기존 전체 책소개(summary)가 있으면 반환
+    if (book?.summary && book.summary.trim().length > 0) {
+      return book.summary;
+    }
+    
+    // 3. summary가 없으면 description_summary 반환 (하위 호환)
     if (book?.description_summary && book.description_summary.trim().length > 0) {
       return book.description_summary;
     }
@@ -1172,28 +1181,41 @@ export async function getBookDescriptionSummary(
       return "";
     }
 
-    // Gemini API로 요약
+    // Gemini API로 요약 (20자 내외)
     const summary = await summarizeBookDescription(description);
     
-    if (summary && summary.trim().length > 0) {
-      // 4. DB에 저장 (비동기, 실패해도 반환)
-      void (async () => {
-        try {
+    // 4. DB에 저장 (비동기, 실패해도 반환)
+    // summary: 전체 책소개, description_summary: 20자 내외 요약
+    void (async () => {
+      try {
+        const updateData: { description_summary?: string; summary?: string } = {};
+        
+        if (summary && summary.trim().length > 0) {
+          updateData.description_summary = summary;
+        }
+        
+        // 전체 책소개도 저장
+        if (description && description.trim().length > 0) {
+          updateData.summary = description.trim();
+        }
+        
+        if (Object.keys(updateData).length > 0) {
           const { error: updateError } = await supabase
             .from("books")
-            .update({ description_summary: summary })
+            .update(updateData)
             .eq("id", bookId);
           
           if (updateError) {
             console.error("[getBookDescriptionSummary] DB 저장 오류:", updateError);
           }
-        } catch (error) {
-          console.error("[getBookDescriptionSummary] DB 저장 실패:", error);
         }
-      })();
-    }
+      } catch (error) {
+        console.error("[getBookDescriptionSummary] DB 저장 실패:", error);
+      }
+    })();
 
-    return summary;
+    // 전체 책소개 반환 (요약이 아닌)
+    return description.trim();
   } catch (error) {
     console.error("[getBookDescriptionSummary] 책소개 요약 실패:", error);
     return "";

@@ -387,7 +387,7 @@ export function BookTable({ books }: BookTableProps) {
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span className="text-[11px]">요약 중...</span>
                         </div>
-                      ) : book.description_summary || bookDescriptions[book.id] ? (
+                      ) : book.summary || book.description_summary || bookDescriptions[book.id] ? (
                         <div 
                           className="text-xs text-foreground/95 leading-relaxed"
                           style={{ 
@@ -402,7 +402,7 @@ export function BookTable({ books }: BookTableProps) {
                             minHeight: 'auto'
                           }}
                         >
-                          {book.description_summary || bookDescriptions[book.id]}
+                          {book.summary || book.description_summary || bookDescriptions[book.id]}
                         </div>
                       ) : (
                         <span className="text-[11px] text-muted-foreground">-</span>
