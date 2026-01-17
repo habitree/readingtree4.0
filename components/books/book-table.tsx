@@ -101,13 +101,15 @@ export function BookTable({ books }: BookTableProps) {
     if (typeof window === "undefined") return;
     if (window.innerWidth < 1024) return;
 
-    // 1. DB에서 가져온 summary만 설정
+    // 1. DB에서 가져온 description_summary 설정
     const initialDescriptions: Record<string, string> = {};
     for (const item of books) {
       if (!item || !item.books) continue;
       const book = item.books;
-      // summary만 사용
-      if (book && book.summary && book.summary.trim().length > 0) {
+      // description_summary 우선 사용, 없으면 summary 사용
+      if (book && book.description_summary && book.description_summary.trim().length > 0) {
+        initialDescriptions[book.id] = book.description_summary;
+      } else if (book && book.summary && book.summary.trim().length > 0) {
         initialDescriptions[book.id] = book.summary;
       }
     }
@@ -121,8 +123,8 @@ export function BookTable({ books }: BookTableProps) {
         if (!item || !item.books) continue;
         const book = item.books;
         // 이미 DB에 있거나 로드되었거나 로딩 중이면 스킵
-        // summary가 있으면 스킵
-        if (book.summary || bookDescriptions[book.id] || loadingDescriptions[book.id]) {
+        // description_summary 또는 summary가 있으면 스킵
+        if (book.description_summary || book.summary || bookDescriptions[book.id] || loadingDescriptions[book.id]) {
           continue;
         }
 
@@ -389,7 +391,7 @@ export function BookTable({ books }: BookTableProps) {
                           <Loader2 className="w-3 h-3 animate-spin" />
                           <span className="text-[11px]">요약 중...</span>
                         </div>
-                      ) : book.summary || bookDescriptions[book.id] ? (
+                      ) : book.description_summary || book.summary || bookDescriptions[book.id] ? (
                         <div 
                           className="text-xs text-foreground/95 leading-relaxed"
                           style={{ 
@@ -404,7 +406,7 @@ export function BookTable({ books }: BookTableProps) {
                             minHeight: 'auto'
                           }}
                         >
-                          {book.summary || bookDescriptions[book.id]}
+                          {book.description_summary || book.summary || bookDescriptions[book.id]}
                         </div>
                       ) : (
                         <span className="text-[11px] text-muted-foreground">-</span>
