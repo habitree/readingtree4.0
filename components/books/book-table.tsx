@@ -380,7 +380,7 @@ export function BookTable({ books }: BookTableProps) {
                           <span className="text-[11px]">요약 중...</span>
                         </div>
                       ) : book.description_summary || bookDescriptions[book.id] ? (
-                        <p className="text-xs text-foreground/95 whitespace-normal break-words leading-relaxed line-clamp-4 min-h-[3.5rem]">
+                        <p className="text-xs text-foreground/95 whitespace-normal break-words leading-relaxed">
                           {book.description_summary || bookDescriptions[book.id]}
                         </p>
                       ) : (
@@ -543,8 +543,7 @@ export function BookTable({ books }: BookTableProps) {
                                   const day = dateObj.getDate();
                                   return (
                                     <div key={index} className="text-xs text-foreground leading-relaxed">
-                                      <div>{year}년</div>
-                                      <div>{month}월 {day}일</div>
+                                      {year}년 {month}월 {day}일
                                     </div>
                                   );
                                 } catch {
