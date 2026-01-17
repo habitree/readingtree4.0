@@ -72,9 +72,8 @@ export function getMonthKey(date: Date | string): string {
   return format(dateObj, "yyyy년 MM월", { locale: ko });
 }
 
-
 /**
- * ?�짜�?"yyyy - MM - dd" ?�식?�로 ?�맷 (?�독?�용)
+ * 날짜를 "yyyy - MM - dd" 형식으로 포맷 (완독일용)
  */
 export function formatDateWithDashes(date: Date | string): string {
   const dateObj = typeof date === "string" ? new Date(date) : date;
